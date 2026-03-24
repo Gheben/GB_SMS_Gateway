@@ -15,7 +15,7 @@ const links = [
   { to: '/settings',label: 'Impostazioni',   icon: Settings,        perm: 'settings' },
   { divider: true },
   { to: '/users',   label: 'Utenti/Gruppi',  icon: Users,           perm: 'users' },
-  { to: '/audit',   label: 'Audit Log',      icon: ClipboardList,   adminOnly: true },
+  { to: '/audit',   label: 'Audit Log',      icon: ClipboardList,   superadminOnly: true },
 ]
 
 export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout }) {
@@ -62,6 +62,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
             if (l.divider) return <div key={i} className="border-t border-gray-700 my-2" />
             if (l.perm && !can(l.perm)) return null
             if (l.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return null
+            if (l.superadminOnly && user?.role !== 'superadmin') return null
             return (
               <NavLink
                 key={l.to}

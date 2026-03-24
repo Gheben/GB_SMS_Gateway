@@ -1024,13 +1024,15 @@ function LocalGroupsTab() {
   )
 }
 
-const TABS = [
-  { key: 'local',  label: 'Utenti locali',           Icon: Users },
-  { key: 'groups', label: 'Gruppi locali',            Icon: UsersRound },
-  { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server },
+const ALL_TABS = [
+  { key: 'local',  label: 'Utenti locali',           Icon: Users,        superadminOnly: false },
+  { key: 'groups', label: 'Gruppi locali',            Icon: UsersRound,   superadminOnly: false },
+  { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server,       superadminOnly: true },
 ]
 
 export default function UsersPage() {
+  const { user: me } = useAuth()
+  const TABS = ALL_TABS.filter(t => !t.superadminOnly || me?.role === 'superadmin')
   const [tab, setTab] = useState('local')
 
   return (

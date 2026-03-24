@@ -362,13 +362,16 @@ export default function Rules() {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [r, d, g, lg] = await Promise.all([
-      rulesApi.getAll(),
-      devicesApi.getAll(),
-      ldapApi.getGroups().catch(() => []),
-      localGroupsApi.getAllSimple().catch(() => []),
-    ])
-    setRules(r); setDevices(d); setLdapGroups(g); setLocalGroups(lg); setLoading(false)
+    try {
+      const [r, d, g, lg] = await Promise.all([
+        rulesApi.getAll(),
+        devicesApi.getAll(),
+        ldapApi.getGroups().catch(() => []),
+        localGroupsApi.getAllSimple().catch(() => []),
+      ])
+      setRules(r); setDevices(d); setLdapGroups(g); setLocalGroups(lg)
+    } catch {}
+    setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])

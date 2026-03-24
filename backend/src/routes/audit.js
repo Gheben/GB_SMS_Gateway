@@ -1,12 +1,12 @@
 const { Router } = require('express');
 const { query, validationResult } = require('express-validator');
-const { requireAdmin } = require('../middleware/authMiddleware');
+const { requireSuperAdmin } = require('../middleware/authMiddleware');
 const auditService = require('../services/auditService');
 
 const router = Router();
 
-// Tutti gli endpoint audit richiedono ruolo admin
-router.use(requireAdmin);
+// Audit log: solo superadmin
+router.use(requireSuperAdmin);
 
 // GET /api/audit — lista audit log (paginato, filtrabile)
 router.get('/', [

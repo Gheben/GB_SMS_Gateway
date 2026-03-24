@@ -57,8 +57,10 @@ export default function Devices() {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const data = await devicesApi.getAll()
-    setDevices(data)
+    try {
+      const data = await devicesApi.getAll()
+      setDevices(data)
+    } catch {}
     setLoading(false)
   }, [])
 

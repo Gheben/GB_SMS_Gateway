@@ -5,7 +5,23 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('jwt_user')) } catch { return null }
+    try {
+      const stored = JSON.parse(localStorage.getItem('jwt_user'))
+      if (!stored) return null
+      // Decode the JWT payload to get fresh data (no signature needed on frontend)
+      const token = localStorage.getItem('jwt_token')
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        return {
+          ...stored,
+          displayName: payload.displayName || stored.displayName || stored.username,
+          allowed_ports: payload.allowed_ports || stored.allowed_ports || [],
+          permissions: payload.permissions || stored.permissions || {},
+          role: payload.role || stored.role,
+        }
+      }
+      return stored
+    } catch { return null }
   })
   const [ssoChecked, setSsoChecked] = useState(false)
 
