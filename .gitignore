@@ -1,0 +1,8 @@
+# Git ignore
+node_modules/
+dist/
+.env
+data/
+logs/
+*.db
+*.log

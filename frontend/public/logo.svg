@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Sfondo arrotondato blu scuro -->
+  <rect width="48" height="48" rx="10" fill="#1e3a5f"/>
+
+  <!-- Fumetto SMS principale -->
+  <rect x="6" y="8" width="28" height="20" rx="4" fill="#3b82f6"/>
+  <!-- Codina fumetto -->
+  <path d="M10 28 L6 34 L16 28Z" fill="#3b82f6"/>
+
+  <!-- Fulmini/freccia di inoltro (routing) -->
+  <path d="M26 14 L34 14 L30 10 M34 14 L30 18" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="34" y="10" width="8" height="12" rx="2" fill="#0ea5e9" opacity="0.9"/>
+
+  <!-- Linee testo SMS nel fumetto -->
+  <rect x="10" y="14" width="12" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="10" y="19" width="8" height="2" rx="1" fill="white" opacity="0.6"/>
+
+  <!-- Pallino wifi/signal in alto a destra -->
+  <circle cx="38" cy="11" r="1.5" fill="white"/>
+</svg>

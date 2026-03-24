@@ -1,0 +1,66 @@
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { authApi } from '../api'
+
+const AuthContext = createContext(null)
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('jwt_user')) } catch { return null }
+  })
+  const [ssoChecked, setSsoChecked] = useState(false)
+
+  // Prova SSO automatico all'avvio se l'utente non è già loggato
+  useEffect(() => {
+    if (user) { setSsoChecked(true); return }
+    authApi.sso()
+      .then(({ token, user: u }) => {
+        localStorage.setItem('jwt_token', token)
+        localStorage.setItem('jwt_user', JSON.stringify(u))
+        setUser(u)
+      })
+      .catch(() => { /* SSO non disponibile o non configurato */ })
+      .finally(() => setSsoChecked(true))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const login = useCallback(async (username, password) => {
+    const { token, user: u } = await authApi.login(username, password)
+    localStorage.setItem('jwt_token', token)
+    localStorage.setItem('jwt_user', JSON.stringify(u))
+    setUser(u)
+    return u
+  }, [])
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('jwt_user')
+    setUser(null)
+  }, [])
+
+  /** Controlla se l'utente ha il permesso per una chiave specifica */
+  const can = useCallback((key) => {
+    if (!user) return false
+    if (user.role === 'superadmin' || user.role === 'admin') return true
+    return !!user.permissions?.[key]
+  }, [user])
+
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'admin'
+
+  // Mostra spinner mentre verifico l'SSO per non fare flash della login page
+  if (!ssoChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, can, isAdmin }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  return useContext(AuthContext)
+}

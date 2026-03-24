@@ -1,0 +1,18 @@
+{
+  "name": "GB SMS Gateway",
+  "short_name": "SMS Gateway",
+  "description": "Gestione SMS via Yeastar TG — GB SMS Gateway",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

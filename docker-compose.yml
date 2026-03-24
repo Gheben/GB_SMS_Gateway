@@ -1,0 +1,56 @@
+version: '3.9'
+
+# Dati persistenti: bind mount su cartelle locali dell'host (es. Synology).
+# Per spostare tutto su un altro server basta copiare le cartelle ./data e ./logs
+# insieme a questo docker-compose.yml.
+#
+# Struttura su disco host:
+#   /volume1/docker/smsgateway/
+#   ├── docker-compose.yml
+#   ├── .env
+#   ├── data/
+#   │   └── smsgateway.db    ← database SQLite (backup = copia questo file)
+#   └── logs/
+#       └── app.log
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smsgateway-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=4673
+      - DB_PATH=/app/data/smsgateway.db
+      - LOG_FILE=/app/logs/app.log
+    volumes:
+      # Bind mount: la cartella ./data sull'host contiene il DB SQLite.
+      # Copiando questa cartella si copia il database completo.
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - smsgateway-net
+    # Expose only internally — frontend nginx proxies to it
+    expose:
+      - "4673"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smsgateway-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - smsgateway-net
+
+networks:
+  smsgateway-net:
+    driver: bridge
