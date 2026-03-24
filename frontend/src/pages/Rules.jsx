@@ -21,6 +21,7 @@ const EMPTY_RULE = {
   conditions: [emptyCondition()],
   stop_on_match: false,
   targets: [''],
+  sms_targets_str: '',
   allowed_groups: [],
   allowed_local_groups: [],
 }
@@ -74,6 +75,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
         : [emptyCondition()],
       stop_on_match: !!rule.stop_on_match,
       targets: rule.targets?.map(t => t.email) || [''],
+      sms_targets_str: Array.isArray(rule.sms_targets) ? rule.sms_targets.join(', ') : '',
       allowed_groups: Array.isArray(rule.allowed_groups) ? rule.allowed_groups : [],
       allowed_local_groups: Array.isArray(rule.allowed_local_groups) ? rule.allowed_local_groups : [],
     }
@@ -131,6 +133,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       })),
       stop_on_match: form.stop_on_match,
       targets: form.targets.filter(Boolean),
+      sms_targets: form.sms_targets_str.split(',').map(s => s.trim()).filter(Boolean),
       allowed_groups: form.allowed_groups,
       allowed_local_groups: form.allowed_local_groups,
     }
@@ -201,19 +204,31 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
             </button>
           </div>
 
-          {/* Destinatari */}
+          {/* Destinatari email */}
           <div>
-            <label className="label">Destinatari email <span className="text-gray-400 font-normal">(uno o più)</span></label>
+            <label className="label">Destinatari email <span className="text-gray-400 font-normal">(opzionale)</span></label>
             {form.targets.map((t, i) => (
               <div key={i} className="flex gap-2 mb-1">
                 <input className="input flex-1" type="email" placeholder="nome@azienda.it" value={t}
-                  onChange={e => setTarget(i, e.target.value)} required />
+                  onChange={e => setTarget(i, e.target.value)} />
                 {form.targets.length > 1 && (
                   <button type="button" onClick={() => removeTarget(i)} className="text-red-400 px-2">✕</button>
                 )}
               </div>
             ))}
             <button type="button" onClick={addTarget} className="text-blue-600 text-sm hover:underline">+ Aggiungi email</button>
+          </div>
+
+          {/* Inoltro SMS */}
+          <div>
+            <label className="label">Inoltro SMS <span className="text-gray-400 font-normal">(opzionale — numeri con prefisso, separati da virgola)</span></label>
+            <input
+              className="input"
+              placeholder="Es: +393331234567, +393339876543"
+              value={form.sms_targets_str}
+              onChange={e => setForm(p => ({ ...p, sms_targets_str: e.target.value }))}
+            />
+            <p className="text-xs text-gray-400 mt-1">L'SMS verrà inviato usando la stessa SIM che ha ricevuto il messaggio.</p>
           </div>
 
           <div className="flex gap-4">

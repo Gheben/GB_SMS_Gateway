@@ -27,6 +27,7 @@ function getRuleFull(db, id) {
     conditions,
     allowed_groups: JSON.parse(rule.allowed_groups || '[]'),
     allowed_local_groups: JSON.parse(rule.allowed_local_groups || '[]'),
+    sms_targets: JSON.parse(rule.sms_targets || '[]'),
   };
 }
 
@@ -70,23 +71,26 @@ router.post('/', [
   body('conditions.*.match_type').isIn(MATCH_TYPES),
   body('conditions.*.match_value').optional({ checkFalsy: true }).isString().trim(),
   body('stop_on_match').optional().isBoolean().toBoolean(),
-  body('targets').isArray({ min: 1 }).withMessage('Almeno un destinatario email richiesto'),
-  body('targets.*').isEmail(),
+  body('targets').optional().isArray(),
+  body('targets.*').optional().isEmail(),
+  body('sms_targets').optional().isArray(),
+  body('sms_targets.*').optional().isString().trim(),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
   const id = uuidv4();
-  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets, allowed_groups = [], allowed_local_groups = [] } = req.body;
+  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets = [], sms_targets = [], allowed_groups = [], allowed_local_groups = [] } = req.body;
 
   db.prepare('BEGIN').run();
   db.prepare(
-    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups, allowed_local_groups) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups, allowed_local_groups, sms_targets) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(id, name, enabled ? 1 : 0, priority, condition_operator, stop_on_match ? 1 : 0,
     JSON.stringify(Array.isArray(allowed_groups) ? allowed_groups : []),
-    JSON.stringify(Array.isArray(allowed_local_groups) ? allowed_local_groups : []));
+    JSON.stringify(Array.isArray(allowed_local_groups) ? allowed_local_groups : []),
+    JSON.stringify(Array.isArray(sms_targets) ? sms_targets.filter(Boolean) : []));
   insertConditions(db, id, conditions);
   const insTarget = db.prepare('INSERT INTO rule_targets (id, rule_id, email) VALUES (?, ?, ?)');
-  for (const email of targets) insTarget.run(uuidv4(), id, email.trim().toLowerCase());
+  for (const email of targets.filter(Boolean)) insTarget.run(uuidv4(), id, email.trim().toLowerCase());
   db.prepare('COMMIT').run();
 
   auditService.log(req.user?.id, req.user?.username || 'system', 'rule:create', 'rule', id, `Nome: ${name}`, req.ip);
@@ -104,8 +108,10 @@ router.put('/:id', [
   body('conditions.*.match_type').optional().isIn(MATCH_TYPES),
   body('conditions.*.match_value').optional({ checkFalsy: true }).isString().trim(),
   body('stop_on_match').optional().isBoolean().toBoolean(),
-  body('targets').optional().isArray({ min: 1 }),
+  body('targets').optional().isArray(),
   body('targets.*').optional().isEmail(),
+  body('sms_targets').optional().isArray(),
+  body('sms_targets.*').optional().isString().trim(),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
@@ -116,22 +122,23 @@ router.put('/:id', [
   db.prepare('BEGIN').run();
   db.prepare(`
     UPDATE routing_rules
-    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, allowed_local_groups=?, updated_at=datetime('now')
+    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, allowed_local_groups=?, sms_targets=?, updated_at=datetime('now')
     WHERE id=?
   `).run(merged.name, merged.enabled ? 1 : 0, merged.priority,
          merged.condition_operator || 'AND', merged.stop_on_match ? 1 : 0,
          JSON.stringify(Array.isArray(req.body.allowed_groups) ? req.body.allowed_groups : JSON.parse(existing.allowed_groups || '[]')),
          JSON.stringify(Array.isArray(req.body.allowed_local_groups) ? req.body.allowed_local_groups : JSON.parse(existing.allowed_local_groups || '[]')),
+         JSON.stringify(Array.isArray(req.body.sms_targets) ? req.body.sms_targets.filter(Boolean) : JSON.parse(existing.sms_targets || '[]')),
          req.params.id);
 
   if (req.body.conditions) {
     db.prepare('DELETE FROM rule_conditions WHERE rule_id=?').run(req.params.id);
     insertConditions(db, req.params.id, req.body.conditions);
   }
-  if (req.body.targets) {
+  if (req.body.targets !== undefined) {
     db.prepare('DELETE FROM rule_targets WHERE rule_id=?').run(req.params.id);
     const insTarget = db.prepare('INSERT INTO rule_targets (id, rule_id, email) VALUES (?, ?, ?)');
-    for (const email of req.body.targets) insTarget.run(uuidv4(), req.params.id, email.trim().toLowerCase());
+    for (const email of (req.body.targets || []).filter(Boolean)) insTarget.run(uuidv4(), req.params.id, email.trim().toLowerCase());
   }
   db.prepare('COMMIT').run();
 

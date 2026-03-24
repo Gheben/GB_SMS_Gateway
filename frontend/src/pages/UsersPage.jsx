@@ -384,6 +384,8 @@ function LocalUsersTab() {
 /* ─── LdapSettingsTab ───────────────────────────────────────── */
 
 function LdapSettingsTab() {
+  const { user: me } = useAuth()
+  const isSuperAdmin = me?.role === 'superadmin'
   const [loadingCfg, setLoadingCfg]   = useState(true)
   const [savedSettings, setSavedSettings] = useState(null)
   const [form, setForm] = useState({
@@ -519,20 +521,23 @@ function LdapSettingsTab() {
 
   return (
     <div className="space-y-5">
-      {/* Enable toggle */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <input type="checkbox" checked={form.enabled} onChange={e => setField('enabled', e.target.checked)}
-            className="w-4 h-4 accent-blue-600" />
-          <span className="font-semibold text-gray-800">Abilita autenticazione LDAP / Active Directory</span>
-        </label>
-        {form.enabled && (
-          <p className="mt-2 text-sm text-cyan-700">LDAP abilitato — gli utenti potranno accedere con le credenziali di dominio.</p>
-        )}
-      </div>
+      {/* Enable toggle — superadmin only */}
+      {isSuperAdmin && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input type="checkbox" checked={form.enabled} onChange={e => setField('enabled', e.target.checked)}
+              className="w-4 h-4 accent-blue-600" />
+            <span className="font-semibold text-gray-800">Abilita autenticazione LDAP / Active Directory</span>
+          </label>
+          {form.enabled && (
+            <p className="mt-2 text-sm text-cyan-700">LDAP abilitato — gli utenti potranno accedere con le credenziali di dominio.</p>
+          )}
+        </div>
+      )}
 
-      <div className={`space-y-5 transition-opacity duration-200 ${form.enabled ? '' : 'opacity-40 pointer-events-none'}`}>
-        {/* Connessione */}
+      <div className={`space-y-5 transition-opacity duration-200 ${isSuperAdmin && !form.enabled ? 'opacity-40 pointer-events-none' : ''}`}>
+        {/* Connessione — superadmin only */}
+        {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Connessione LDAP</h3>
 
@@ -573,8 +578,10 @@ function LdapSettingsTab() {
             Ignora verifica certificato TLS
           </label>
         </div>
+        )}{/* end Connessione */}
 
-        {/* Service account */}
+        {/* Service account — superadmin only */}
+        {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Account di servizio</h3>
           <p className="text-xs text-gray-400">
@@ -595,8 +602,10 @@ function LdapSettingsTab() {
             </div>
           </div>
         </div>
+        )}{/* end Service account */}
 
-        {/* Ricerca utenti */}
+        {/* Ricerca utenti — superadmin only */}
+        {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Ricerca utenti</h3>
           <div>
@@ -614,8 +623,10 @@ function LdapSettingsTab() {
             </span>
           </label>
         </div>
+        )}{/* end Ricerca utenti */}
 
-        {/* Actions */}
+        {/* Actions — superadmin only */}
+        {isSuperAdmin && (
         <div className="flex items-center gap-4 flex-wrap">
           <button onClick={handleTest} disabled={testing || !form.ldap_server}
             className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors">
@@ -636,6 +647,7 @@ function LdapSettingsTab() {
             {saving ? 'Salvataggio...' : 'Salva impostazioni'}
           </button>
         </div>
+        )}{/* end Actions */}
 
         {/* Group mappings */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -1027,7 +1039,7 @@ function LocalGroupsTab() {
 const ALL_TABS = [
   { key: 'local',  label: 'Utenti locali',           Icon: Users,        superadminOnly: false },
   { key: 'groups', label: 'Gruppi locali',            Icon: UsersRound,   superadminOnly: false },
-  { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server,       superadminOnly: true },
+  { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server,       superadminOnly: false },
 ]
 
 export default function UsersPage() {

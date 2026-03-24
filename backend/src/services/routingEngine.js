@@ -63,12 +63,18 @@ class RoutingEngine {
       if (!this._matches(rule, sms)) continue;
 
       const emails = rule.emails ? rule.emails.split(',').filter(Boolean) : [];
-      if (emails.length === 0) {
-        logger.warn(`Rule "${rule.name}" matched but has no email targets.`);
+      if (emails.length === 0 && !rule.sms_targets) {
+        logger.warn(`Rule "${rule.name}" matched but has no targets.`);
       }
 
       for (const email of emails) {
         await this._dispatch(sms, rule, email);
+      }
+
+      // SMS forwarding — send back via same port that received the SMS
+      const smsTargets = JSON.parse(rule.sms_targets || '[]');
+      for (const phone of smsTargets) {
+        await this._dispatchSms(sms, rule, phone);
       }
 
       if (rule.stop_on_match) {
@@ -165,6 +171,22 @@ class RoutingEngine {
     } catch (err) {
       db.prepare(`UPDATE dispatches SET status='failed', error=? WHERE id=?`).run(err.message, dispatchId);
       logger.error(`Email dispatch failed → ${email}: ${err.message}`);
+    }
+  }
+
+  async _dispatchSms(sms, rule, phone) {
+    try {
+      // Lazy require to avoid circular dependency with deviceManager
+      const deviceManager = require('./deviceManager');
+      const connector = deviceManager.get(sms.deviceId);
+      if (!connector || !connector.connected) {
+        logger.warn(`SMS forward skipped: device ${sms.deviceId} not connected (rule: ${rule.name})`);
+        return;
+      }
+      connector.sendSMS(sms.port, phone, sms.content);
+      logger.info(`SMS forwarded → ${phone} via port ${sms.port} (rule: ${rule.name})`);
+    } catch (err) {
+      logger.error(`SMS forward failed → ${phone}: ${err.message}`);
     }
   }
 }

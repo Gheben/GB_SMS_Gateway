@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
-import { useAuth } from '../contexts/AuthContext'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, User } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2 } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -65,7 +64,6 @@ export default function Settings() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('smtp')
-  const { user } = useAuth()
 
   // Template email
   const [template, setTemplate]           = useState('')
@@ -148,7 +146,6 @@ export default function Settings() {
         {[
           { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} /> },
           { key: 'template', label: 'Template email',       icon: <FileCode size={14} /> },
-          { key: 'account',  label: 'Account corrente',     icon: <User size={14} /> },
         ].map(t => (
           <button
             key={t.key}
@@ -333,63 +330,6 @@ export default function Settings() {
             )}
           </section>
         </div>
-      )}
-
-      {/* ── Account corrente ── */}
-      {tab === 'account' && (
-        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h3 className="text-base font-semibold text-gray-700">Informazioni account corrente</h3>
-          <p className="text-sm text-gray-500">Questi sono i dati del token JWT attivo. Utile per diagnosticare problemi di accesso.</p>
-          <table className="text-sm w-full">
-            <tbody className="divide-y divide-gray-100">
-              <tr className="py-2">
-                <td className="py-2 pr-4 font-medium text-gray-600 w-40">Username</td>
-                <td className="py-2 font-mono text-gray-800">{user?.username}</td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">DisplayName</td>
-                <td className="py-2 font-mono text-gray-800">{user?.displayName || '—'}</td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">Ruolo</td>
-                <td className="py-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    user?.role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
-                    user?.role === 'admin' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>{user?.role}</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">Sorgente</td>
-                <td className="py-2 font-mono text-gray-800">{user?.source || 'local'}</td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">Permessi</td>
-                <td className="py-2 text-xs font-mono text-gray-700 break-all">
-                  {user?.role === 'superadmin' || user?.role === 'admin'
-                    ? <span className="text-green-600 font-semibold">Tutti (ruolo admin)</span>
-                    : JSON.stringify(user?.permissions || {})}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">Gruppi LDAP</td>
-                <td className="py-2 text-xs font-mono text-gray-700 break-all">
-                  {(user?.groups || []).length > 0
-                    ? <ul className="list-disc list-inside space-y-0.5">{(user.groups).map((g, i) => <li key={i}>{g}</li>)}</ul>
-                    : <span className="text-gray-400">Nessuno</span>}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-medium text-gray-600">Token JWT</td>
-                <td className="py-2 text-xs font-mono text-gray-500 break-all max-w-md">
-                  {localStorage.getItem('jwt_token')?.substring(0, 60)}...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="text-xs text-gray-400">Per aggiornare i dati (es. dopo un cambio di gruppo LDAP), effettua il logout e accedi nuovamente.</p>
-        </section>
       )}
     </div>
   )
