@@ -3,6 +3,7 @@ const { body, param, validationResult } = require('express-validator');
 const { requireAuth, requireAdmin } = require('../middleware/authMiddleware');
 const { getAllUsers, createUser, updateUser, deleteUser, PERMISSION_KEYS, safeUser } = require('../services/authService');
 const ldapService = require('../services/ldapService');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -41,6 +42,7 @@ router.post('/', [
       req.body.role || 'user',
       req.body.permissions || {}
     );
+    auditService.log(req.user?.id, req.user?.username || 'system', 'user:create', 'user', id, `Username: ${req.body.username}`, req.ip);
     res.status(201).json({ id });
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) {
@@ -56,6 +58,7 @@ router.put('/:id', [
   body('password').optional().isString().isLength({ min: 6 }),
   body('role').optional().isIn(['admin', 'user']),
   body('permissions').optional().isObject(),
+  body('allowed_ports').optional().isArray(),
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -65,7 +68,9 @@ router.put('/:id', [
       password: req.body.password,
       role: req.body.role,
       permissions: req.body.permissions,
+      allowed_ports: req.body.allowed_ports,
     });
+    auditService.log(req.user?.id, req.user?.username || 'system', 'user:update', 'user', req.params.id, null, req.ip);
     res.json({ ok: true });
   } catch (err) {
     res.status(err.message === 'User not found' ? 404 : 403).json({ error: err.message });
@@ -79,6 +84,7 @@ router.delete('/:id', [param('id').isUUID()], (req, res) => {
 
   try {
     deleteUser(req.params.id);
+    auditService.log(req.user?.id, req.user?.username || 'system', 'user:delete', 'user', req.params.id, null, req.ip);
     res.json({ ok: true });
   } catch (err) {
     res.status(err.message === 'User not found' ? 404 : 403).json({ error: err.message });
@@ -88,9 +94,10 @@ router.delete('/:id', [param('id').isUUID()], (req, res) => {
 // GET /api/users/ldap-settings
 router.get('/ldap-settings', (req, res) => {
   const cfg = ldapService.getLdapSettings() || {};
-  // Non inviare la password al frontend — la restituiamo mascherata
+  // Non inviare password al frontend
   const safe = { ...cfg };
   if (safe.bind_password) safe.bind_password = '__SAVED__';
+  if (safe.ldap_service_password) safe.ldap_service_password = '__SAVED__';
   res.json(safe);
 });
 
@@ -98,16 +105,30 @@ router.get('/ldap-settings', (req, res) => {
 router.post('/ldap-settings', [body('host').optional().isString()], (req, res) => {
   try {
     const incoming = req.body;
-    // Se bind_password === '__SAVED__' non sovrascrivere quella esistente
-    if (incoming.bind_password === '__SAVED__') {
-      const existing = ldapService.getLdapSettings();
-      incoming.bind_password = existing?.bind_password || '';
-    }
+    const existing = ldapService.getLdapSettings();
+    // Se inviato come __SAVED__ non sovrascrivere la password esistente
+    if (incoming.bind_password === '__SAVED__') incoming.bind_password = existing?.bind_password || '';
+    if (incoming.ldap_service_password === '__SAVED__') incoming.ldap_service_password = existing?.ldap_service_password || '';
     ldapService.saveLdapSettings(incoming);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// GET /api/users/ldap-groups — restituisce i group_mappings configurati (per la selezione nelle regole)
+router.get('/ldap-groups', (req, res) => {
+  const cfg = ldapService.getLdapSettings() || {};
+  const groups = (cfg.group_mappings || []).map(m => ({ group_dn: m.group_dn, role: m.role }));
+  res.json(groups);
+});
+
+// GET /api/users/local-groups — restituisce i gruppi locali (per la selezione nelle regole)
+router.get('/local-groups', (req, res) => {
+  const { getDb } = require('../db/database');
+  const db = getDb();
+  const groups = db.prepare('SELECT id, name, role FROM local_groups ORDER BY name').all();
+  res.json(groups);
 });
 
 // POST /api/users/ldap-test

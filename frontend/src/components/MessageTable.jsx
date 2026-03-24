@@ -1,9 +1,14 @@
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
+import { Loader2 } from 'lucide-react'
 
 export default function MessageTable({ messages, loading, onDoubleClick }) {
   if (loading) {
-    return <div className="flex justify-center py-16 text-gray-400">Caricamento...</div>
+    return (
+      <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
+        <Loader2 size={18} className="animate-spin" /> Caricamento...
+      </div>
+    )
   }
 
   if (!messages || messages.length === 0) {

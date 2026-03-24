@@ -4,6 +4,7 @@ const messageService = require('./messageService');
 const routingEngine = require('./routingEngine');
 const { broadcast } = require('./wsService');
 const logger = require('../utils/logger');
+const { decrypt } = require('../utils/encryption');
 
 /**
  * DeviceManager
@@ -83,7 +84,7 @@ class DeviceManager {
       host: device.host,
       port: device.port,
       username: device.username,
-      secret: device.password,
+      secret: decrypt(device.password),
     });
 
     conn.on('connected', () => {
@@ -140,16 +141,16 @@ class DeviceManager {
 
     conn.on('port:info', (data) => {
       const db = getDb();
+      // operator e sim_number sono campi utente — non sovrascritti dal polling del dispositivo
       db.prepare(`
-        INSERT INTO ports (device_id, port_number, status, operator, signal, imei, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO ports (device_id, port_number, status, signal, imei, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(device_id, port_number) DO UPDATE SET
           status = excluded.status,
-          operator = COALESCE(excluded.operator, operator),
           signal = excluded.signal,
           imei = COALESCE(excluded.imei, imei),
           updated_at = excluded.updated_at
-      `).run(device.id, data.port, data.status, data.operator, data.signal ?? null, data.imei);
+      `).run(device.id, data.port, data.status, data.signal ?? null, data.imei);
       broadcast('port:info', { deviceId: device.id, ...data });
     });
 

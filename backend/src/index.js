@@ -11,6 +11,7 @@ const logger = require('./utils/logger');
 const { getDb } = require('./db/database');
 const { initWebSocket } = require('./services/wsService');
 const deviceManager = require('./services/deviceManager');
+const { encrypt, isEncrypted } = require('./utils/encryption');
 
 const messagesRouter = require('./routes/messages');
 const portsRouter    = require('./routes/ports');
@@ -20,6 +21,8 @@ const settingsRouter = require('./routes/settings');
 const reportRouter   = require('./routes/report');
 const authRouter     = require('./routes/auth');
 const usersRouter    = require('./routes/users');
+const auditRouter    = require('./routes/audit');
+const groupsRouter   = require('./routes/localGroups');
 const { requireAuth } = require('./middleware/authMiddleware');
 const { seedSuperAdmin } = require('./services/authService');
 
@@ -34,6 +37,24 @@ getDb();
 
 // Seed superadmin (da .env)
 seedSuperAdmin();
+
+// Migrazione password in chiaro → cifrate (eseguita una volta sola)
+(function migratePasswords() {
+  const db = getDb();
+  // Cifra password dispositivi in chiaro
+  const devices = db.prepare('SELECT id, password FROM devices').all();
+  for (const d of devices) {
+    if (d.password && !isEncrypted(d.password)) {
+      db.prepare('UPDATE devices SET password=? WHERE id=?').run(encrypt(d.password), d.id);
+    }
+  }
+  // Cifra SMTP_PASS in chiaro
+  const smtpRow = db.prepare("SELECT value FROM settings WHERE key='SMTP_PASS'").get();
+  if (smtpRow?.value && !isEncrypted(smtpRow.value)) {
+    db.prepare("UPDATE settings SET value=? WHERE key='SMTP_PASS'").run(encrypt(smtpRow.value));
+  }
+  logger.info('[Migration] Password encryption check completed');
+})();
 
 // Express app
 const app = express();
@@ -55,6 +76,8 @@ app.use('/api/rules',    rulesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/report',   reportRouter);
 app.use('/api/users',    usersRouter);
+app.use('/api/audit',    auditRouter);
+app.use('/api/groups',   groupsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

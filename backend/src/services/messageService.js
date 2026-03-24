@@ -66,7 +66,7 @@ class MessageService {
     db.prepare(`UPDATE messages SET status = 'failed', updated_at = datetime('now') WHERE id = ?`).run(id);
   }
 
-  getAll({ direction, deviceId, page = 1, limit = 50, search, userRole, userGroups } = {}) {
+  getAll({ direction, deviceId, page = 1, limit = 50, search, userRole, userGroups, userId } = {}) {
     const db = getDb();
     const offset = (page - 1) * limit;
     let query = `SELECT m.*, d.name as device_name, p.sim_number as port_sim_number FROM messages m LEFT JOIN devices d ON d.id = m.device_id LEFT JOIN ports p ON p.device_id = m.device_id AND p.port_number = m.port WHERE 1=1`;
@@ -86,16 +86,27 @@ class MessageService {
       params.push(like, like, like);
     }
 
-    // Filtro visibilità basato sui gruppi LDAP dell'utente (solo per utenti non-admin)
+    // Filtro visibilità basato sui gruppi LDAP e gruppi locali dell'utente (solo per utenti non-admin)
     const isAdmin = userRole === 'superadmin' || userRole === 'admin';
-    if (!isAdmin && userGroups !== undefined) {
-      // Trova le regole visibili per i gruppi dell'utente
-      const allRules = db.prepare('SELECT id, allowed_groups FROM routing_rules').all();
+    if (!isAdmin && (userGroups !== undefined || userId !== undefined)) {
+      // Recupera i gruppi locali dell'utente
+      const userLocalGroups = userId
+        ? db.prepare('SELECT group_id FROM local_group_members WHERE user_id = ?').all(userId).map(r => r.group_id)
+        : [];
+
+      // Trova le regole visibili per i gruppi dell'utente (LDAP + locali)
+      const allRules = db.prepare('SELECT id, allowed_groups, allowed_local_groups FROM routing_rules').all();
       const visibleRuleIds = allRules
         .filter(r => {
-          const groups = JSON.parse(r.allowed_groups || '[]');
-          if (groups.length === 0) return true; // nessuna restrizione → tutti la vedono
-          return (userGroups || []).some(g => groups.map(x => x.toLowerCase()).includes(g.toLowerCase()));
+          const ldapGroups = JSON.parse(r.allowed_groups || '[]');
+          const localGroups = JSON.parse(r.allowed_local_groups || '[]');
+          // Nessuna restrizione → tutti la vedono
+          if (ldapGroups.length === 0 && localGroups.length === 0) return true;
+          // Controlla match LDAP
+          const ldapMatch = ldapGroups.length > 0 && (userGroups || []).some(g => ldapGroups.map(x => x.toLowerCase()).includes(g.toLowerCase()));
+          // Controlla match gruppi locali
+          const localMatch = localGroups.length > 0 && userLocalGroups.some(gId => localGroups.includes(gId));
+          return ldapMatch || localMatch;
         })
         .map(r => r.id);
 

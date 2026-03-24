@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { reportApi, messagesApi } from '../api'
-import { CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, RefreshCw, Loader2 } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -111,7 +111,9 @@ export default function Report() {
       </div>
 
       {loading && !data && (
-        <div className="text-center py-16 text-gray-400">Caricamento dati...</div>
+        <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
+          <Loader2 size={18} className="animate-spin" /> Caricamento dati...
+        </div>
       )}
 
       {data && (

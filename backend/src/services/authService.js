@@ -20,6 +20,7 @@ const PERMISSION_KEYS = [
   'rules',
   'settings',
   'users',   // gestione utenti (solo admin/superadmin)
+  'api',     // accesso programmatico via API
 ];
 
 function hashPassword(plain) {
@@ -34,9 +35,11 @@ function signToken(user) {
   const payload = {
     sub: user.id,
     username: user.username,
+    displayName: user.display_name || user.displayName || user.username,
     role: user.role,
     permissions: user.permissions,
     groups: user.groups || [],
+    allowed_ports: user.allowed_ports || [],
   };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
@@ -98,14 +101,14 @@ async function login(username, password) {
   if (!ldapUser) {
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn)
-      VALUES (?, ?, '', ?, ?, 'ldap', ?)
-    `).run(id, ldapResult.username, role, JSON.stringify(permissions), ldapResult.dn || null);
+      INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn, display_name)
+      VALUES (?, ?, '', ?, ?, 'ldap', ?, ?)
+    `).run(id, ldapResult.username, role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null);
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   } else {
     db.prepare(`
-      UPDATE users SET role=?, permissions=?, ldap_dn=?, updated_at=datetime('now') WHERE id=?
-    `).run(role, JSON.stringify(permissions), ldapResult.dn || null, ldapUser.id);
+      UPDATE users SET role=?, permissions=?, ldap_dn=?, display_name=?, updated_at=datetime('now') WHERE id=?
+    `).run(role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null, ldapUser.id);
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
   }
 
@@ -117,27 +120,42 @@ async function login(username, password) {
 
 function safeUser(u) {
   const permissions = typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions;
-  return { id: u.id, username: u.username, role: u.role, permissions, source: u.source || 'local', groups: u.groups || [] };
+  const allowed_ports = typeof u.allowed_ports === 'string' ? JSON.parse(u.allowed_ports || '[]') : (u.allowed_ports || []);
+  return {
+    id: u.id,
+    username: u.username,
+    displayName: u.display_name || u.displayName || u.username,
+    role: u.role,
+    permissions,
+    source: u.source || 'local',
+    groups: u.groups || [],
+    allowed_ports,
+  };
 }
 
 function getAllUsers() {
   const db = getDb();
-  return db.prepare('SELECT id, username, role, permissions, source, created_at FROM users ORDER BY created_at').all()
-    .map(u => ({ ...u, permissions: JSON.parse(u.permissions || '{}'), source: u.source || 'local' }));
+  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, created_at FROM users ORDER BY created_at').all()
+    .map(u => ({
+      ...u,
+      permissions: JSON.parse(u.permissions || '{}'),
+      allowed_ports: JSON.parse(u.allowed_ports || '[]'),
+      source: u.source || 'local',
+    }));
 }
 
-function createUser(username, password, role, permissions) {
+function createUser(username, password, role, permissions, allowed_ports) {
   const db = getDb();
   const id = uuidv4();
   const hash = hashPassword(password);
   db.prepare(`
-    INSERT INTO users (id, username, password_hash, role, permissions)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, username, hash, role, JSON.stringify(permissions || {}));
+    INSERT INTO users (id, username, password_hash, role, permissions, allowed_ports)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, username, hash, role, JSON.stringify(permissions || {}), JSON.stringify(allowed_ports || []));
   return id;
 }
 
-function updateUser(id, { password, role, permissions }) {
+function updateUser(id, { password, role, permissions, allowed_ports }) {
   const db = getDb();
   const user = db.prepare('SELECT id, role, source FROM users WHERE id = ?').get(id);
   if (!user) throw new Error('User not found');
@@ -154,6 +172,10 @@ function updateUser(id, { password, role, permissions }) {
   if (permissions !== undefined) {
     db.prepare(`UPDATE users SET permissions=?, updated_at=datetime('now') WHERE id=?`)
       .run(JSON.stringify(permissions), id);
+  }
+  if (allowed_ports !== undefined) {
+    db.prepare(`UPDATE users SET allowed_ports=?, updated_at=datetime('now') WHERE id=?`)
+      .run(JSON.stringify(allowed_ports), id);
   }
 }
 

@@ -3,6 +3,7 @@ const { body, param, validationResult } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const deviceManager = require('../services/deviceManager');
+const { encrypt, isEncrypted } = require('../utils/encryption');
 
 const router = Router();
 
@@ -37,10 +38,11 @@ router.post('/', [
   if (!sanitize(req, res)) return;
   const id = uuidv4();
   const { name, host, port = 5038, username = 'apiuser', password = 'apipass', enabled = true } = req.body;
+  const encPwd = encrypt(password);
   getDb().prepare(`
     INSERT INTO devices (id,name,host,port,username,password,enabled)
     VALUES (?,?,?,?,?,?,?)
-  `).run(id, name, host, port, username, password, enabled ? 1 : 0);
+  `).run(id, name, host, port, username, encPwd, enabled ? 1 : 0);
   deviceManager.reload(id);
   res.status(201).json({ id });
 });
@@ -63,6 +65,10 @@ router.put('/:id', [
   const fields = { ...existing, ...req.body, updated_at: new Date().toISOString() };
   // Se la password non è stata fornita o è stringa vuota, mantieni quella esistente
   if (!req.body.password) fields.password = existing.password;
+  // Cifra la nuova password (guard: non ricifrare se già cifrata)
+  if (fields.password && !isEncrypted(fields.password)) {
+    fields.password = encrypt(fields.password);
+  }
   db.prepare(`
     UPDATE devices SET name=?,host=?,port=?,username=?,password=?,enabled=?,updated_at=? WHERE id=?
   `).run(fields.name, fields.host, fields.port, fields.username,

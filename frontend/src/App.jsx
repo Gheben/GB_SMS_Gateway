@@ -13,6 +13,7 @@ import Settings from './pages/Settings'
 import Report from './pages/Report'
 import LoginPage from './pages/LoginPage'
 import UsersPage from './pages/UsersPage'
+import AuditLog from './pages/AuditLog'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useWebSocket } from './hooks/useWebSocket'
 import { devicesApi } from './api'
@@ -34,7 +35,7 @@ function ProtectedRoute({ permKey, children }) {
 }
 
 function AppShell() {
-  const { user, logout } = useAuth()
+  const { user, logout, isApiOnly } = useAuth()
   const [connectedCount, setConnectedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -46,7 +47,12 @@ function AppShell() {
     }).catch(() => {})
   }
 
-  useEffect(() => { if (user) refreshDeviceCounts() }, [user])
+  useEffect(() => {
+    if (!user) return
+    refreshDeviceCounts()
+    const interval = setInterval(refreshDeviceCounts, 30_000)
+    return () => clearInterval(interval)
+  }, [user])
 
   const handleWsMessage = useCallback((msg) => {
     if (msg.type === 'devices:status') {
@@ -59,6 +65,31 @@ function AppShell() {
   }, [])
 
   useWebSocket(handleWsMessage)
+
+  if (isApiOnly) {
+    const token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token') || ''
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 max-w-lg w-full">
+          <h1 className="text-xl font-bold text-gray-800 mb-1">Accesso API</h1>
+          <p className="text-sm text-gray-500 mb-6">Il tuo account è configurato solo per l&apos;accesso via API.</p>
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-gray-600 mb-1">Base URL</p>
+            <code className="block bg-gray-100 rounded p-2 text-xs break-all">{window.location.origin}/api</code>
+          </div>
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-gray-600 mb-1">Bearer Token (JWT)</p>
+            <code className="block bg-gray-100 rounded p-2 text-xs break-all">{token}</code>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Includi l&apos;header <code>Authorization: Bearer &lt;token&gt;</code> in ogni richiesta.</p>
+          <button
+            onClick={logout}
+            className="text-sm text-red-500 hover:text-red-700 underline"
+          >Disconnetti</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -90,6 +121,7 @@ function AppShell() {
             <Route path="/settings" element={<ProtectedRoute permKey="settings"><Settings /></ProtectedRoute>} />
             <Route path="/report" element={<ProtectedRoute permKey="report"><Report /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute permKey="users"><UsersPage /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

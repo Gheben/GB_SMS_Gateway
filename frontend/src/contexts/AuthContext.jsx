@@ -45,6 +45,13 @@ export function AuthProvider({ children }) {
 
   const isAdmin = user?.role === 'superadmin' || user?.role === 'admin'
 
+  /**
+   * Utente con solo permesso API (nessuna pagina UI abilitata).
+   * Può usare le API via token ma non ha accesso all'interfaccia.
+   */
+  const isApiOnly = !!(user && user.role === 'user' && user.permissions?.api === true
+    && !Object.entries(user.permissions).some(([k, v]) => k !== 'api' && v === true))
+
   // Mostra spinner mentre verifico l'SSO per non fare flash della login page
   if (!ssoChecked) {
     return (
@@ -55,7 +62,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, can, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, logout, can, isAdmin, isApiOnly }}>
       {children}
     </AuthContext.Provider>
   )

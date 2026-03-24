@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { messagesApi, devicesApi, portsApi } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import { Send, CheckCircle, AlertCircle } from 'lucide-react'
 
 export default function SendSMS() {
+  const { user, isAdmin } = useAuth()
   const [devices, setDevices] = useState([])
   const [ports, setPorts] = useState([])
   const [form, setForm] = useState({ device_id: '', port: '', recipient: '', message: '' })
@@ -24,8 +26,14 @@ export default function SendSMS() {
     portsApi.getAll({ device_id: form.device_id }).then(list => {
       // Solo porte con SIM: READY o DOWN (no NO_SIM, no senza dati)
       const withSim = list.filter(p => p.status === 'READY' || p.status === 'DOWN')
-      setPorts(withSim)
-      const first = withSim.find(p => p.status === 'READY') || withSim[0] || null
+      // Se l'utente non è admin e ha porte assegnate, filtra solo quelle
+      const allowedPorts = user?.allowed_ports || []
+      const filtered = (isAdmin || allowedPorts.length === 0)
+        ? withSim
+        : withSim.filter(p => allowedPorts.some(ap =>
+            String(ap.device_id) === String(form.device_id) && ap.port_number === p.port_number))
+      setPorts(filtered)
+      const first = filtered.find(p => p.status === 'READY') || filtered[0] || null
       setForm(f => ({ ...f, port: first ? String(first.port_number) : '' }))
     }).catch(() => { setPorts([]); setForm(f => ({ ...f, port: '' })) })
   }, [form.device_id])

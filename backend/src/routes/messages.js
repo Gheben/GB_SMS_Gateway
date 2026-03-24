@@ -3,6 +3,7 @@ const { body, query, param, validationResult } = require('express-validator');
 const messageService = require('../services/messageService');
 const deviceManager = require('../services/deviceManager');
 const logger = require('../utils/logger');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.get('/', [
     search: req.query.search,
     userRole: req.user?.role,
     userGroups: req.user?.groups,
+    userId: req.user?.id,
   });
   res.json(result);
 });
@@ -64,6 +66,7 @@ router.post('/send', [
     const gsmId = connector.sendSMS(port, recipient, message);
     messageService.setGsmId(localId, gsmId);
     logger.info(`SMS send request: localId=${localId} gsmId=${gsmId} device=${device_id}`);
+    auditService.log(req.user.id, req.user.username, 'sms:send', 'message', localId, `A: ${recipient} | Porta: ${port} | Device: ${device_id}`, req.ip);
     res.status(202).json({ id: localId, gsmId, status: 'pending' });
   } catch (err) {
     logger.error(`Send SMS error: ${err.message}`);

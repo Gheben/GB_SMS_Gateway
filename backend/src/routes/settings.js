@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const nodemailer = require('nodemailer');
 const { getSetting, setSettings } = require('../db/database');
 const routingEngine = require('../services/routingEngine');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.post('/smtp', [
     SMTP_USER:       user || '',
     SMTP_FROM:       from || '',
   };
-  if (pass) updates.SMTP_PASS = pass;
+  if (pass) updates.SMTP_PASS = encrypt(pass);
 
   setSettings(updates);
   routingEngine.resetTransporter();
@@ -62,7 +63,7 @@ router.post('/smtp/test', [
       port:      parseInt(getSetting('SMTP_PORT', '587'), 10),
       secure:    getSetting('SMTP_SECURE', 'false') === 'true',
       ignoreTLS: getSetting('SMTP_IGNORE_TLS', 'false') === 'true',
-      auth: user ? { user, pass: getSetting('SMTP_PASS') } : undefined,
+      auth: user ? { user, pass: decrypt(getSetting('SMTP_PASS')) } : undefined,
     });
     await transporter.sendMail({
       from: getSetting('SMTP_FROM') || 'smsgateway@local',

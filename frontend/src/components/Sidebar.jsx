@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const links = [
@@ -14,7 +14,8 @@ const links = [
   { to: '/rules',   label: 'Regole inoltro', icon: GitBranch,       perm: 'rules' },
   { to: '/settings',label: 'Impostazioni',   icon: Settings,        perm: 'settings' },
   { divider: true },
-  { to: '/users',   label: 'Utenti',         icon: Users,           perm: 'users' },
+  { to: '/users',   label: 'Utenti/Gruppi',  icon: Users,           perm: 'users' },
+  { to: '/audit',   label: 'Audit Log',      icon: ClipboardList,   adminOnly: true },
 ]
 
 export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout }) {
@@ -48,7 +49,10 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         <div className="px-4 py-3">
           <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded ${connectedCount > 0 ? 'text-green-400' : 'text-red-400'}`}>
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${connectedCount > 0 ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
-            {connectedCount}/{totalCount} dispositivi connessi
+            {totalCount === 0 ? 'Nessun dispositivo' : connectedCount > 0 ? 'Online' : 'Offline'}
+            {totalCount > 0 && (
+              <span className="ml-auto opacity-60 font-normal">{connectedCount}/{totalCount}</span>
+            )}
           </div>
         </div>
 
@@ -56,7 +60,8 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
           {links.map((l, i) => {
             if (l.divider) return <div key={i} className="border-t border-gray-700 my-2" />
-            if (!can(l.perm)) return null
+            if (l.perm && !can(l.perm)) return null
+            if (l.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return null
             return (
               <NavLink
                 key={l.to}
@@ -80,7 +85,10 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         <div className="px-3 py-3 border-t border-gray-700 space-y-1">
           {user && (
             <div className="px-3 py-1.5 text-xs text-gray-400 truncate">
-              <span className="font-semibold text-gray-300">{user.username}</span>
+            <span className="font-semibold text-gray-300">{user.displayName || user.username}</span>
+            {user.displayName && user.displayName !== user.username && (
+              <span className="ml-1 opacity-50">({user.username})</span>
+            )}
               <span className="ml-2 opacity-60">({user.role})</span>
             </div>
           )}

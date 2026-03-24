@@ -140,7 +140,46 @@ function initSchema() {
   try { db.exec(`ALTER TABLE ports ADD COLUMN carrier TEXT`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN source TEXT NOT NULL DEFAULT 'local'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN ldap_dn TEXT`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE users ADD COLUMN display_name TEXT`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE users ADD COLUMN allowed_ports TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
+
+  // Local groups tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS local_groups (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL UNIQUE,
+      description TEXT,
+      role        TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin','user')),
+      permissions TEXT NOT NULL DEFAULT '{}',
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS local_group_members (
+      group_id TEXT NOT NULL REFERENCES local_groups(id) ON DELETE CASCADE,
+      user_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      PRIMARY KEY (group_id, user_id)
+    );
+  `);
+
+  // Audit log table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT,
+      username      TEXT NOT NULL,
+      action        TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id   TEXT,
+      detail        TEXT,
+      ip            TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Migrations for new columns
+  try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_local_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
 }
 
 /** Legge una singola impostazione dal DB, con fallback a process.env o default */

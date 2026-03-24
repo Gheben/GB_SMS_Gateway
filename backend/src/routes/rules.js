@@ -3,6 +3,7 @@ const { body, param, validationResult } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const routingEngine = require('../services/routingEngine');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -25,6 +26,7 @@ function getRuleFull(db, id) {
     targets,
     conditions,
     allowed_groups: JSON.parse(rule.allowed_groups || '[]'),
+    allowed_local_groups: JSON.parse(rule.allowed_local_groups || '[]'),
   };
 }
 
@@ -74,17 +76,20 @@ router.post('/', [
   if (!sanitize(req, res)) return;
   const db = getDb();
   const id = uuidv4();
-  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets, allowed_groups = [] } = req.body;
+  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets, allowed_groups = [], allowed_local_groups = [] } = req.body;
 
   db.prepare('BEGIN').run();
   db.prepare(
-    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name, enabled ? 1 : 0, priority, condition_operator, stop_on_match ? 1 : 0, JSON.stringify(Array.isArray(allowed_groups) ? allowed_groups : []));
+    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups, allowed_local_groups) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name, enabled ? 1 : 0, priority, condition_operator, stop_on_match ? 1 : 0,
+    JSON.stringify(Array.isArray(allowed_groups) ? allowed_groups : []),
+    JSON.stringify(Array.isArray(allowed_local_groups) ? allowed_local_groups : []));
   insertConditions(db, id, conditions);
   const insTarget = db.prepare('INSERT INTO rule_targets (id, rule_id, email) VALUES (?, ?, ?)');
   for (const email of targets) insTarget.run(uuidv4(), id, email.trim().toLowerCase());
   db.prepare('COMMIT').run();
 
+  auditService.log(req.user?.id, req.user?.username || 'system', 'rule:create', 'rule', id, `Nome: ${name}`, req.ip);
   res.status(201).json(getRuleFull(db, id));
 });
 
@@ -111,11 +116,12 @@ router.put('/:id', [
   db.prepare('BEGIN').run();
   db.prepare(`
     UPDATE routing_rules
-    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, updated_at=datetime('now')
+    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, allowed_local_groups=?, updated_at=datetime('now')
     WHERE id=?
   `).run(merged.name, merged.enabled ? 1 : 0, merged.priority,
          merged.condition_operator || 'AND', merged.stop_on_match ? 1 : 0,
          JSON.stringify(Array.isArray(req.body.allowed_groups) ? req.body.allowed_groups : JSON.parse(existing.allowed_groups || '[]')),
+         JSON.stringify(Array.isArray(req.body.allowed_local_groups) ? req.body.allowed_local_groups : JSON.parse(existing.allowed_local_groups || '[]')),
          req.params.id);
 
   if (req.body.conditions) {
@@ -129,13 +135,19 @@ router.put('/:id', [
   }
   db.prepare('COMMIT').run();
 
+  auditService.log(req.user?.id, req.user?.username || 'system', 'rule:update', 'rule', req.params.id, `Nome: ${merged.name}`, req.ip);
   res.json(getRuleFull(db, req.params.id));
 });
 
 // DELETE /api/rules/:id
 router.delete('/:id', [param('id').isUUID()], (req, res) => {
   if (!sanitize(req, res)) return;
-  getDb().prepare('DELETE FROM routing_rules WHERE id=?').run(req.params.id);
+  const db = getDb();
+  const existing = db.prepare('SELECT name FROM routing_rules WHERE id=?').get(req.params.id);
+  db.prepare('DELETE FROM routing_rules WHERE id=?').run(req.params.id);
+  if (existing) {
+    auditService.log(req.user?.id, req.user?.username || 'system', 'rule:delete', 'rule', req.params.id, `Nome: ${existing.name}`, req.ip);
+  }
   res.json({ ok: true });
 });
 

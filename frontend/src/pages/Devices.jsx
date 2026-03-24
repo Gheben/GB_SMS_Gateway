@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { devicesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { Plus, Pencil, Trash2, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react'
 
 const EMPTY_FORM = { name: '', host: '', port: 5038, username: 'apiuser', password: 'apipass', enabled: true }
 
@@ -34,7 +34,7 @@ function DeviceModal({ device, onClose, onSaved }) {
           <div className="flex gap-2">
             <input className="input w-24" type="number" placeholder="Porta" value={form.port} onChange={f('port')} />
             <input className="input flex-1" placeholder="Username API" value={form.username} onChange={f('username')} />
-            <input className="input flex-1" type="password" placeholder="Password API" value={form.password} onChange={f('password')} />
+            <input className="input flex-1" type="password" placeholder={device ? '•••••••• (lascia vuoto per mantenerla)' : 'Password API'} value={form.password} onChange={f('password')} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.enabled} onChange={e => setForm(p => ({ ...p, enabled: e.target.checked }))} />
@@ -74,7 +74,11 @@ export default function Devices() {
     load()
   }
 
-  if (loading) return <div className="text-center py-16 text-gray-400">Caricamento...</div>
+  if (loading) return (
+    <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
+      <Loader2 size={18} className="animate-spin" /> Caricamento...
+    </div>
+  )
 
   return (
     <div className="space-y-4">

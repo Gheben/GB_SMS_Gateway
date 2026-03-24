@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { rulesApi, devicesApi } from '../api'
-import { Plus, Pencil, Trash2, PlayCircle, X, Users } from 'lucide-react'
+import { rulesApi, devicesApi, ldapApi, localGroupsApi } from '../api'
+import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2 } from 'lucide-react'
 
 const MATCH_TYPES = [
   { value: 'sender',        label: 'Mittente esatto' },
@@ -22,6 +22,7 @@ const EMPTY_RULE = {
   stop_on_match: false,
   targets: [''],
   allowed_groups: [],
+  allowed_local_groups: [],
 }
 
 function ConditionRow({ cond, total, devices, onChange, onRemove }) {
@@ -60,7 +61,7 @@ function ConditionRow({ cond, total, devices, onChange, onRemove }) {
   )
 }
 
-function RuleModal({ rule, devices, onClose, onSaved }) {
+function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved }) {
   const [form, setForm] = useState(() => {
     if (!rule) return { ...EMPTY_RULE, conditions: [emptyCondition()] }
     return {
@@ -74,20 +75,28 @@ function RuleModal({ rule, devices, onClose, onSaved }) {
       stop_on_match: !!rule.stop_on_match,
       targets: rule.targets?.map(t => t.email) || [''],
       allowed_groups: Array.isArray(rule.allowed_groups) ? rule.allowed_groups : [],
+      allowed_local_groups: Array.isArray(rule.allowed_local_groups) ? rule.allowed_local_groups : [],
     }
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [newGroupDn, setNewGroupDn] = useState('')
 
-  function addGroup() {
-    const dn = newGroupDn.trim()
-    if (!dn || form.allowed_groups.includes(dn)) return
-    setForm(p => ({ ...p, allowed_groups: [...p.allowed_groups, dn] }))
-    setNewGroupDn('')
+  function toggleGroup(dn, checked) {
+    setForm(p => ({
+      ...p,
+      allowed_groups: checked
+        ? [...p.allowed_groups, dn]
+        : p.allowed_groups.filter(g => g !== dn),
+    }))
   }
-  function removeGroup(dn) {
-    setForm(p => ({ ...p, allowed_groups: p.allowed_groups.filter(g => g !== dn) }))
+
+  function toggleLocalGroup(id, checked) {
+    setForm(p => ({
+      ...p,
+      allowed_local_groups: checked
+        ? [...p.allowed_local_groups, id]
+        : p.allowed_local_groups.filter(g => g !== id),
+    }))
   }
 
   function updateCond(i, val) {
@@ -123,6 +132,7 @@ function RuleModal({ rule, devices, onClose, onSaved }) {
       stop_on_match: form.stop_on_match,
       targets: form.targets.filter(Boolean),
       allowed_groups: form.allowed_groups,
+      allowed_local_groups: form.allowed_local_groups,
     }
     try {
       if (rule) await rulesApi.update(rule.id, payload)
@@ -136,8 +146,8 @@ function RuleModal({ rule, devices, onClose, onSaved }) {
   const multiCond = form.conditions.length > 1
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 m-4">
+    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 m-4 my-8">
         <h3 className="text-lg font-bold mb-4">{rule ? 'Modifica regola' : 'Nuova regola di inoltro'}</h3>
         <form onSubmit={submit} className="space-y-4">
 
@@ -224,24 +234,60 @@ function RuleModal({ rule, devices, onClose, onSaved }) {
               <Users size={13} />Visibilità gruppi LDAP
               <span className="text-gray-400 font-normal"> — lascia vuoto per visibilità a tutti</span>
             </label>
-            <p className="text-xs text-gray-500 mb-2">
-              Se aggiungi uno o più gruppi, solo gli utenti in quei gruppi AD vedranno i messaggi instradati da questa regola.
-            </p>
-            {form.allowed_groups.map(dn => (
-              <div key={dn} className="flex items-center gap-2 mb-1">
-                <span className="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded px-2 py-1 truncate" title={dn}>{dn}</span>
-                <button type="button" onClick={() => removeGroup(dn)} className="text-red-400 hover:text-red-600 text-xs px-1">✕</button>
+            {ldapGroups.length > 0 ? (
+              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                {ldapGroups.map(g => (
+                  <label key={g.group_dn} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={form.allowed_groups.includes(g.group_dn)}
+                      onChange={e => toggleGroup(g.group_dn, e.target.checked)}
+                      className="accent-blue-600 flex-shrink-0"
+                    />
+                    <span className="font-mono text-xs flex-1 truncate" title={g.group_dn}>{g.group_dn}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                      g.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                    }`}>{g.role}</span>
+                  </label>
+                ))}
               </div>
-            ))}
-            <div className="flex gap-2 mt-1">
-              <input className="input flex-1 text-xs font-mono" placeholder="CN=SMS_Users,OU=Groups,DC=example,DC=com"
-                value={newGroupDn} onChange={e => setNewGroupDn(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addGroup())} />
-              <button type="button" onClick={addGroup}
-                className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 border rounded font-medium">
-                <Plus size={13} />
-              </button>
-            </div>
+            ) : (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Nessun gruppo LDAP mappato. Aggiungili in{' '}
+                <strong>Gestione utenti → LDAP / Active Directory</strong> per limitare la visibilità.
+              </p>
+            )}
+          </div>
+
+          {/* Visibilità messaggi per gruppi locali */}
+          <div>
+            <label className="label flex items-center gap-1.5">
+              <UsersRound size={13} />Visibilità gruppi locali
+              <span className="text-gray-400 font-normal"> — lascia vuoto per visibilità a tutti</span>
+            </label>
+            {localGroups.length > 0 ? (
+              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                {localGroups.map(g => (
+                  <label key={g.id} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={form.allowed_local_groups.includes(g.id)}
+                      onChange={e => toggleLocalGroup(g.id, e.target.checked)}
+                      className="accent-indigo-600 flex-shrink-0"
+                    />
+                    <span className="flex-1 truncate" title={g.name}>{g.name}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                      g.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                    }`}>{g.role}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                Nessun gruppo locale. Creane uno in{' '}
+                <strong>Gestione utenti → Gruppi locali</strong>.
+              </p>
+            )}
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -309,13 +355,20 @@ function TestModal({ devices, onClose }) {
 export default function Rules() {
   const [rules, setRules] = useState([])
   const [devices, setDevices] = useState([])
+  const [ldapGroups, setLdapGroups] = useState([])
+  const [localGroups, setLocalGroups] = useState([])
   const [modal, setModal] = useState(null)
   const [testOpen, setTestOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [r, d] = await Promise.all([rulesApi.getAll(), devicesApi.getAll()])
-    setRules(r); setDevices(d); setLoading(false)
+    const [r, d, g, lg] = await Promise.all([
+      rulesApi.getAll(),
+      devicesApi.getAll(),
+      ldapApi.getGroups().catch(() => []),
+      localGroupsApi.getAllSimple().catch(() => []),
+    ])
+    setRules(r); setDevices(d); setLdapGroups(g); setLocalGroups(lg); setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -341,7 +394,11 @@ export default function Rules() {
     }).join(sep)
   }
 
-  if (loading) return <div className="text-center py-16 text-gray-400">Caricamento...</div>
+  if (loading) return (
+    <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
+      <Loader2 size={18} className="animate-spin" /> Caricamento...
+    </div>
+  )
 
   return (
     <div className="space-y-4">
@@ -397,6 +454,8 @@ export default function Rules() {
         <RuleModal
           rule={modal === 'new' ? null : modal}
           devices={devices}
+          ldapGroups={ldapGroups}
+          localGroups={localGroups}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); load() }}
         />

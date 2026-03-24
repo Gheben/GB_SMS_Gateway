@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2 } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -63,6 +63,7 @@ export default function Settings() {
   const [result, setResult] = useState(null)
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('smtp')
 
   // Template email
   const [template, setTemplate]           = useState('')
@@ -130,217 +131,206 @@ export default function Settings() {
     }
   }
 
-  if (loading) return <div className="text-sm text-gray-500">Caricamento...</div>
+  if (loading) return (
+    <div className="flex justify-center items-center py-8 text-gray-400 gap-2">
+      <Loader2 size={18} className="animate-spin" /> Caricamento...
+    </div>
+  )
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Impostazioni</h2>
 
-      {/* SMTP */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
-        <h3 className="text-base font-semibold text-gray-700">Configurazione SMTP</h3>
-        <p className="text-sm text-gray-500">
-          Usato per inviare le email di inoltro SMS quando si attivano le regole di routing.
-        </p>
+      {/* Tab bar */}
+      <div className="flex border-b border-gray-200">
+        {[
+          { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} /> },
+          { key: 'template', label: 'Template email',       icon: <FileCode size={14} /> },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === t.key
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.icon}{t.label}
+          </button>
+        ))}
+      </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <label className="label">Server SMTP</label>
-              <input className="input" placeholder="smtp.azienda.it" value={smtp.host}
-                onChange={e => set('host', e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Porta</label>
-              <input className="input" type="number" placeholder="587" value={smtp.port}
-                onChange={e => set('port', e.target.value)} />
-            </div>
-          </div>
+      {/* ── SMTP & Test ── */}
+      {tab === 'smtp' && (
+        <div className="space-y-8">
+          {/* SMTP */}
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+            <h3 className="text-base font-semibold text-gray-700">Configurazione SMTP</h3>
+            <p className="text-sm text-gray-500">
+              Usato per inviare le email di inoltro SMS quando si attivano le regole di routing.
+            </p>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="secure"
-                checked={smtp.secure}
-                onChange={e => set('secure', e.target.checked)}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <label htmlFor="secure" className="text-sm text-gray-700">
-                TLS diretto (SSL, porta 465) — disabilita per STARTTLS
-              </label>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="ignoreTls"
-                checked={smtp.ignoreTls}
-                onChange={e => set('ignoreTls', e.target.checked)}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <label htmlFor="ignoreTls" className="text-sm text-gray-700">
-                Ignora STARTTLS — relay senza autenticazione (es. porta 25 interno)
-              </label>
-            </div>
-          </div>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <label className="label">Server SMTP</label>
+                  <input className="input" placeholder="smtp.azienda.it" value={smtp.host}
+                    onChange={e => set('host', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Porta</label>
+                  <input className="input" type="number" placeholder="587" value={smtp.port}
+                    onChange={e => set('port', e.target.value)} />
+                </div>
+              </div>
 
-          <div>
-            <label className="label">Utente SMTP</label>
-            <input className="input" type="email" placeholder="smsgateway@azienda.it"
-              value={smtp.user} onChange={e => set('user', e.target.value)} />
-          </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="secure" checked={smtp.secure}
+                    onChange={e => set('secure', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                  <label htmlFor="secure" className="text-sm text-gray-700">
+                    TLS diretto (SSL, porta 465) — disabilita per STARTTLS
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="ignoreTls" checked={smtp.ignoreTls}
+                    onChange={e => set('ignoreTls', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                  <label htmlFor="ignoreTls" className="text-sm text-gray-700">
+                    Ignora STARTTLS — relay senza autenticazione (es. porta 25 interno)
+                  </label>
+                </div>
+              </div>
 
-          <div>
-            <label className="label">Password <span className="text-gray-400 font-normal">(lascia vuoto per non modificare)</span></label>
-            <div className="relative">
-              <input
-                className="input pr-10"
-                type={showPass ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={smtp.pass}
-                onChange={e => set('pass', e.target.value)}
-                autoComplete="new-password"
-              />
-              <button type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              <div>
+                <label className="label">Utente SMTP</label>
+                <input className="input" type="email" placeholder="smsgateway@azienda.it"
+                  value={smtp.user} onChange={e => set('user', e.target.value)} />
+              </div>
+
+              <div>
+                <label className="label">Password <span className="text-gray-400 font-normal">(lascia vuoto per non modificare)</span></label>
+                <div className="relative">
+                  <input className="input pr-10" type={showPass ? 'text' : 'password'}
+                    placeholder="••••••••" value={smtp.pass}
+                    onChange={e => set('pass', e.target.value)} autoComplete="new-password" />
+                  <button type="button" onClick={() => setShowPass(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Mittente (From)</label>
+                <input className="input" placeholder='GB SMS Gateway <smsgateway@azienda.it>'
+                  value={smtp.from} onChange={e => set('from', e.target.value)} />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={saving || !dirty} className="btn-primary flex items-center gap-2">
+                  <Save size={15} />{saving ? 'Salvataggio...' : 'Salva'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Test email */}
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+            <h3 className="text-base font-semibold text-gray-700">Test email</h3>
+            <p className="text-sm text-gray-500">
+              Invia un'email di prova con la configurazione SMTP attuale (già salvata).
+            </p>
+            <div className="flex gap-3">
+              <input className="input flex-1" type="email" placeholder="destinatario@esempio.it"
+                value={testEmail} onChange={e => setTestEmail(e.target.value)} />
+              <button onClick={handleTest} disabled={testing || !testEmail}
+                className="btn-primary flex items-center gap-2 whitespace-nowrap">
+                <Send size={15} />{testing ? 'Invio...' : 'Invia test'}
               </button>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <label className="label">Mittente (From)</label>
-            <input className="input" placeholder='GB SMS Gateway <smsgateway@azienda.it>'
-              value={smtp.from} onChange={e => set('from', e.target.value)} />
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={saving || !dirty} className="btn-primary flex items-center gap-2">
-              <Save size={15} />{saving ? 'Salvataggio...' : 'Salva'}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Test email */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-        <h3 className="text-base font-semibold text-gray-700">Test email</h3>
-        <p className="text-sm text-gray-500">
-          Invia un'email di prova con la configurazione SMTP attuale (già salvata).
-        </p>
-        <div className="flex gap-3">
-          <input
-            className="input flex-1"
-            type="email"
-            placeholder="destinatario@esempio.it"
-            value={testEmail}
-            onChange={e => setTestEmail(e.target.value)}
-          />
-          <button
-            onClick={handleTest}
-            disabled={testing || !testEmail}
-            className="btn-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <Send size={15} />{testing ? 'Invio...' : 'Invia test'}
-          </button>
-        </div>
-      </section>
-
-      {result && (
-        <div className={`flex items-start gap-3 p-4 rounded-lg border ${result.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-          {result.success ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          <p className="text-sm">{result.message}</p>
+          {result && (
+            <div className={`flex items-start gap-3 p-4 rounded-lg border ${result.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              {result.success ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+              <p className="text-sm">{result.message}</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Template email */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="text-base font-semibold text-gray-700">Template Email HTML</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Personalizza il corpo HTML dell&rsquo;email inviata per ogni SMS inoltrato.
-              Usa le variabili sotto per inserire i dati dinamici.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setPreviewHtml(v => !v)}
-            className="text-xs border border-gray-300 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 whitespace-nowrap flex items-center gap-1.5"
-          >
-            <Eye size={13} />{previewHtml ? 'Modifica' : 'Anteprima'}
-          </button>
+      {/* ── Template email ── */}
+      {tab === 'template' && (
+        <div className="space-y-4">
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-base font-semibold text-gray-700">Template Email HTML</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Personalizza il corpo HTML dell&rsquo;email inviata per ogni SMS inoltrato.
+                  Usa le variabili sotto per inserire i dati dinamici.
+                </p>
+              </div>
+              <button type="button" onClick={() => setPreviewHtml(v => !v)}
+                className="text-xs border border-gray-300 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 whitespace-nowrap flex items-center gap-1.5">
+                <Eye size={13} />{previewHtml ? 'Modifica' : 'Anteprima'}
+              </button>
+            </div>
+
+            {/* Variabili disponibili */}
+            <div className="flex flex-wrap gap-2">
+              {VARIABLES.map(v => (
+                <button key={v.key} type="button" title={v.desc}
+                  onClick={() => { setTemplate(t => t + v.key); setTemplateDirty(true) }}
+                  className="font-mono text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors">
+                  {v.key}
+                </button>
+              ))}
+            </div>
+
+            {previewHtml ? (
+              <div className="border border-gray-200 rounded-lg p-4 min-h-[300px] overflow-auto"
+                dangerouslySetInnerHTML={{ __html: template
+                  .replace(/{{sender}}/g, '+39347123456')
+                  .replace(/{{content}}/g, 'Questo è un SMS di esempio per la preview.')
+                  .replace(/{{device}}/g, 'GSM-01 Verona')
+                  .replace(/{{port}}/g, '3')
+                  .replace(/{{received_at}}/g, new Date().toISOString())
+                  .replace(/{{rule}}/g, 'Inoltro OTP')
+                  .replace(/{{email}}/g, 'destinatario@azienda.it')
+                  .replace(/{{timestamp}}/g, new Date().toLocaleString('it-IT'))
+                }}
+              />
+            ) : (
+              <textarea className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                rows={18} value={template} spellCheck={false}
+                onChange={e => { setTemplate(e.target.value); setTemplateDirty(true); setTemplateResult(null) }} />
+            )}
+
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={handleSaveTemplate} disabled={templateSaving || !templateDirty}
+                className="btn-primary flex items-center gap-2">
+                <Save size={15} />{templateSaving ? 'Salvataggio...' : 'Salva template'}
+              </button>
+              <button type="button"
+                onClick={() => { setTemplate(DEFAULT_TEMPLATE); setTemplateDirty(true); setTemplateResult(null) }}
+                className="btn-ghost flex items-center gap-2 text-gray-500">
+                <RotateCcw size={14} />Ripristina default
+              </button>
+            </div>
+
+            {templateResult && (
+              <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                templateResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {templateResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                {templateResult.message}
+              </div>
+            )}
+          </section>
         </div>
-
-        {/* Variabili disponibili */}
-        <div className="flex flex-wrap gap-2">
-          {VARIABLES.map(v => (
-            <button
-              key={v.key}
-              type="button"
-              title={v.desc}
-              onClick={() => {
-                setTemplate(t => t + v.key)
-                setTemplateDirty(true)
-              }}
-              className="font-mono text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors"
-            >
-              {v.key}
-            </button>
-          ))}
-        </div>
-
-        {previewHtml ? (
-          <div
-            className="border border-gray-200 rounded-lg p-4 min-h-[300px] overflow-auto"
-            dangerouslySetInnerHTML={{ __html: template
-              .replace(/{{sender}}/g, '+39347123456')
-              .replace(/{{content}}/g, 'Questo è un SMS di esempio per la preview.')
-              .replace(/{{device}}/g, 'GSM-01 Verona')
-              .replace(/{{port}}/g, '3')
-              .replace(/{{received_at}}/g, new Date().toISOString())
-              .replace(/{{rule}}/g, 'Inoltro OTP')
-              .replace(/{{email}}/g, 'destinatario@azienda.it')
-              .replace(/{{timestamp}}/g, new Date().toLocaleString('it-IT'))
-            }}
-          />
-        ) : (
-          <textarea
-            className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-            rows={18}
-            value={template}
-            onChange={e => { setTemplate(e.target.value); setTemplateDirty(true); setTemplateResult(null) }}
-            spellCheck={false}
-          />
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSaveTemplate}
-            disabled={templateSaving || !templateDirty}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Save size={15} />{templateSaving ? 'Salvataggio...' : 'Salva template'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTemplate(DEFAULT_TEMPLATE); setTemplateDirty(true); setTemplateResult(null) }}
-            className="btn-ghost flex items-center gap-2 text-gray-500"
-          >
-            <RotateCcw size={14} />Ripristina default
-          </button>
-        </div>
-
-        {templateResult && (
-          <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
-            templateResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
-          }`}>
-            {templateResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-            {templateResult.message}
-          </div>
-        )}
-      </section>
+      )}
     </div>
   )
 }

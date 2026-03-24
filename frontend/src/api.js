@@ -42,6 +42,25 @@ export const ldapApi = {
   getSettings:  () => api.get('/users/ldap-settings').then(r => r.data),
   saveSettings: (data) => api.post('/users/ldap-settings', data).then(r => r.data),
   testConn:     () => api.post('/users/ldap-test').then(r => r.data),
+  getGroups:    () => api.get('/users/ldap-groups').then(r => r.data),
+}
+
+export const localGroupsApi = {
+  getAll:        () => api.get('/groups').then(r => r.data),
+  getOne:        (id) => api.get(`/groups/${id}`).then(r => r.data),
+  create:        (data) => api.post('/groups', data).then(r => r.data),
+  update:        (id, data) => api.put(`/groups/${id}`, data).then(r => r.data),
+  remove:        (id) => api.delete(`/groups/${id}`).then(r => r.data),
+  getMembers:    (id) => api.get(`/groups/${id}/members`).then(r => r.data),
+  addMember:     (id, userId) => api.post(`/groups/${id}/members`, { userId }).then(r => r.data),
+  removeMember:  (id, userId) => api.delete(`/groups/${id}/members/${userId}`).then(r => r.data),
+  // Per Rules.jsx — lista semplificata senza requireAdmin (via users.js)
+  getAllSimple:   () => api.get('/users/local-groups').then(r => r.data),
+}
+
+export const auditApi = {
+  getAll:  (params) => api.get('/audit', { params }).then(r => r.data),
+  purge:   (days) => api.delete('/audit', { params: { days } }).then(r => r.data),
 }
 
 

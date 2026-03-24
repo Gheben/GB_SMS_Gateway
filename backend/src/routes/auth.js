@@ -7,6 +7,7 @@ const ldapService = require('../services/ldapService');
 const { getDb } = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.post('/login', [
   try {
     const result = await login(req.body.username, req.body.password);
     if (!result) return res.status(401).json({ error: 'Credenziali non valide' });
+    auditService.log(result.user?.id, result.user?.username || req.body.username, 'auth:login', 'user', result.user?.id, null, req.ip);
     res.json(result); // { token, user }
   } catch (err) {
     res.status(500).json({ error: 'Errore interno durante il login' });

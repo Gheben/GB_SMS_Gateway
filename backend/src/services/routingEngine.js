@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const { getDb, getSetting } = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
+const { decrypt } = require('../utils/encryption');
 
 /**
  * RoutingEngine
@@ -29,7 +30,7 @@ class RoutingEngine {
       const secure    = getSetting('SMTP_SECURE', 'false') === 'true';
       const ignoreTLS = getSetting('SMTP_IGNORE_TLS', 'false') === 'true';
       const user      = getSetting('SMTP_USER');
-      const pass      = getSetting('SMTP_PASS');
+      const pass      = decrypt(getSetting('SMTP_PASS'));
       this._transporter = nodemailer.createTransport({
         host, port, secure, ignoreTLS,
         auth: user ? { user, pass } : undefined,
