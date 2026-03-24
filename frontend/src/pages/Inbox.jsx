@@ -15,9 +15,11 @@ export default function Inbox() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await messagesApi.getAll({ direction: 'inbound', page, limit, search: search || undefined })
-    setMessages(res.data)
-    setTotal(res.total)
+    try {
+      const res = await messagesApi.getAll({ direction: 'inbound', page, limit, search: search || undefined })
+      setMessages(res.data)
+      setTotal(res.total)
+    } catch {}
     setLoading(false)
   }, [page, limit, search])
 

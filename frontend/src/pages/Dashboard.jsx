@@ -14,14 +14,16 @@ export default function Dashboard() {
   const { can } = useAuth()
 
   const loadData = useCallback(async () => {
-    const [s, m, d] = await Promise.all([
-      messagesApi.getStats(),
-      messagesApi.getAll({ limit: 10 }),
-      devicesApi.getAll(),
-    ])
-    setStats(s)
-    setRecent(m.data)
-    setDevices(d)
+    try {
+      const [s, m, d] = await Promise.all([
+        messagesApi.getStats(),
+        messagesApi.getAll({ limit: 10 }),
+        devicesApi.getAll(),
+      ])
+      setStats(s)
+      setRecent(m.data)
+      setDevices(d)
+    } catch {}
     setLoading(false)
   }, [])
 

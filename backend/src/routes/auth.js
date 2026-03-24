@@ -98,4 +98,28 @@ router.get('/sso', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/auth/me — restituisce le info del token JWT corrente (debug / verifica)
+ * Richiede il Bearer token nell'header Authorization.
+ */
+const { requireAuth } = require('../middleware/authMiddleware');
+router.get('/me', requireAuth, (req, res) => {
+  const db = getDb();
+  const dbUser = db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source FROM users WHERE id = ?').get(req.user.id);
+  res.json({
+    token_payload: {
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role,
+      permissions: req.user.permissions,
+      groups: req.user.groups,
+    },
+    db_record: dbUser ? {
+      ...dbUser,
+      permissions: JSON.parse(dbUser.permissions || '{}'),
+      allowed_ports: JSON.parse(dbUser.allowed_ports || '[]'),
+    } : null,
+  });
+});
+
 module.exports = router;
