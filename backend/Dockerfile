@@ -1,16 +1,15 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
 
-FROM node:20-alpine AS runtime
-WORKDIR /app
+# Install production dependencies
 COPY package*.json ./
 RUN npm install --omit=dev
+
+# Copy backend source
 COPY src ./src
-COPY --from=builder /app/../frontend/dist ./frontend/dist
+
+# Create runtime dirs
 RUN mkdir -p data logs
-EXPOSE 3001
+
+EXPOSE 4673
 CMD ["node", "src/index.js"]
