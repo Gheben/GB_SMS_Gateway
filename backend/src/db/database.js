@@ -179,6 +179,18 @@ function initSchema() {
     );
   `);
 
+  // Tabella di associazione messaggio-regola per la visibilità degli SMS
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS message_rule_matches (
+      message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      rule_id    TEXT NOT NULL REFERENCES routing_rules(id) ON DELETE CASCADE,
+      matched_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (message_id, rule_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_mrm_message ON message_rule_matches(message_id);
+    CREATE INDEX IF NOT EXISTS idx_mrm_rule    ON message_rule_matches(rule_id);
+  `);
+
   // Migrations for new columns
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_local_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN sms_targets TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }

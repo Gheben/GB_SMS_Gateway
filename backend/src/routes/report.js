@@ -26,8 +26,11 @@ router.get('/', [
   const ph         = hasRules ? visibleRuleIds.map(() => '?').join(',') : null;
 
   // Filtri SQL riutilizzabili
-  // Per messaggi: deve esistere un dispatch da una regola visibile
-  const msgFilter  = hasRules ? `EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))` : '1=0';
+  // Per messaggi: deve esistere un dispatch O un match da una regola visibile
+  const msgFilter  = hasRules
+    ? `(EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))` +
+      ` OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${ph})))`
+    : '1=0';
   // Per dispatches: la regola deve essere visibile
   const dispFilter = hasRules ? `d.rule_id IN (${ph})` : '1=0';
 
@@ -49,7 +52,7 @@ router.get('/', [
         FROM messages m
         WHERE m.created_at >= datetime('now', ?) AND ${msgFilter}
         GROUP BY day ORDER BY day ASC
-      `).all(`-${days} days`, ...visibleRuleIds)
+      `).all(`-${days} days`, ...visibleRuleIds, ...visibleRuleIds)
     : db.prepare(`
         SELECT date(created_at) as day,
                SUM(CASE WHEN direction='inbound'  THEN 1 ELSE 0 END) as inbound,
@@ -69,7 +72,7 @@ router.get('/', [
         LEFT JOIN devices d ON d.id = m.device_id
         WHERE m.created_at >= datetime('now', ?) AND ${msgFilter}
         GROUP BY m.device_id ORDER BY total DESC
-      `).all(`-${days} days`, ...visibleRuleIds)
+      `).all(`-${days} days`, ...visibleRuleIds, ...visibleRuleIds)
     : db.prepare(`
         SELECT d.name as device, COUNT(*) as total,
                SUM(CASE WHEN m.direction='inbound'  THEN 1 ELSE 0 END) as inbound,
@@ -130,7 +133,7 @@ router.get('/', [
                COUNT(*) FILTER (WHERE direction='outbound') as total_outbound
         FROM messages m
         WHERE created_at >= datetime('now', ?) AND ${msgFilter}
-      `).get(`-${days} days`, ...visibleRuleIds)
+      `).get(`-${days} days`, ...visibleRuleIds, ...visibleRuleIds)
     : db.prepare(`
         SELECT COUNT(*) FILTER (WHERE direction='inbound')  as total_inbound,
                COUNT(*) FILTER (WHERE direction='outbound') as total_outbound

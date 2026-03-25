@@ -116,8 +116,9 @@ class MessageService {
       if (visibleRuleIds !== null) {
         if (visibleRuleIds.length > 0) {
           const placeholders = visibleRuleIds.map(() => '?').join(',');
-          query += ` AND EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))`;
-          params.push(...visibleRuleIds);
+          query += ` AND (EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))` +
+                   ` OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${placeholders})))`;
+          params.push(...visibleRuleIds, ...visibleRuleIds);
         } else {
           query += ` AND 1=0`;
         }
@@ -174,13 +175,14 @@ class MessageService {
 
     // Utente: solo messaggi instradati da regole visibili
     const ph = visibleRuleIds.map(() => '?').join(',');
-    const visFilter = `EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))`;
+    const visFilter = `(EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))` +
+                      ` OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${ph})))`;
     return {
-      total_inbound:  db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND ${visFilter}`).get(...visibleRuleIds).c,
-      total_outbound: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND ${visFilter}`).get(...visibleRuleIds).c,
-      sent_today:     db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds).c,
-      received_today: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds).c,
-      failed:         db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE status='failed'       AND ${visFilter}`).get(...visibleRuleIds).c,
+      total_inbound:  db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
+      total_outbound: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
+      sent_today:     db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds, ...visibleRuleIds).c,
+      received_today: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds, ...visibleRuleIds).c,
+      failed:         db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE status='failed'       AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
     };
   }
 }

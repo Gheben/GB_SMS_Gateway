@@ -62,6 +62,16 @@ class RoutingEngine {
     for (const rule of rules) {
       if (!this._matches(rule, sms)) continue;
 
+      // Always record the rule match for message visibility (inbox), regardless of targets
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO message_rule_matches (message_id, rule_id)
+          VALUES (?, ?)
+        `).run(sms.messageId, rule.id);
+      } catch (err) {
+        logger.warn(`Could not record rule match: ${err.message}`);
+      }
+
       const emails = rule.emails ? rule.emails.split(',').filter(Boolean) : [];
       if (emails.length === 0 && !rule.sms_targets) {
         logger.warn(`Rule "${rule.name}" matched but has no targets.`);
