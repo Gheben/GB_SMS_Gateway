@@ -49,8 +49,8 @@ function verifyToken(token) {
 
 /** Crea o aggiorna il superadmin dalle variabili d'ambiente */
 function seedSuperAdmin() {
-  const username = process.env.SUPERADMIN_USERNAME || 'sysadmin';
-  const password = process.env.SUPERADMIN_PASSWORD || 'Password!';
+  const username = (process.env.SUPERADMIN_USERNAME || 'sysadmin').trim();
+  const password = (process.env.SUPERADMIN_PASSWORD || 'Password!').trim();
   const db = getDb();
 
   const existing = db.prepare('SELECT id FROM users WHERE role = ?').get('superadmin');
