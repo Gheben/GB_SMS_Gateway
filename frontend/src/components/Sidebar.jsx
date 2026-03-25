@@ -85,12 +85,14 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         {/* Footer utente + logout */}
         <div className="px-3 py-3 border-t border-gray-700 space-y-1">
           {user && (
-            <div className="px-3 py-1.5 text-xs text-gray-400 truncate">
-            <span className="font-semibold text-gray-300">{user.displayName || user.username}</span>
-            {user.displayName && user.displayName !== user.username && (
-              <span className="ml-1 opacity-50">({user.username})</span>
-            )}
-              <span className="ml-2 opacity-60">({user.role})</span>
+            <div className="px-3 py-1.5 min-w-0">
+              <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
+                title={user.displayName || user.username}>
+                {user.displayName || user.username}
+              </p>
+              <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+                {user.username} &middot; {user.role}
+              </p>
             </div>
           )}
           <button
