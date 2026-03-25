@@ -33,7 +33,11 @@ router.get('/', [
 
 // GET /api/messages/stats
 router.get('/stats', (req, res) => {
-  res.json(messageService.getStats());
+  res.json(messageService.getStats({
+    userRole:   req.user?.role,
+    userGroups: req.user?.groups,
+    userId:     req.user?.id,
+  }));
 });
 
 // GET /api/messages/:id

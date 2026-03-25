@@ -66,6 +66,30 @@ class MessageService {
     db.prepare(`UPDATE messages SET status = 'failed', updated_at = datetime('now') WHERE id = ?`).run(id);
   }
 
+  /**
+   * Returns visible rule IDs for a non-admin user, or null for admins (= no filter).
+   * A rule is visible if it has no group restrictions, OR the user belongs to an allowed group.
+   */
+  _getVisibleRuleIds({ userRole, userGroups, userId } = {}) {
+    const isAdmin = userRole === 'superadmin' || userRole === 'admin';
+    if (isAdmin) return null;
+    const db = getDb();
+    const userLocalGroups = userId
+      ? db.prepare('SELECT group_id FROM local_group_members WHERE user_id = ?').all(userId).map(r => r.group_id)
+      : [];
+    const allRules = db.prepare('SELECT id, allowed_groups, allowed_local_groups FROM routing_rules').all();
+    return allRules
+      .filter(r => {
+        const ldapGroups = JSON.parse(r.allowed_groups || '[]');
+        const localGroups = JSON.parse(r.allowed_local_groups || '[]');
+        if (ldapGroups.length === 0 && localGroups.length === 0) return true;
+        const ldapMatch = ldapGroups.length > 0 && (userGroups || []).some(g => ldapGroups.map(x => x.toLowerCase()).includes(g.toLowerCase()));
+        const localMatch = localGroups.length > 0 && userLocalGroups.some(gId => localGroups.includes(gId));
+        return ldapMatch || localMatch;
+      })
+      .map(r => r.id);
+  }
+
   getAll({ direction, deviceId, page = 1, limit = 50, search, userRole, userGroups, userId } = {}) {
     const db = getDb();
     const offset = (page - 1) * limit;
@@ -86,38 +110,17 @@ class MessageService {
       params.push(like, like, like);
     }
 
-    // Filtro visibilità basato sui gruppi LDAP e gruppi locali dell'utente (solo per utenti non-admin)
     const isAdmin = userRole === 'superadmin' || userRole === 'admin';
-    if (!isAdmin && (userGroups !== undefined || userId !== undefined)) {
-      // Recupera i gruppi locali dell'utente
-      const userLocalGroups = userId
-        ? db.prepare('SELECT group_id FROM local_group_members WHERE user_id = ?').all(userId).map(r => r.group_id)
-        : [];
-
-      // Trova le regole visibili per i gruppi dell'utente (LDAP + locali)
-      const allRules = db.prepare('SELECT id, allowed_groups, allowed_local_groups FROM routing_rules').all();
-      const visibleRuleIds = allRules
-        .filter(r => {
-          const ldapGroups = JSON.parse(r.allowed_groups || '[]');
-          const localGroups = JSON.parse(r.allowed_local_groups || '[]');
-          // Nessuna restrizione → tutti la vedono
-          if (ldapGroups.length === 0 && localGroups.length === 0) return true;
-          // Controlla match LDAP
-          const ldapMatch = ldapGroups.length > 0 && (userGroups || []).some(g => ldapGroups.map(x => x.toLowerCase()).includes(g.toLowerCase()));
-          // Controlla match gruppi locali
-          const localMatch = localGroups.length > 0 && userLocalGroups.some(gId => localGroups.includes(gId));
-          return ldapMatch || localMatch;
-        })
-        .map(r => r.id);
-
-      if (visibleRuleIds.length > 0) {
-        // Mostra solo messaggi instradati da regole accessibili all'utente
-        const placeholders = visibleRuleIds.map(() => '?').join(',');
-        query += ` AND EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))`;
-        params.push(...visibleRuleIds);
-      } else {
-        // Nessuna regola visibile: nessun messaggio
-        query += ` AND 1=0`;
+    if (!isAdmin) {
+      const visibleRuleIds = this._getVisibleRuleIds({ userRole, userGroups, userId });
+      if (visibleRuleIds !== null) {
+        if (visibleRuleIds.length > 0) {
+          const placeholders = visibleRuleIds.map(() => '?').join(',');
+          query += ` AND EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))`;
+          params.push(...visibleRuleIds);
+        } else {
+          query += ` AND 1=0`;
+        }
       }
     }
 
@@ -149,15 +152,35 @@ class MessageService {
     return { ...msg, dispatches };
   }
 
-  getStats() {
+  getStats({ userRole, userGroups, userId } = {}) {
     const db = getDb();
     const today = new Date().toISOString().slice(0, 10);
+    const visibleRuleIds = this._getVisibleRuleIds({ userRole, userGroups, userId });
+
+    if (visibleRuleIds === null) {
+      // Admin: totali globali
+      return {
+        total_inbound:  db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='inbound'`).get().c,
+        total_outbound: db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='outbound'`).get().c,
+        sent_today:     db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='outbound' AND date(created_at)=?`).get(today).c,
+        received_today: db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='inbound' AND date(created_at)=?`).get(today).c,
+        failed:         db.prepare(`SELECT COUNT(*) as c FROM messages WHERE status='failed'`).get().c,
+      };
+    }
+
+    if (visibleRuleIds.length === 0) {
+      return { total_inbound: 0, total_outbound: 0, sent_today: 0, received_today: 0, failed: 0 };
+    }
+
+    // Utente: solo messaggi instradati da regole visibili
+    const ph = visibleRuleIds.map(() => '?').join(',');
+    const visFilter = `EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))`;
     return {
-      total_inbound:    db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='inbound'`).get().c,
-      total_outbound:   db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='outbound'`).get().c,
-      sent_today:       db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='outbound' AND date(created_at)=?`).get(today).c,
-      received_today:   db.prepare(`SELECT COUNT(*) as c FROM messages WHERE direction='inbound' AND date(created_at)=?`).get(today).c,
-      failed:           db.prepare(`SELECT COUNT(*) as c FROM messages WHERE status='failed'`).get().c,
+      total_inbound:  db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND ${visFilter}`).get(...visibleRuleIds).c,
+      total_outbound: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND ${visFilter}`).get(...visibleRuleIds).c,
+      sent_today:     db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds).c,
+      received_today: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds).c,
+      failed:         db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE status='failed'       AND ${visFilter}`).get(...visibleRuleIds).c,
     };
   }
 }
