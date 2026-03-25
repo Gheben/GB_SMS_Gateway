@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { rulesApi, devicesApi, ldapApi, localGroupsApi } from '../api'
-import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play } from 'lucide-react'
 
 const MATCH_TYPES = [
   { value: 'sender',        label: 'Mittente esatto' },
@@ -138,7 +138,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       allowed_local_groups: form.allowed_local_groups,
     }
     try {
-      if (rule) await rulesApi.update(rule.id, payload)
+      if (rule?.id) await rulesApi.update(rule.id, payload)
       else await rulesApi.create(payload)
       onSaved()
     } catch (err) {
@@ -151,7 +151,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
   return (
     <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 m-4 my-8">
-        <h3 className="text-lg font-bold mb-4">{rule ? 'Modifica regola' : 'Nuova regola di inoltro'}</h3>
+        <h3 className="text-lg font-bold mb-4">{rule?.id ? 'Modifica regola' : rule ? 'Duplica regola' : 'Nuova regola di inoltro'}</h3>
         <form onSubmit={submit} className="space-y-4">
 
           <div className="flex gap-2">
@@ -397,6 +397,15 @@ export default function Rules() {
     load()
   }
 
+  async function toggleEnabled(rule) {
+    await rulesApi.update(rule.id, { enabled: !rule.enabled })
+    load()
+  }
+
+  function duplicate(rule) {
+    setModal({ ...rule, id: undefined, name: `Copia di ${rule.name}` })
+  }
+
   function matchLabel(rule) {
     const conds = rule.conditions
     if (!conds || conds.length === 0) return 'Qualsiasi SMS'
@@ -457,8 +466,22 @@ export default function Rules() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setModal(rule)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500"><Pencil size={15} /></button>
-                <button onClick={() => remove(rule.id, rule.name)} className="p-1.5 rounded hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                <button
+                  onClick={() => toggleEnabled(rule)}
+                  title={rule.enabled ? 'Metti in pausa' : 'Riattiva'}
+                  className={`p-1.5 rounded ${rule.enabled ? 'text-gray-400 hover:bg-orange-50 hover:text-orange-500' : 'text-green-500 hover:bg-green-50'}`}
+                >
+                  {rule.enabled ? <Pause size={15} /> : <Play size={15} />}
+                </button>
+                <button
+                  onClick={() => duplicate(rule)}
+                  title="Duplica regola"
+                  className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-500"
+                >
+                  <Copy size={15} />
+                </button>
+                <button onClick={() => setModal(rule)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Modifica"><Pencil size={15} /></button>
+                <button onClick={() => remove(rule.id, rule.name)} className="p-1.5 rounded hover:bg-red-50 text-red-400" title="Elimina"><Trash2 size={15} /></button>
               </div>
             </div>
           </div>
