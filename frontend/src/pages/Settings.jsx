@@ -41,6 +41,16 @@ const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:6
   </tr>
 </table>`
 
+const DEFAULT_SUBJECT = '[SMS Gateway] Nuovo SMS da {{sender}}'
+
+const SUBJECT_VARIABLES = [
+  { key: '{{sender}}',      desc: 'Numero mittente SMS' },
+  { key: '{{device}}',      desc: 'Nome del dispositivo GSM' },
+  { key: '{{port}}',        desc: 'Porta SIM (numero)' },
+  { key: '{{rule}}',        desc: 'Nome della regola attivata' },
+  { key: '{{received_at}}', desc: 'Data/ora ricezione' },
+]
+
 const VARIABLES = [
   { key: '{{sender}}',      desc: 'Numero mittente SMS' },
   { key: '{{content}}',     desc: 'Testo del messaggio SMS' },
@@ -72,12 +82,18 @@ export default function Settings() {
   const [templateResult, setTemplateResult] = useState(null)
   const [previewHtml, setPreviewHtml]     = useState(false)
 
+  // Oggetto email
+  const [subject, setSubject]             = useState('')
+  const [subjectDirty, setSubjectDirty]   = useState(false)
+  const [subjectSaving, setSubjectSaving] = useState(false)
+
   useEffect(() => {
-    Promise.all([settingsApi.getSmtp(), settingsApi.getTemplate()])
-      .then(([smtpData, tplData]) => {
+    Promise.all([settingsApi.getSmtp(), settingsApi.getTemplate(), settingsApi.getSubject()])
+      .then(([smtpData, tplData, subjData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)
+        setSubject(subjData.subject || DEFAULT_SUBJECT)
         setLoading(false)
       }).catch(() => setLoading(false))
   }, [])
@@ -114,6 +130,20 @@ export default function Settings() {
       setResult({ success: false, message: err.response?.data?.error || 'Errore invio email di test.' })
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function handleSaveSubject() {
+    setSubjectSaving(true)
+    setTemplateResult(null)
+    try {
+      await settingsApi.saveSubject(subject)
+      setSubjectDirty(false)
+      setTemplateResult({ success: true, message: 'Oggetto email salvato.' })
+    } catch {
+      setTemplateResult({ success: false, message: "Errore nel salvataggio dell'oggetto." })
+    } finally {
+      setSubjectSaving(false)
     }
   }
 
@@ -278,7 +308,43 @@ export default function Settings() {
               </button>
             </div>
 
-            {/* Variabili disponibili */}
+            {/* Oggetto email */}
+            <div className="space-y-1">
+              <label className="label">Oggetto email</label>
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1 font-mono text-sm"
+                  value={subject}
+                  onChange={e => { setSubject(e.target.value); setSubjectDirty(true); setTemplateResult(null) }}
+                  placeholder={DEFAULT_SUBJECT}
+                />
+                <button type="button" onClick={handleSaveSubject} disabled={subjectSaving || !subjectDirty}
+                  className="btn-primary flex items-center gap-2 whitespace-nowrap">
+                  <Save size={15} />{subjectSaving ? 'Salvo...' : 'Salva'}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {SUBJECT_VARIABLES.map(v => (
+                  <button key={v.key} type="button" title={v.desc}
+                    onClick={() => { setSubject(s => s + v.key); setSubjectDirty(true) }}
+                    className="font-mono text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors">
+                    {v.key}
+                  </button>
+                ))}
+                <button type="button"
+                  onClick={() => { setSubject(DEFAULT_SUBJECT); setSubjectDirty(true); setTemplateResult(null) }}
+                  className="text-xs border border-gray-300 rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50 flex items-center gap-1">
+                  <RotateCcw size={10} /> default
+                </button>
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Variabili corpo email */}
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Corpo HTML — variabili disponibili:</p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {VARIABLES.map(v => (
                 <button key={v.key} type="button" title={v.desc}

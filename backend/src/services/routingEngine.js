@@ -140,9 +140,17 @@ class RoutingEngine {
         throw new Error('SMTP non configurato. Vai in Impostazioni → SMTP.');
       }
 
-      const subject = `[SMS Gateway] Nuovo SMS da ${sms.sender}`;
       const recvTime = sms.recvtime || new Date().toISOString();
       const deviceInfo = sms.deviceName ? `${sms.deviceName} (${sms.deviceId})` : sms.deviceId || 'N/D';
+
+      const DEFAULT_SUBJECT = '[SMS Gateway] Nuovo SMS da {{sender}}';
+      const subjectTpl = getSetting('EMAIL_SUBJECT') || DEFAULT_SUBJECT;
+      const subject = subjectTpl
+        .replace(/{{sender}}/g,      sms.sender || 'N/D')
+        .replace(/{{device}}/g,       deviceInfo)
+        .replace(/{{port}}/g,         String(sms.port || 'N/D'))
+        .replace(/{{rule}}/g,         rule.name || '')
+        .replace(/{{received_at}}/g,  recvTime);
 
       const from = getSetting('SMTP_FROM') || 'smsgateway@local';
 

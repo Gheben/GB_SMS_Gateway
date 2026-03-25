@@ -92,5 +92,20 @@ router.post('/email-template', [
   res.json({ ok: true });
 });
 
+// GET /api/settings/email-subject
+router.get('/email-subject', (req, res) => {
+  res.json({ subject: getSetting('EMAIL_SUBJECT') || '' });
+});
+
+// POST /api/settings/email-subject
+router.post('/email-subject', [
+  body('subject').isString().trim().isLength({ min: 1, max: 200 }),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  setSettings({ EMAIL_SUBJECT: req.body.subject.trim() });
+  res.json({ ok: true });
+});
+
 module.exports = router;
 
