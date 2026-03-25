@@ -58,7 +58,7 @@ router.get('/sso', async (req, res) => {
     if (user) {
       const permissions = JSON.parse(user.permissions || '{}');
       const u = authService.safeUser({ ...user, permissions });
-      return res.json({ token: authService.signJwt({ ...user, permissions, groups: u.groups || [] }), user: u });
+      return res.json({ token: authService.signJwt({ ...user, permissions }), user: u });
     }
 
     // 2. Prova a risolvere i gruppi LDAP
@@ -82,8 +82,8 @@ router.get('/sso', async (req, res) => {
                 .run(role, JSON.stringify(permissions), svcResult.dn || null, ldapUser.id);
               ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
             }
-            const u = authService.safeUser({ ...ldapUser, permissions, groups: svcResult.groups });
-            return res.json({ token: authService.signJwt({ ...ldapUser, permissions, groups: svcResult.groups }), user: u });
+            const u = authService.safeUser({ ...ldapUser, permissions });
+            return res.json({ token: authService.signJwt({ ...ldapUser, permissions }), user: u });
           }
         }
       } catch (ldapErr) {
@@ -112,7 +112,6 @@ router.get('/me', requireAuth, (req, res) => {
       username: req.user.username,
       role: req.user.role,
       permissions: req.user.permissions,
-      groups: req.user.groups,
     },
     db_record: dbUser ? {
       ...dbUser,

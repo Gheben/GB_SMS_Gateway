@@ -38,7 +38,6 @@ function signToken(user) {
     displayName: user.display_name || user.displayName || user.username,
     role: user.role,
     permissions: user.permissions,
-    groups: user.groups || [],
     allowed_ports: user.allowed_ports || [],
   };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
@@ -113,7 +112,7 @@ async function login(username, password) {
   }
 
   return {
-    token: signToken({ ...ldapUser, permissions, groups: ldapResult.groups }),
+    token: signToken({ ...ldapUser, permissions }),
     user:  safeUser({ ...ldapUser, permissions, groups: ldapResult.groups }),
   };
 }

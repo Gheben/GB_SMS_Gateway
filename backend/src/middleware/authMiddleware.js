@@ -15,7 +15,7 @@ function requireAuth(req, res, next) {
       username: payload.username,
       role: payload.role,
       permissions: payload.permissions || {},
-      groups: payload.groups || [],
+      groups: [], // groups not stored in JWT; fetched from DB when needed
     };
     next();
   } catch {
