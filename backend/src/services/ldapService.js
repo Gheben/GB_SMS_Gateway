@@ -229,8 +229,8 @@ async function authenticate(username, password) {
 
     return {
       dn:          userDN,
-      username:    entry.sAMAccountName || entry.cn || bareUsername,
-      displayName: entry.displayName    || entry.cn || bareUsername,
+      username:    entry.sAMAccountName || entry.samaccountname || entry.cn || bareUsername,
+      displayName: entry.displayName    || entry.displayname    || entry.cn || bareUsername,
       email:       entry.mail || null,
       groups:      allGroups,
     };
@@ -304,8 +304,8 @@ async function lookupUser(username) {
 
     return {
       dn:          userDN,
-      username:    entry.sAMAccountName || entry.cn || username,
-      displayName: entry.displayName    || entry.cn || username,
+      username:    entry.sAMAccountName || entry.samaccountname || entry.cn || username,
+      displayName: entry.displayName    || entry.displayname    || entry.cn || username,
       email:       entry.mail || null,
       groups:      allGroups,
     };
