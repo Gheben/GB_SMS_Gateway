@@ -15,7 +15,21 @@ version: '3.9'
 
 services:
 
+  # Crea le cartelle ./data e ./logs sull'host prima che il backend parta.
+  # Necessario su Synology dove Docker non crea automaticamente le cartelle di bind mount.
+  init-dirs:
+    image: alpine
+    command: sh -c "mkdir -p /host/data /host/logs"
+    volumes:
+      - type: bind
+        source: .
+        target: /host
+    restart: "no"
+
   backend:
+    depends_on:
+      init-dirs:
+        condition: service_completed_successfully
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -32,18 +46,8 @@ services:
       # - SSO_ENABLED=true
       # - SSO_HEADER=X-Remote-User
     volumes:
-      # Bind mount: la cartella ./data sull'host contiene il DB SQLite.
-      # create_host_path: true crea le cartelle sull'host se non esistono.
-      - type: bind
-        source: ./data
-        target: /app/data
-        bind:
-          create_host_path: true
-      - type: bind
-        source: ./logs
-        target: /app/logs
-        bind:
-          create_host_path: true
+      - ./data:/app/data
+      - ./logs:/app/logs
     networks:
       - smsgateway-net
     # Expose only internally — frontend nginx proxies to it
