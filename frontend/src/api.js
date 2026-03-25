@@ -12,11 +12,13 @@ api.interceptors.request.use(cfg => {
   return cfg
 })
 
-// Redirect al login se il token scade
+// Redirect al login se il token scade (NON per le route di autenticazione stesse)
 api.interceptors.response.use(
   r => r,
   err => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || ''
+    const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/sso')
+    if (err.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('jwt_token')
       localStorage.removeItem('jwt_user')
       window.location.href = '/login'
