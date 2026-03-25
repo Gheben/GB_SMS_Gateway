@@ -111,15 +111,13 @@ class MessageService {
         .map(r => r.id);
 
       if (visibleRuleIds.length > 0) {
+        // Mostra solo messaggi instradati da regole accessibili all'utente
         const placeholders = visibleRuleIds.map(() => '?').join(',');
-        query += ` AND (
-          NOT EXISTS (SELECT 1 FROM dispatches dp2 WHERE dp2.message_id = m.id)
-          OR EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))
-        )`;
+        query += ` AND EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))`;
         params.push(...visibleRuleIds);
       } else {
-        // Nessuna regola visibile: mostra solo messaggi non instradati
-        query += ` AND NOT EXISTS (SELECT 1 FROM dispatches dp2 WHERE dp2.message_id = m.id)`;
+        // Nessuna regola visibile: nessun messaggio
+        query += ` AND 1=0`;
       }
     }
 
