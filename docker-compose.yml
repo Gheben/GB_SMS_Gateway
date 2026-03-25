@@ -27,11 +27,23 @@ services:
       - PORT=4673
       - DB_PATH=/app/data/smsgateway.db
       - LOG_FILE=/app/logs/app.log
+      # SSO tramite proxy (Authentik, NetScaler ADC, ecc.)
+      # Decommenta e imposta nel .env oppure direttamente qui:
+      # - SSO_ENABLED=true
+      # - SSO_HEADER=X-Remote-User
     volumes:
       # Bind mount: la cartella ./data sull'host contiene il DB SQLite.
-      # Copiando questa cartella si copia il database completo.
-      - ./data:/app/data
-      - ./logs:/app/logs
+      # create_host_path: true crea le cartelle sull'host se non esistono.
+      - type: bind
+        source: ./data
+        target: /app/data
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./logs
+        target: /app/logs
+        bind:
+          create_host_path: true
     networks:
       - smsgateway-net
     # Expose only internally — frontend nginx proxies to it
