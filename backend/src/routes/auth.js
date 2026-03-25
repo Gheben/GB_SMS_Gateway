@@ -74,12 +74,12 @@ router.get('/sso', async (req, res) => {
             let ldapUser = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE AND source = 'ldap'").get(svcResult.username);
             if (!ldapUser) {
               const id = uuidv4();
-              db.prepare(`INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn) VALUES (?, ?, '', ?, ?, 'ldap', ?)`)
-                .run(id, svcResult.username, role, JSON.stringify(permissions), svcResult.dn || null);
+              db.prepare(`INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn, ldap_groups) VALUES (?, ?, '', ?, ?, 'ldap', ?, ?)`)
+                .run(id, svcResult.username, role, JSON.stringify(permissions), svcResult.dn || null, JSON.stringify(svcResult.groups || []));
               ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
             } else {
-              db.prepare(`UPDATE users SET role=?, permissions=?, ldap_dn=?, updated_at=datetime('now') WHERE id=?`)
-                .run(role, JSON.stringify(permissions), svcResult.dn || null, ldapUser.id);
+              db.prepare(`UPDATE users SET role=?, permissions=?, ldap_dn=?, ldap_groups=?, updated_at=datetime('now') WHERE id=?`)
+                .run(role, JSON.stringify(permissions), svcResult.dn || null, JSON.stringify(svcResult.groups || []), ldapUser.id);
               ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
             }
             const u = authService.safeUser({ ...ldapUser, permissions });

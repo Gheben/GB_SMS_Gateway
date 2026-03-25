@@ -100,14 +100,14 @@ async function login(username, password) {
   if (!ldapUser) {
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn, display_name)
-      VALUES (?, ?, '', ?, ?, 'ldap', ?, ?)
-    `).run(id, ldapResult.username, role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null);
+      INSERT INTO users (id, username, password_hash, role, permissions, source, ldap_dn, display_name, ldap_groups)
+      VALUES (?, ?, '', ?, ?, 'ldap', ?, ?, ?)
+    `).run(id, ldapResult.username, role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []));
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   } else {
     db.prepare(`
-      UPDATE users SET role=?, permissions=?, ldap_dn=?, display_name=?, updated_at=datetime('now') WHERE id=?
-    `).run(role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null, ldapUser.id);
+      UPDATE users SET role=?, permissions=?, ldap_dn=?, display_name=?, ldap_groups=?, updated_at=datetime('now') WHERE id=?
+    `).run(role, JSON.stringify(permissions), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []), ldapUser.id);
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
   }
 
