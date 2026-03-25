@@ -130,37 +130,49 @@ router.get('/', [
   // Totali
   const totals = isFiltered
     ? db.prepare(`
-        SELECT COUNT(*) FILTER (WHERE direction='inbound')  as total_inbound,
-               COUNT(*) FILTER (WHERE direction='outbound') as total_outbound
+        SELECT
+          SUM(CASE WHEN direction='inbound'  THEN 1 ELSE 0 END) as total_inbound,
+          SUM(CASE WHEN direction='outbound' THEN 1 ELSE 0 END) as total_outbound
         FROM messages m
         WHERE created_at >= datetime('now', ?) AND ${msgFilter}
       `).get(`-${days} days`, ...visibleRuleIds, ...visibleRuleIds)
     : db.prepare(`
-        SELECT COUNT(*) FILTER (WHERE direction='inbound')  as total_inbound,
-               COUNT(*) FILTER (WHERE direction='outbound') as total_outbound
+        SELECT
+          SUM(CASE WHEN direction='inbound'  THEN 1 ELSE 0 END) as total_inbound,
+          SUM(CASE WHEN direction='outbound' THEN 1 ELSE 0 END) as total_outbound
         FROM messages
         WHERE created_at >= datetime('now', ?)
       `).get(`-${days} days`);
 
   const dispatchTotals = isFiltered
     ? db.prepare(`
-        SELECT COUNT(*) as total,
-               COUNT(*) FILTER (WHERE status='sent')   as sent,
-               COUNT(*) FILTER (WHERE status='failed') as failed
+        SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status='sent'   THEN 1 ELSE 0 END) as sent,
+          SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed
         FROM dispatches d
         WHERE created_at >= datetime('now', ?) AND ${dispFilter}
       `).get(`-${days} days`, ...visibleRuleIds)
     : db.prepare(`
-        SELECT COUNT(*) as total,
-               COUNT(*) FILTER (WHERE status='sent')   as sent,
-               COUNT(*) FILTER (WHERE status='failed') as failed
+        SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status='sent'   THEN 1 ELSE 0 END) as sent,
+          SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed
         FROM dispatches
         WHERE created_at >= datetime('now', ?)
       `).get(`-${days} days`);
 
+  const safeTotals = {
+    total_inbound:  totals?.total_inbound  ?? 0,
+    total_outbound: totals?.total_outbound ?? 0,
+    total:   dispatchTotals?.total   ?? 0,
+    sent:    dispatchTotals?.sent    ?? 0,
+    failed:  dispatchTotals?.failed  ?? 0,
+  };
+
   res.json({
     days,
-    totals: { ...totals, ...dispatchTotals },
+    totals: safeTotals,
     smsByDay,
     smsByDevice,
     dispatchByRule,
