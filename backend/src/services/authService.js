@@ -53,6 +53,8 @@ function seedSuperAdmin() {
   const password = (process.env.SUPERADMIN_PASSWORD || 'Password!').trim();
   const db = getDb();
 
+  logger.info(`[Auth] seedSuperAdmin: username="${username}" password.length=${password.length}`);
+
   const existing = db.prepare('SELECT id FROM users WHERE role = ?').get('superadmin');
   const allPerms = Object.fromEntries(PERMISSION_KEYS.map(k => [k, true]));
   const hash = hashPassword(password);
@@ -78,10 +80,16 @@ async function login(username, password) {
   // 1. Prova utente locale (source='local')
   const localUser = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE AND source = 'local'").get(username);
   if (localUser) {
-    if (!verifyPassword(password, localUser.password_hash)) return null;
+    const ok = verifyPassword(password, localUser.password_hash);
+    logger.info(`[Auth] login local user="${username}" role=${localUser.role} passwordMatch=${ok}`);
+    if (!ok) return null;
     const permissions = JSON.parse(localUser.permissions || '{}');
     return { token: signToken({ ...localUser, permissions }), user: safeUser({ ...localUser, permissions }) };
   }
+
+  // 1b. Fallback: cerca per username senza filtro source (es. utente senza colonna source)
+  const anyUser = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username);
+  logger.info(`[Auth] login user="${username}" localFound=false anyFound=${!!anyUser} anySource=${anyUser?.source}`);
 
   // 2. Prova autenticazione LDAP
   const ldapResult = await ldapService.authenticate(username, password);

@@ -21,7 +21,10 @@ router.post('/login', [
 
   try {
     const result = await login(req.body.username, req.body.password);
-    if (!result) return res.status(401).json({ error: 'Credenziali non valide' });
+    if (!result) {
+      logger.warn(`[Auth] login fallito per username="${req.body.username}"`);
+      return res.status(401).json({ error: 'Credenziali non valide' });
+    }
     auditService.log(result.user?.id, result.user?.username || req.body.username, 'auth:login', 'user', result.user?.id, null, req.ip);
     res.json(result); // { token, user }
   } catch (err) {
