@@ -90,9 +90,11 @@ function ldapSearch(client, base, options) {
     client.search(base, options, (err, res) => {
       if (err) return reject(err);
       res.on('searchEntry', e => {
-        // e.object contiene gli attributi; e.objectName è il DN dell'entry.
-        // In alcune versioni di ldapjs e.object può non avere la proprietà 'dn'.
-        const obj = Object.assign({}, e.object || {});
+        // Normalizza tutte le chiavi in lowercase per compatibilità con ldapjs
+        // (alcune versioni restituiscono 'displayName', altre 'displayname')
+        const raw = e.object || {};
+        const obj = {};
+        for (const k of Object.keys(raw)) obj[k.toLowerCase()] = raw[k];
         if (!obj.dn && e.objectName) obj.dn = String(e.objectName);
         entries.push(obj);
       });
@@ -229,8 +231,8 @@ async function authenticate(username, password) {
 
     return {
       dn:          userDN,
-      username:    entry.sAMAccountName || entry.samaccountname || entry.cn || bareUsername,
-      displayName: entry.displayName    || entry.displayname    || entry.cn || bareUsername,
+      username:    entry.samaccountname || entry.cn || bareUsername,
+      displayName: entry.displayname    || entry.cn || bareUsername,
       email:       entry.mail || null,
       groups:      allGroups,
     };
@@ -304,8 +306,8 @@ async function lookupUser(username) {
 
     return {
       dn:          userDN,
-      username:    entry.sAMAccountName || entry.samaccountname || entry.cn || username,
-      displayName: entry.displayName    || entry.displayname    || entry.cn || username,
+      username:    entry.samaccountname || entry.cn || username,
+      displayName: entry.displayname    || entry.cn || username,
       email:       entry.mail || null,
       groups:      allGroups,
     };
