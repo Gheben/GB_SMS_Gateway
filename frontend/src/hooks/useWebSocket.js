@@ -2,15 +2,22 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
 
-export function useWebSocket(onMessage) {
+export function useWebSocket(onMessage, onConnect) {
   const wsRef = useRef(null)
   const [connected, setConnected] = useState(false)
+  const onMessageRef = useRef(onMessage)
+  const onConnectRef = useRef(onConnect)
+  onMessageRef.current = onMessage
+  onConnectRef.current = onConnect
 
   const connect = useCallback(() => {
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
 
-    ws.onopen = () => setConnected(true)
+    ws.onopen = () => {
+      setConnected(true)
+      onConnectRef.current && onConnectRef.current()
+    }
     ws.onclose = () => {
       setConnected(false)
       setTimeout(connect, 3000)
@@ -19,10 +26,10 @@ export function useWebSocket(onMessage) {
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data)
-        onMessage && onMessage(msg)
+        onMessageRef.current && onMessageRef.current(msg)
       } catch {}
     }
-  }, [onMessage])
+  }, []) // stable — callbacks accessed via refs
 
   useEffect(() => {
     connect()

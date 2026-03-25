@@ -28,11 +28,13 @@ router.get('/', [
     userGroups: req.user?.groups,
     userId: req.user?.id,
   });
+  res.setHeader('Cache-Control', 'no-store');
   res.json(result);
 });
 
 // GET /api/messages/stats
 router.get('/stats', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json(messageService.getStats({
     userRole:   req.user?.role,
     userGroups: req.user?.groups,

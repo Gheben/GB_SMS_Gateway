@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { messagesApi, devicesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAuth } from '../contexts/AuthContext'
@@ -34,7 +34,14 @@ export default function Dashboard() {
     if (msg.type === 'devices:status') loadData()
   }, [loadData])
 
-  useWebSocket(handleWsMessage)
+  // Reload data on WebSocket reconnect (skip very first connect which is handled by useEffect above)
+  const initialConnectDone = useRef(false)
+  const handleWsConnect = useCallback(() => {
+    if (initialConnectDone.current) loadData()
+    else initialConnectDone.current = true
+  }, [loadData])
+
+  useWebSocket(handleWsMessage, handleWsConnect)
 
   return (
     <div className="space-y-6">

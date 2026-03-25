@@ -9,6 +9,7 @@ const router = Router();
 router.get('/', [
   query('days').optional().isInt({ min: 1, max: 365 }).toInt(),
 ], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
