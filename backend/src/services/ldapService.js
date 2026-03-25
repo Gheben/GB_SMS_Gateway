@@ -90,11 +90,22 @@ function ldapSearch(client, base, options) {
     client.search(base, options, (err, res) => {
       if (err) return reject(err);
       res.on('searchEntry', e => {
-        // Normalizza tutte le chiavi in lowercase per compatibilità con ldapjs
-        // (alcune versioni restituiscono 'displayName', altre 'displayname')
-        const raw = e.object || {};
+        // ldapjs v3: leggi da e.attributes (array di {type, values})
+        // ldapjs v1/v2: leggi da e.object (plain object)
+        // Normalizziamo tutte le chiavi in lowercase per uniformità
         const obj = {};
-        for (const k of Object.keys(raw)) obj[k.toLowerCase()] = raw[k];
+        if (Array.isArray(e.attributes)) {
+          for (const attr of e.attributes) {
+            const key = (attr.type || '').toLowerCase();
+            if (!key) continue;
+            const vals = attr.values || attr.vals || [];
+            obj[key] = vals.length === 1 ? vals[0] : (vals.length === 0 ? undefined : vals);
+          }
+        }
+        // Fallback: e.object (ldapjs v1/v2)
+        if (Object.keys(obj).length === 0 && e.object) {
+          for (const k of Object.keys(e.object)) obj[k.toLowerCase()] = e.object[k];
+        }
         if (!obj.dn && e.objectName) obj.dn = String(e.objectName);
         entries.push(obj);
       });
