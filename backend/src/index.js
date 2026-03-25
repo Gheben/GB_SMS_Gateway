@@ -98,7 +98,8 @@ if (fs.existsSync(frontendBuild)) {
 
 // HTTP server + WebSocket
 const PORT = process.env.PORT || 4673;
-const server = http.createServer(app);
+// Increase maxHeaderSize to 64 KB to accommodate large JWTs (e.g. LDAP users with many groups)
+const server = http.createServer({ maxHeaderSize: 65536 }, app);
 initWebSocket(server);
 
 // Start server then boot device manager
