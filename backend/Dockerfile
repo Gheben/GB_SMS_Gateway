@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # Install production dependencies
@@ -12,4 +12,5 @@ COPY src ./src
 RUN mkdir -p data logs
 
 EXPOSE 4673
-CMD ["node", "src/index.js"]
+# node:sqlite è experimental in Node 22 → richiede il flag
+CMD ["node", "--experimental-sqlite", "src/index.js"]
