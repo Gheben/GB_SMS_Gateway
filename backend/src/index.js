@@ -25,6 +25,8 @@ const auditRouter    = require('./routes/audit');
 const groupsRouter   = require('./routes/localGroups');
 const { requireAuth } = require('./middleware/authMiddleware');
 const { seedSuperAdmin } = require('./services/authService');
+const swaggerUi = require('swagger-ui-express');
+const openApiSpec = require('./openapi');
 
 // Ensure data and logs directories exist
 ['data', 'logs'].forEach((dir) => {
@@ -63,6 +65,12 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
+
+// Swagger UI — public, no auth required
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+  customSiteTitle: 'SMS Gateway API Docs',
+  swaggerOptions: { persistAuthorization: true, docExpansion: 'none' },
+}));
 
 // API routes — auth (pubblica)
 app.use('/api/auth', authRouter);
