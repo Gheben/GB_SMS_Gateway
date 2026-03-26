@@ -189,9 +189,9 @@ router.post('/saml/callback', async (req, res) => {
       return res.redirect('/login?error=saml_no_username');
     }
 
-    // Estrai displayName
+    // Estrai displayName (let per poter aggiornare da LDAP)
     const displayNameAttr = cfg.display_name_attribute || 'displayName';
-    const displayName = (
+    let displayName = (
       profile[displayNameAttr] ||
       profile['http://schemas.microsoft.com/identity/claims/displayname'] ||
       profile['urn:oid:2.16.840.1.113730.3.1.241'] ||
@@ -200,11 +200,53 @@ router.post('/saml/callback', async (req, res) => {
 
     // Upsert utente SAML nel DB
     const db = getDb();
-    const defaultRole = cfg.default_role || 'user';
+
+    // Prima prova a risolvere il ruolo tramite mappatura gruppi LDAP.
+    // L'IdP (NetScaler) spesso inietta i gruppi come attributo SAML; in alternativa
+    // si fa un lookup LDAP con il service account.
+    let ldapRole = null;
+    let ldapPerms = null;
+    try {
+      // 1. Prova gruppi dal profilo SAML (attributo standard memberOf o simili)
+      const rawGroups = profile['memberOf'] || profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] || [];
+      const samlGroups = Array.isArray(rawGroups) ? rawGroups : (rawGroups ? [rawGroups] : []);
+
+      // 2. Prova lookup LDAP con service account (se LDAP configurato e abilitato)
+      let allGroups = samlGroups;
+      const ldapResult = await ldapService.lookupUser(username);
+      if (ldapResult?.groups?.length) {
+        // Unisce i gruppi SAML e LDAP (rimuove duplicati, case-insensitive)
+        const seen = new Set(samlGroups.map(g => g.toLowerCase()));
+        for (const g of ldapResult.groups) {
+          if (!seen.has(g.toLowerCase())) { allGroups.push(g); seen.add(g.toLowerCase()); }
+        }
+        // Aggiorna displayName da LDAP se non già ottenuto da SAML
+        if (!profile[displayNameAttr] && ldapResult.displayName) {
+          displayName = ldapResult.displayName;
+        }
+      }
+
+      if (allGroups.length) {
+        const permResult = ldapService.resolvePermissions(allGroups);
+        if (permResult) {
+          ldapRole  = permResult.role;
+          ldapPerms = permResult.permissions;
+          logger.info(`[SAML] Utente "${username}" → ruolo da mapping LDAP: ${ldapRole} (${allGroups.length} gruppi)`);
+        }
+      }
+    } catch (ldapErr) {
+      logger.warn(`[SAML] Lookup LDAP opzionale fallito per "${username}": ${ldapErr.message}`);
+    }
+
+    // Ruolo finale: LDAP mapping > default configurato nel tab SAML
     const { PERMISSION_KEYS } = authService;
-    const defaultPerms = defaultRole === 'admin'
-      ? Object.fromEntries(PERMISSION_KEYS.map(k => [k, k !== 'users']))
-      : { dashboard: true, inbox: true, sent: true };
+    const defaultRole = cfg.default_role || 'user';
+    const finalRole  = ldapRole  || defaultRole;
+    const finalPerms = ldapPerms || (
+      defaultRole === 'admin'
+        ? Object.fromEntries(PERMISSION_KEYS.map(k => [k, k !== 'users']))
+        : { dashboard: true, inbox: true, sent: true }
+    );
 
     let dbUser = db.prepare(
       "SELECT * FROM users WHERE username = ? COLLATE NOCASE AND source = 'saml'"
@@ -215,12 +257,20 @@ router.post('/saml/callback', async (req, res) => {
       db.prepare(
         `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name)
          VALUES (?, ?, '', ?, ?, 'saml', ?)`
-      ).run(id, username, defaultRole, JSON.stringify(defaultPerms), displayName);
+      ).run(id, username, finalRole, JSON.stringify(finalPerms), displayName);
       dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+      logger.info(`[SAML] Nuovo utente SAML creato: "${username}" con ruolo "${finalRole}" (da ${ldapRole ? 'mapping LDAP' : 'default config'})`);
     } else {
-      db.prepare(
-        `UPDATE users SET display_name=?, updated_at=datetime('now') WHERE id=?`
-      ).run(displayName, dbUser.id);
+      // Aggiorna displayName e, se i gruppi LDAP sono attivi, aggiorna anche il ruolo ad ogni login
+      if (ldapRole) {
+        db.prepare(
+          `UPDATE users SET display_name=?, role=?, permissions=?, updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, finalRole, JSON.stringify(finalPerms), dbUser.id);
+      } else {
+        db.prepare(
+          `UPDATE users SET display_name=?, updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, dbUser.id);
+      }
       dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(dbUser.id);
     }
 

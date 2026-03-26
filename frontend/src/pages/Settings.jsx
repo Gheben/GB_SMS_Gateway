@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
@@ -63,6 +64,9 @@ const VARIABLES = [
 ]
 
 export default function Settings() {
+  const { user } = useAuth()
+  const isSuperAdmin = user?.role === 'superadmin'
+
   const [smtp, setSmtp] = useState({
     host: '', port: '587', secure: false, ignoreTls: false, user: '', pass: '', from: '',
   })
@@ -197,10 +201,10 @@ export default function Settings() {
       {/* Tab bar */}
       <div className="flex border-b border-gray-200">
         {[
-          { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} /> },
-          { key: 'template', label: 'Template email',       icon: <FileCode size={14} /> },
-          { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} /> },
-        ].map(t => (
+          { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} />,    superadminOnly: false },
+          { key: 'template', label: 'Template email',       icon: <FileCode size={14} />, superadminOnly: false },
+          { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} />,  superadminOnly: true  },
+        ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}

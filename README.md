@@ -34,6 +34,7 @@ Ideale per aziende che utilizzano gateway GSM Yeastar e vogliono centralizzare l
 - 🔐 **Autenticazione** — Locale, LDAP/Active Directory, SSO (Authentik, NetScaler ADC, Nginx)
 - 🔄 **WebSocket** — Aggiornamenti in tempo reale su nuovi SMS e stato dispositivi
 - 📱 **PWA** — Installabile come app su desktop e mobile
+- 🔏 **SAML 2.0 / SSO aziendale** — Login federato tramite NetScaler, ADFS o Azure AD (SP-initiated, configurabile da UI)
 
 ---
 
@@ -197,6 +198,37 @@ Il backend legge lo username, lo risolve via LDAP (se configurato) e restituisce
 
 > ℹ️ Abilitare `SSO_ENABLED=true` **non disabilita** il login manuale — i due meccanismi coesistono.
 
+### SAML 2.0 (NetScaler / ADFS / Azure AD)
+Flusso SP-initiated configurabile dall'UI → **Impostazioni → SAML / SSO** (solo Superadmin).
+
+**Come configurare:**
+1. Accedi come `sysadmin` → Impostazioni → tab **SAML / SSO**
+2. Inserisci la SP Base URL (URL pubblico dell'applicazione, es. `https://smsgateway.azienda.it`)
+3. Inserisci la **IdP SSO URL** e il **Certificato X.509** forniti dall'admin NetScaler
+4. Configura il mapping attributi (attributo username, display name)
+5. Scegli il ruolo di default per i nuovi utenti SAML *(usato solo se LDAP non ha mapping per i suoi gruppi)*
+6. Salva e abilita
+
+**Dati da comunicare al tecnico IdP (NetScaler):**
+
+| Campo | Valore |
+|-------|--------|
+| ACS URL | `https://tuodominio/api/auth/saml/callback` |
+| SP Entity ID | `https://tuodominio/api/auth/saml/metadata` |
+| Binding | HTTP-POST |
+| SP Metadata XML | `https://tuodominio/api/auth/saml/metadata` |
+| NameID format | `unspecified` |
+| Firma richiesta | Nessuna |
+| Attributi raccomandati | `displayName`, `sAMAccountName`, `memberOf` |
+
+**Risoluzione ruolo per utenti SAML (priorità):**
+1. I gruppi AD vengono letti dall'attributo SAML `memberOf` **e/o** tramite lookup LDAP con service account
+2. Se uno dei gruppi corrisponde a un mapping configurato in **LDAP → Mappatura gruppi**, viene usato quel ruolo/permessi
+3. Se nessun gruppo corrisponde a un mapping LDAP, viene usato il **Ruolo predefinito** configurato nel tab SAML
+4. Ad ogni accesso successivo il ruolo viene sincronizzato (se LDAP mapping attivo)
+
+> Nessuna variabile `.env` necessaria — tutta la configurazione SAML è nel DB.
+
 ---
 
 ## 📖 Guida utente
@@ -306,6 +338,7 @@ GB-SMS-Gateway/
 │   │   ├── services/
 │   │   │   ├── authService.js    # JWT, bcrypt, seed superadmin
 │   │   │   ├── ldapService.js    # LDAP/AD integration
+│   │   │   ├── samlService.js    # SAML 2.0 SP (node-saml)
 │   │   │   ├── messageService.js # accesso messaggi con filtro permessi
 │   │   │   ├── routingEngine.js  # motore di routing SMS
 │   │   │   ├── deviceManager.js  # gestione connessioni AMI
@@ -325,8 +358,9 @@ GB-SMS-Gateway/
 │   │   │   └── AuthContext.jsx   # JWT storage, SSO auto-login
 │   │   ├── hooks/
 │   │   │   └── useWebSocket.js   # Hook WebSocket
-│   │   ├── pages/                # 12 pagine
+│   │   ├── pages/                # 13 pagine
 │   │   │   ├── LoginPage.jsx
+│   │   │   ├── SamlCallback.jsx  # riceve token JWT dal backend SAML
 │   │   │   ├── Dashboard.jsx
 │   │   │   ├── Inbox.jsx
 │   │   │   ├── Sent.jsx
@@ -359,6 +393,7 @@ GB-SMS-Gateway/
 - **bcryptjs** — Hashing password (cost 12)
 - **jsonwebtoken** — Autenticazione JWT stateless
 - **ldapjs** — Integrazione LDAP/Active Directory
+- **@node-saml/node-saml** — SAML 2.0 SP (SP-initiated, NetScaler/ADFS/AzureAD)
 - **winston** — Logging strutturato
 - **ws** — WebSocket server per aggiornamenti real-time
 
@@ -382,6 +417,10 @@ GB-SMS-Gateway/
 - `POST /api/auth/login` — Login con username/password
 - `GET /api/auth/sso` — Login SSO via header proxy
 - `GET /api/auth/me` — Info utente corrente dal token JWT
+- `GET /api/auth/saml/status` — Verifica se SAML è abilitato *(pubblico)*
+- `GET /api/auth/saml/metadata` — SP Metadata XML per configurazione IdP *(pubblico)*
+- `GET /api/auth/saml/login` — Avvio flusso SAML SP-initiated (redirect a IdP)
+- `POST /api/auth/saml/callback` — ACS endpoint (POST dall'IdP dopo autenticazione)
 
 ### Messaggi
 - `GET /api/messages` — Lista messaggi (filtri: direction, device_id, search, paginazione)
@@ -409,6 +448,8 @@ GB-SMS-Gateway/
 - `GET/POST /api/settings/smtp` — Configurazione SMTP
 - `POST /api/settings/smtp/test` — Test invio email
 - `GET/POST /api/settings/email-template` — Template HTML email
+- `GET/POST /api/settings/email-subject` — Oggetto email personalizzato
+- `GET/POST /api/settings/saml` — Configurazione SAML 2.0 *(solo superadmin)*
 
 ### Utenti e gruppi
 - `GET/POST /api/users` — Lista / crea utenti

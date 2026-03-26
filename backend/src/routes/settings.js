@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const { getSetting, setSettings } = require('../db/database');
 const routingEngine = require('../services/routingEngine');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { requireSuperAdmin } = require('../middleware/authMiddleware');
 
 const router = Router();
 
@@ -107,15 +108,15 @@ router.post('/email-subject', [
   res.json({ ok: true });
 });
 
-// GET /api/settings/saml
-router.get('/saml', (req, res) => {
+// GET /api/settings/saml — solo superadmin
+router.get('/saml', requireSuperAdmin, (req, res) => {
   const raw = getSetting('saml_config');
   if (!raw) return res.json({ enabled: false });
   try { res.json(JSON.parse(raw)); } catch { res.json({ enabled: false }); }
 });
 
-// POST /api/settings/saml
-router.post('/saml', [
+// POST /api/settings/saml — solo superadmin
+router.post('/saml', requireSuperAdmin, [
   body('enabled').isBoolean().toBoolean(),
   body('sp_base_url').optional({ checkFalsy: true }).isString().trim(),
   body('sp_entity_id').optional({ checkFalsy: true }).isString().trim(),
