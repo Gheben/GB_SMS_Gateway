@@ -89,7 +89,7 @@ export default function Dashboard() {
         <MessageTable messages={recent} loading={loading} onDoubleClick={setSelectedMessage} />
       </div>
 
-      <MessageDetailModal message={selectedMessage} onClose={() => setSelectedMessage(null)} />
+      {selectedMessage && <MessageDetailModal msg={selectedMessage} onClose={() => setSelectedMessage(null)} />}
     </div>
   )
 }
