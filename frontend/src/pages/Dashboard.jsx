@@ -4,6 +4,7 @@ import { useWebSocket } from '../hooks/useWebSocket'
 import { useAuth } from '../contexts/AuthContext'
 import StatCard from '../components/StatCard'
 import MessageTable from '../components/MessageTable'
+import MessageDetailModal from '../components/MessageDetailModal'
 import { MessageSquare, Send, AlertCircle, TrendingUp, Server } from 'lucide-react'
 
 export default function Dashboard() {
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const [recent, setRecent] = useState([])
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedMessage, setSelectedMessage] = useState(null)
   const { can } = useAuth()
 
   const loadData = useCallback(async () => {
@@ -84,8 +86,10 @@ export default function Dashboard() {
       {/* Recent messages */}
       <div>
         <h3 className="text-lg font-semibold text-gray-700 mb-3">Recent messages</h3>
-        <MessageTable messages={recent} loading={loading} />
+        <MessageTable messages={recent} loading={loading} onRowDoubleClick={setSelectedMessage} />
       </div>
+
+      <MessageDetailModal message={selectedMessage} onClose={() => setSelectedMessage(null)} />
     </div>
   )
 }

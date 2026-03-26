@@ -158,7 +158,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
             <input className="input flex-1" placeholder="Rule name" value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
             <div className="w-24">
-              <label className="label">Priorità</label>
+              <label className="label">Priority</label>
               <input className="input" type="number" value={form.priority}
                 onChange={e => setForm(p => ({ ...p, priority: e.target.value }))} />
             </div>
