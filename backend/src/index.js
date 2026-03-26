@@ -251,12 +251,63 @@ app.get(['/docs', '/docs/'], (req, res) => {
     .swagger-ui .prop-type  { color: #60a5fa !important; }
     .swagger-ui .prop-format{ color: #64748b !important; }
 
-    /* ── Misc text ── */
-    .swagger-ui p, .swagger-ui label, .swagger-ui .tab li,
-    .swagger-ui .opblock-description-wrapper p { color: #94a3b8 !important; }
-    .swagger-ui svg { fill: #94a3b8 !important; }
-    .swagger-ui .expand-methods svg, .swagger-ui .expand-operation svg { fill: #6366f1 !important; }
-    .swagger-ui .arrow { fill: #94a3b8 !important; }
+    /* ── Auth banner ── */
+    #auth-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 32px;
+      background: #1a2e1a;
+      border-bottom: 1px solid #2d5a2d;
+      font-size: 13px;
+      color: #86efac;
+    }
+    #auth-banner.visible { display: flex; }
+    #auth-banner .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4ade80; flex-shrink: 0;
+    }
+    #auth-banner strong { color: #bbf7d0; }
+    #auth-banner .copy-btn {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid #2d5a2d;
+      color: #86efac;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #auth-banner .copy-btn:hover { background: #2d5a2d; }
+
+    #no-auth-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 32px;
+      background: #1e1a10;
+      border-bottom: 1px solid #4a3800;
+      font-size: 13px;
+      color: #fbbf24;
+    }
+    #no-auth-banner.visible { display: flex; }
+    #no-auth-banner .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #f59e0b; flex-shrink: 0;
+    }
+
+    /* ── Authorize button highlight when not authed ── */
+    body.not-authed .swagger-ui .auth-wrapper .authorize {
+      border-color: #f59e0b !important;
+      color: #fbbf24 !important;
+      animation: pulse-border 2s infinite;
+    }
+    body.not-authed .swagger-ui .auth-wrapper .authorize svg { fill: #fbbf24 !important; }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+      50%       { box-shadow: 0 0 0 4px rgba(245,158,11,0); }
+    }
   </style>
 </head>
 <body>
@@ -265,11 +316,65 @@ app.get(['/docs', '/docs/'], (req, res) => {
     <h1>SMS Gateway &mdash; API Reference</h1>
     <span class="badge">v1</span>
   </div>
+
+  <!-- Shown when already logged in -->
+  <div id="auth-banner">
+    <div class="dot"></div>
+    <span>Logged in as <strong id="auth-user"></strong> &mdash; token auto-injected into all requests.</span>
+    <button class="copy-btn" onclick="copyToken()">Copy token</button>
+  </div>
+
+  <!-- Shown when not logged in -->
+  <div id="no-auth-banner">
+    <div class="dot"></div>
+    <span>
+      Not authenticated. Click <strong>Authorize 🔓</strong> and paste your JWT token, or
+      <a href="/" style="color:#fbbf24;text-decoration:underline">log in to the app</a> first
+      and return here — the token will be injected automatically.
+      &nbsp;&nbsp;<strong>How to get a token:</strong>
+      POST <code style="background:#2a200a;padding:1px 6px;border-radius:4px">/api/auth/login</code>
+      with <code style="background:#2a200a;padding:1px 6px;border-radius:4px">{"username":"…","password":"…"}</code>
+      and copy the <code style="background:#2a200a;padding:1px 6px;border-radius:4px">token</code> field from the response.
+    </span>
+  </div>
+
   <div id="swagger-ui"></div>
   <script src="/docs/swagger-ui-bundle.js"></script>
   <script>
+    // Read JWT from localStorage (same key used by the React app)
+    function getStoredToken() {
+      return localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token') || '';
+    }
+
+    function getStoredUser() {
+      try {
+        const u = JSON.parse(localStorage.getItem('jwt_user') || sessionStorage.getItem('jwt_user') || 'null');
+        return u?.username || u?.name || '';
+      } catch { return ''; }
+    }
+
+    function copyToken() {
+      const t = getStoredToken();
+      if (t) navigator.clipboard.writeText(t).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy token', 1500);
+      });
+    }
+
     window.onload = function () {
-      SwaggerUIBundle({
+      const token = getStoredToken();
+      const user  = getStoredUser();
+
+      if (token) {
+        document.getElementById('auth-banner').classList.add('visible');
+        document.getElementById('auth-user').textContent = user || 'user';
+      } else {
+        document.getElementById('no-auth-banner').classList.add('visible');
+        document.body.classList.add('not-authed');
+      }
+
+      const ui = SwaggerUIBundle({
         url: '/api/docs.json',
         dom_id: '#swagger-ui',
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
@@ -278,6 +383,21 @@ app.get(['/docs', '/docs/'], (req, res) => {
         docExpansion: 'none',
         filter: true,
         tryItOutEnabled: false,
+        // Auto-inject the token if the user is already logged in
+        requestInterceptor: (req) => {
+          const t = getStoredToken();
+          if (t && !req.headers['Authorization']) {
+            req.headers['Authorization'] = 'Bearer ' + t;
+          }
+          return req;
+        },
+        onComplete: () => {
+          // Pre-fill the Authorize dialog with the stored token so the lock icon reflects auth state
+          const t = getStoredToken();
+          if (t) {
+            ui.preauthorizeApiKey('BearerAuth', t);
+          }
+        },
       });
     };
   </script>
