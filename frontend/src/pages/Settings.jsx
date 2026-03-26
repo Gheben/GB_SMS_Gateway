@@ -7,27 +7,27 @@ import MessageDetailModal from '../components/MessageDetailModal'
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
   <tr>
     <td colspan="2" style="background:#1d4ed8;color:#fff;padding:16px 20px;font-size:18px;font-weight:bold">
-      Nuovo SMS ricevuto &mdash; GB SMS Gateway
+      New SMS received &mdash; GB SMS Gateway
     </td>
   </tr>
   <tr>
-    <td style="padding:10px 20px;font-weight:bold;color:#555;width:130px">Da</td>
+    <td style="padding:10px 20px;font-weight:bold;color:#555;width:130px">From</td>
     <td style="padding:10px 20px">{{sender}}</td>
   </tr>
   <tr style="background:#f9fafb">
-    <td style="padding:10px 20px;font-weight:bold;color:#555">Dispositivo</td>
+    <td style="padding:10px 20px;font-weight:bold;color:#555">Device</td>
     <td style="padding:10px 20px">{{device}}</td>
   </tr>
   <tr>
-    <td style="padding:10px 20px;font-weight:bold;color:#555">Porta SIM</td>
+    <td style="padding:10px 20px;font-weight:bold;color:#555">SIM Port</td>
     <td style="padding:10px 20px">{{port}}</td>
   </tr>
   <tr style="background:#f9fafb">
-    <td style="padding:10px 20px;font-weight:bold;color:#555">Ricevuto</td>
+    <td style="padding:10px 20px;font-weight:bold;color:#555">Received</td>
     <td style="padding:10px 20px">{{received_at}}</td>
   </tr>
   <tr>
-    <td style="padding:10px 20px;font-weight:bold;color:#555">Regola</td>
+    <td style="padding:10px 20px;font-weight:bold;color:#555">Rule</td>
     <td style="padding:10px 20px">{{rule}}</td>
   </tr>
   <tr style="background:#eef2ff">
@@ -42,25 +42,25 @@ const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:6
   </tr>
 </table>`
 
-const DEFAULT_SUBJECT = '[SMS Gateway] Nuovo SMS da {{sender}}'
+const DEFAULT_SUBJECT = '[SMS Gateway] New SMS from {{sender}}'
 
 const SUBJECT_VARIABLES = [
-  { key: '{{sender}}',      desc: 'Numero mittente SMS' },
-  { key: '{{device}}',      desc: 'Nome del dispositivo GSM' },
-  { key: '{{port}}',        desc: 'Porta SIM (numero)' },
-  { key: '{{rule}}',        desc: 'Nome della regola attivata' },
-  { key: '{{received_at}}', desc: 'Data/ora ricezione' },
+  { key: '{{sender}}',      desc: 'SMS sender number' },
+  { key: '{{device}}',      desc: 'GSM device name' },
+  { key: '{{port}}',        desc: 'SIM port (number)' },
+  { key: '{{rule}}',        desc: 'Name of the triggered rule' },
+  { key: '{{received_at}}', desc: 'Date/time received' },
 ]
 
 const VARIABLES = [
-  { key: '{{sender}}',      desc: 'Numero mittente SMS' },
-  { key: '{{content}}',     desc: 'Testo del messaggio SMS' },
-  { key: '{{device}}',      desc: 'Nome del dispositivo GSM' },
-  { key: '{{port}}',        desc: 'Porta SIM (numero)' },
-  { key: '{{received_at}}', desc: 'Data/ora ricezione' },
-  { key: '{{rule}}',        desc: 'Nome della regola attivata' },
-  { key: '{{email}}',       desc: 'Email destinatario inoltro' },
-  { key: '{{timestamp}}',   desc: 'Timestamp invio email' },
+  { key: '{{sender}}',      desc: 'SMS sender number' },
+  { key: '{{content}}',     desc: 'SMS message text' },
+  { key: '{{device}}',      desc: 'GSM device name' },
+  { key: '{{port}}',        desc: 'SIM port (number)' },
+  { key: '{{received_at}}', desc: 'Date/time received' },
+  { key: '{{rule}}',        desc: 'Name of the triggered rule' },
+  { key: '{{email}}',       desc: 'Forwarding recipient email' },
+  { key: '{{timestamp}}',   desc: 'Email send timestamp' },
 ]
 
 export default function Settings() {
@@ -124,10 +124,10 @@ export default function Settings() {
     setResult(null)
     try {
       await settingsApi.saveSmtp(smtp)
-      setResult({ success: true, message: 'Impostazioni SMTP salvate.' })
+      setResult({ success: true, message: 'SMTP settings saved.' })
       setDirty(false)
     } catch (err) {
-      setResult({ success: false, message: err.response?.data?.error || 'Errore nel salvataggio.' })
+      setResult({ success: false, message: err.response?.data?.error || 'Save error.' })
     } finally {
       setSaving(false)
     }
@@ -139,9 +139,9 @@ export default function Settings() {
     setResult(null)
     try {
       await settingsApi.testSmtp(testEmail)
-      setResult({ success: true, message: `Email di test inviata a ${testEmail}.` })
+      setResult({ success: true, message: `Test email sent to ${testEmail}.` })
     } catch (err) {
-      setResult({ success: false, message: err.response?.data?.error || 'Errore invio email di test.' })
+      setResult({ success: false, message: err.response?.data?.error || 'Error sending test email.' })
     } finally {
       setTesting(false)
     }
@@ -153,9 +153,9 @@ export default function Settings() {
     try {
       await settingsApi.saveSubject(subject)
       setSubjectDirty(false)
-      setTemplateResult({ success: true, message: 'Oggetto email salvato.' })
+      setTemplateResult({ success: true, message: 'Email subject saved.' })
     } catch {
-      setTemplateResult({ success: false, message: "Errore nel salvataggio dell'oggetto." })
+      setTemplateResult({ success: false, message: "Error saving email subject." })
     } finally {
       setSubjectSaving(false)
     }
@@ -167,9 +167,9 @@ export default function Settings() {
     try {
       await settingsApi.saveTemplate(template)
       setTemplateDirty(false)
-      setTemplateResult({ success: true, message: 'Template salvato.' })
+      setTemplateResult({ success: true, message: 'Template saved.' })
     } catch {
-      setTemplateResult({ success: false, message: 'Errore nel salvataggio del template.' })
+      setTemplateResult({ success: false, message: 'Error saving template.' })
     } finally {
       setTemplateSaving(false)
     }
@@ -180,9 +180,9 @@ export default function Settings() {
     try {
       await settingsApi.saveSaml(saml)
       setSamlDirty(false)
-      setSamlResult({ success: true, message: 'Configurazione SAML salvata.' })
+      setSamlResult({ success: true, message: 'SAML configuration saved.' })
     } catch {
-      setSamlResult({ success: false, message: 'Errore nel salvataggio SAML.' })
+      setSamlResult({ success: false, message: 'Error saving SAML configuration.' })
     } finally {
       setSamlSaving(false)
     }
@@ -190,19 +190,19 @@ export default function Settings() {
 
   if (loading) return (
     <div className="flex justify-center items-center py-8 text-gray-400 gap-2">
-      <Loader2 size={18} className="animate-spin" /> Caricamento...
+      <Loader2 size={18} className="animate-spin" /> Loading...
     </div>
   )
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Impostazioni</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200">
         {[
-          { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} />,    superadminOnly: false },
-          { key: 'template', label: 'Template email',       icon: <FileCode size={14} />, superadminOnly: false },
+          { key: 'smtp',     label: 'SMTP & Email Test',   icon: <Mail size={14} />,    superadminOnly: false },
+          { key: 'template', label: 'Email Template',       icon: <FileCode size={14} />, superadminOnly: false },
           { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} />,  superadminOnly: true  },
         ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
@@ -224,20 +224,20 @@ export default function Settings() {
         <div className="space-y-8">
           {/* SMTP */}
           <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
-            <h3 className="text-base font-semibold text-gray-700">Configurazione SMTP</h3>
+            <h3 className="text-base font-semibold text-gray-700">SMTP Configuration</h3>
             <p className="text-sm text-gray-500">
-              Usato per inviare le email di inoltro SMS quando si attivano le regole di routing.
+              Used to send SMS forwarding emails when routing rules are triggered.
             </p>
 
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
-                  <label className="label">Server SMTP</label>
-                  <input className="input" placeholder="smtp.azienda.it" value={smtp.host}
+                  <label className="label">SMTP Server</label>
+                  <input className="input" placeholder="smtp.company.com" value={smtp.host}
                     onChange={e => set('host', e.target.value)} />
                 </div>
                 <div>
-                  <label className="label">Porta</label>
+                  <label className="label">Port</label>
                   <input className="input" type="number" placeholder="587" value={smtp.port}
                     onChange={e => set('port', e.target.value)} />
                 </div>
@@ -248,26 +248,26 @@ export default function Settings() {
                   <input type="checkbox" id="secure" checked={smtp.secure}
                     onChange={e => set('secure', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                   <label htmlFor="secure" className="text-sm text-gray-700">
-                    TLS diretto (SSL, porta 465) — disabilita per STARTTLS
+                    Direct TLS (SSL, port 465) — disable for STARTTLS
                   </label>
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" id="ignoreTls" checked={smtp.ignoreTls}
                     onChange={e => set('ignoreTls', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                   <label htmlFor="ignoreTls" className="text-sm text-gray-700">
-                    Ignora STARTTLS — relay senza autenticazione (es. porta 25 interno)
+                    Skip STARTTLS — relay without authentication (e.g. internal port 25)
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="label">Utente SMTP</label>
-                <input className="input" type="email" placeholder="smsgateway@azienda.it"
+                <label className="label">SMTP User</label>
+                <input className="input" type="email" placeholder="smsgateway@company.com"
                   value={smtp.user} onChange={e => set('user', e.target.value)} />
               </div>
 
               <div>
-                <label className="label">Password <span className="text-gray-400 font-normal">(lascia vuoto per non modificare)</span></label>
+                <label className="label">Password <span className="text-gray-400 font-normal">(leave blank to keep current)</span></label>
                 <div className="relative">
                   <input className="input pr-10" type={showPass ? 'text' : 'password'}
                     placeholder="••••••••" value={smtp.pass}
@@ -280,14 +280,14 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="label">Mittente (From)</label>
-                <input className="input" placeholder='GB SMS Gateway <smsgateway@azienda.it>'
+                <label className="label">Sender (From)</label>
+                <input className="input" placeholder='GB SMS Gateway <smsgateway@company.com>'
                   value={smtp.from} onChange={e => set('from', e.target.value)} />
               </div>
 
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving || !dirty} className="btn-primary flex items-center gap-2">
-                  <Save size={15} />{saving ? 'Salvataggio...' : 'Salva'}
+                  <Save size={15} />{saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>
@@ -295,16 +295,16 @@ export default function Settings() {
 
           {/* Test email */}
           <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-            <h3 className="text-base font-semibold text-gray-700">Test email</h3>
+            <h3 className="text-base font-semibold text-gray-700">Email test</h3>
             <p className="text-sm text-gray-500">
-              Invia un'email di prova con la configurazione SMTP attuale (già salvata).
+              Send a test email using the current (already saved) SMTP configuration.
             </p>
             <div className="flex gap-3">
               <input className="input flex-1" type="email" placeholder="destinatario@esempio.it"
                 value={testEmail} onChange={e => setTestEmail(e.target.value)} />
               <button onClick={handleTest} disabled={testing || !testEmail}
                 className="btn-primary flex items-center gap-2 whitespace-nowrap">
-                <Send size={15} />{testing ? 'Invio...' : 'Invia test'}
+                <Send size={15} />{testing ? 'Sending...' : 'Send test'}
               </button>
             </div>
           </section>
@@ -324,21 +324,21 @@ export default function Settings() {
           <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-base font-semibold text-gray-700">Template Email HTML</h3>
+                <h3 className="text-base font-semibold text-gray-700">HTML Email Template</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Personalizza il corpo HTML dell&rsquo;email inviata per ogni SMS inoltrato.
-                  Usa le variabili sotto per inserire i dati dinamici.
+                  Customize the HTML body of the email sent for each forwarded SMS.
+                  Use the variables below to insert dynamic data.
                 </p>
               </div>
               <button type="button" onClick={() => setPreviewHtml(v => !v)}
                 className="text-xs border border-gray-300 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 whitespace-nowrap flex items-center gap-1.5">
-                <Eye size={13} />{previewHtml ? 'Modifica' : 'Anteprima'}
+                <Eye size={13} />{previewHtml ? 'Edit' : 'Preview'}
               </button>
             </div>
 
             {/* Oggetto email */}
             <div className="space-y-1">
-              <label className="label">Oggetto email</label>
+                <label className="label">Email subject</label>
               <div className="flex gap-2">
                 <input
                   className="input flex-1 font-mono text-sm"
@@ -348,7 +348,7 @@ export default function Settings() {
                 />
                 <button type="button" onClick={handleSaveSubject} disabled={subjectSaving || !subjectDirty}
                   className="btn-primary flex items-center gap-2 whitespace-nowrap">
-                  <Save size={15} />{subjectSaving ? 'Salvo...' : 'Salva'}
+                  <Save size={14} />{subjectSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -371,7 +371,7 @@ export default function Settings() {
 
             {/* Variabili corpo email */}
             <div>
-              <p className="text-sm text-gray-500 mb-2">Corpo HTML — variabili disponibili:</p>
+              <p className="text-sm text-gray-500 mb-2">HTML body — available variables:</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {VARIABLES.map(v => (
@@ -387,13 +387,13 @@ export default function Settings() {
               <div className="border border-gray-200 rounded-lg p-4 min-h-[300px] overflow-auto"
                 dangerouslySetInnerHTML={{ __html: template
                   .replace(/{{sender}}/g, '+39347123456')
-                  .replace(/{{content}}/g, 'Questo è un SMS di esempio per la preview.')
-                  .replace(/{{device}}/g, 'GSM-01 Verona')
+                  .replace(/{{content}}/g, 'This is a sample SMS for the preview.')
+                  .replace(/{{device}}/g, 'GSM-01 Main')
                   .replace(/{{port}}/g, '3')
                   .replace(/{{received_at}}/g, new Date().toISOString())
-                  .replace(/{{rule}}/g, 'Inoltro OTP')
-                  .replace(/{{email}}/g, 'destinatario@azienda.it')
-                  .replace(/{{timestamp}}/g, new Date().toLocaleString('it-IT'))
+                  .replace(/{{rule}}/g, 'OTP Forward')
+                  .replace(/{{email}}/g, 'recipient@company.com')
+                  .replace(/{{timestamp}}/g, new Date().toLocaleString('en-US'))
                 }}
               />
             ) : (
@@ -405,12 +405,12 @@ export default function Settings() {
             <div className="flex items-center gap-3">
               <button type="button" onClick={handleSaveTemplate} disabled={templateSaving || !templateDirty}
                 className="btn-primary flex items-center gap-2">
-                <Save size={15} />{templateSaving ? 'Salvataggio...' : 'Salva template'}
+                <Save size={14} />{templateSaving ? 'Saving...' : 'Save template'}
               </button>
               <button type="button"
                 onClick={() => { setTemplate(DEFAULT_TEMPLATE); setTemplateDirty(true); setTemplateResult(null) }}
                 className="btn-ghost flex items-center gap-2 text-gray-500">
-                <RotateCcw size={14} />Ripristina default
+                <RotateCcw size={14} />Restore default
               </button>
             </div>
 
@@ -431,10 +431,10 @@ export default function Settings() {
         <div className="space-y-4">
           <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
             <div>
-              <h3 className="text-base font-semibold text-gray-700">Autenticazione SAML 2.0</h3>
+              <h3 className="text-base font-semibold text-gray-700">SAML 2.0 Authentication</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Abilita il login tramite un Identity Provider SAML (es. NetScaler, ADFS, Azure AD).
-                Il Service Provider è configurato come SP-initiated (il browser viene reindirizzato all&rsquo;IdP e poi torna qui).
+                Enable login via a SAML Identity Provider (e.g. NetScaler, ADFS, Azure AD).
+                The Service Provider is configured as SP-initiated (the browser is redirected to the IdP and then back here).
               </p>
             </div>
 
@@ -442,12 +442,12 @@ export default function Settings() {
               <input type="checkbox" checked={saml.enabled}
                 onChange={e => { setSaml(s => ({ ...s, enabled: e.target.checked })); setSamlDirty(true) }}
                 className="w-4 h-4 accent-blue-600" />
-              <span className="text-sm font-medium text-gray-700">Abilita autenticazione SAML 2.0</span>
+              <span className="text-sm font-medium text-gray-700">Enable SAML 2.0 authentication</span>
             </label>
 
             {/* Info da comunicare al tecnico IdP */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Dati da comunicare a IdP</p>
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Data to share with IdP</p>
               <div className="space-y-2">
                 <div>
                   <span className="text-xs text-blue-600 font-medium">ACS URL (Assertion Consumer Service):</span>
@@ -477,31 +477,31 @@ export default function Settings() {
 
             {/* Note LDAP mapping */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Integrazione con mapping gruppi LDAP</p>
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Integration with LDAP group mapping</p>
               <p className="text-xs text-amber-700">
-                Se sono configurati dei mapping di gruppi in <strong>Gestione utenti → LDAP / Active Directory</strong>,
-                il sistema li applica automaticamente anche agli utenti SAML: ad ogni accesso vengono recuperati
-                i gruppi AD dell&rsquo;utente e il ruolo viene assegnato in base alla mappatura configurata.
-                Solo se nessun gruppo corrisponde viene usato il <em>Ruolo predefinito</em> configurato qui sotto.
+                If group mappings are configured in <strong>User management → LDAP / Active Directory</strong>,
+                the system applies them automatically to SAML users too: at each login the user&rsquo;s AD groups
+                are retrieved and the role is assigned based on the configured mapping.
+                Only if no group matches is the <em>Default role</em> configured below used.
               </p>
               <p className="text-xs text-amber-600">
-                <strong>Suggerimento:</strong> chiedi al tecnico IdP di includere l&rsquo;attributo{' '}
-                <code className="bg-amber-100 px-1 rounded">memberOf</code> nella SAML assertion —
-                riduce il traffico verso il Domain Controller e garantisce la risoluzione dei gruppi
-                anche se il DC non è temporaneamente raggiungibile dal gateway.
+                <strong>Tip:</strong> ask the IdP admin to include the{' '}
+                <code className="bg-amber-100 px-1 rounded">memberOf</code> attribute in the SAML assertion —
+                this reduces traffic to the Domain Controller and ensures group resolution
+                even if the DC is temporarily unreachable from the gateway.
               </p>
             </div>
 
             {/* SP Config */}
             <div>
-              <label className="label">SP Base URL <span className="text-gray-400 font-normal">(URL pubblico di questa applicazione)</span></label>
-              <input className="input" placeholder="https://smsgateway.azienda.it"
+              <label className="label">SP Base URL <span className="text-gray-400 font-normal">(public URL of this application)</span></label>
+              <input className="input" placeholder="https://smsgateway.company.com"
                 value={saml.sp_base_url}
                 onChange={e => { setSaml(s => ({ ...s, sp_base_url: e.target.value })); setSamlDirty(true) }} />
-              <p className="text-xs text-gray-400 mt-1">Deve corrispondere all&rsquo;URL con cui gli utenti raggiungono l&rsquo;applicazione.</p>
+              <p className="text-xs text-gray-400 mt-1">Must match the URL users use to access the application.</p>
             </div>
             <div>
-              <label className="label">SP Entity ID <span className="text-gray-400 font-normal">(lascia vuoto per usare il default)</span></label>
+              <label className="label">SP Entity ID <span className="text-gray-400 font-normal">(leave empty to use default)</span></label>
               <input className="input" placeholder={`${saml.sp_base_url}/api/auth/saml/metadata`}
                 value={saml.sp_entity_id}
                 onChange={e => { setSaml(s => ({ ...s, sp_entity_id: e.target.value })); setSamlDirty(true) }} />
@@ -509,8 +509,8 @@ export default function Settings() {
 
             {/* IdP Config */}
             <div>
-              <label className="label">IdP SSO URL <span className="text-gray-400 font-normal">(URL di login dell&rsquo;Identity Provider)</span></label>
-              <input className="input" placeholder="https://netscaler.azienda.it/saml/login"
+              <label className="label">IdP SSO URL <span className="text-gray-400 font-normal">(Identity Provider login URL)</span></label>
+              <input className="input" placeholder="https://netscaler.company.com/saml/login"
                 value={saml.idp_sso_url}
                 onChange={e => { setSaml(s => ({ ...s, idp_sso_url: e.target.value })); setSamlDirty(true) }} />
             </div>
@@ -520,13 +520,13 @@ export default function Settings() {
                 placeholder={'-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----'}
                 value={saml.idp_cert}
                 onChange={e => { setSaml(s => ({ ...s, idp_cert: e.target.value })); setSamlDirty(true) }} />
-              <p className="text-xs text-gray-400 mt-1">Incolla il certificato X.509 fornito dall&rsquo;amministratore NetScaler. Accettato sia con che senza header PEM.</p>
+              <p className="text-xs text-gray-400 mt-1">Paste the X.509 certificate provided by the NetScaler administrator. Accepted with or without PEM header.</p>
             </div>
 
             {/* Attribute mapping */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Attributo username <span className="text-gray-400 font-normal">(vuoto = NameID)</span></label>
+                <label className="label">Username attribute <span className="text-gray-400 font-normal">(empty = NameID)</span></label>
                 <input className="input" placeholder="NameID (default)"
                   value={saml.username_attribute}
                   onChange={e => { setSaml(s => ({ ...s, username_attribute: e.target.value })); setSamlDirty(true) }} />
@@ -539,19 +539,19 @@ export default function Settings() {
               </div>
             </div>
             <div>
-              <label className="label">Ruolo predefinito per nuovi utenti SAML</label>
+              <label className="label">Default role for new SAML users</label>
               <select className="input" value={saml.default_role}
                 onChange={e => { setSaml(s => ({ ...s, default_role: e.target.value })); setSamlDirty(true) }}>
-                <option value="user">Utente (user)</option>
-                <option value="admin">Amministratore (admin)</option>
+                <option value="user">User (user)</option>
+                <option value="admin">Administrator (admin)</option>
               </select>
-              <p className="text-xs text-gray-400 mt-1">Il ruolo può essere modificato individualmente in &ldquo;Gestione utenti&rdquo; dopo il primo accesso.</p>
+              <p className="text-xs text-gray-400 mt-1">The role can be changed individually in &ldquo;User management&rdquo; after the first login.</p>
             </div>
 
             <div className="flex items-center gap-3 pt-1">
               <button type="button" onClick={handleSaveSaml} disabled={samlSaving || !samlDirty}
                 className="btn-primary flex items-center gap-2">
-                <Save size={15} />{samlSaving ? 'Salvataggio...' : 'Salva configurazione SAML'}
+                <Save size={15} />{samlSaving ? 'Saving...' : 'Save SAML configuration'}
               </button>
             </div>
 

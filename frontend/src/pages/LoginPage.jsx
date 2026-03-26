@@ -27,7 +27,7 @@ export default function LoginPage() {
       await login(username, password)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.error || 'Credenziali non valide')
+      setError(err.response?.data?.error || 'Invalid credentials')
     } finally {
       setLoading(false)
     }
@@ -37,18 +37,19 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-blue-950 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
 
-        {/* Header card — sfondo leggermente diverso dal body */}
+        {/* Header card */}
         <div className="bg-gradient-to-br from-gray-800 to-slate-700 px-8 py-8 text-center">
           <img src="/logo.svg" alt="GB SMS Gateway" className="w-14 h-14 mx-auto mb-3 drop-shadow-lg" />
           <h1 className="text-white text-xl font-bold tracking-wide">GB SMS Gateway</h1>
-          <p className="text-slate-300 text-xs mt-1">Accedi per continuare</p>
+          <p className="text-slate-300 text-xs mt-1">Sign in to continue</p>
         </div>
 
-        {/* Form */}
+        {/* Login form */}
         <form onSubmit={handleSubmit} className="px-8 py-8 space-y-5">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
               Username
+
             </label>
             <input
               type="text"
@@ -87,19 +88,19 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-lg py-2.5 text-sm transition-colors"
           >
-            {loading ? 'Accesso in corso...' : 'Accedi'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
 
           {samlEnabled && (
             <>
               <div className="flex items-center gap-2">
                 <div className="flex-1 border-t border-gray-200" />
-                <span className="text-xs text-gray-400">oppure</span>
+                <span className="text-xs text-gray-400">or</span>
                 <div className="flex-1 border-t border-gray-200" />
               </div>
               <a href="/api/auth/saml/login"
                 className="block w-full text-center border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                Accedi con SSO aziendale (SAML)
+                Sign in with corporate SSO (SAML)
               </a>
             </>
           )}

@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 
 /**
- * Pagina di callback SAML — riceve il token JWT dal backend dopo l'autenticazione IdP.
- * Il backend redirige qui con ?token=<JWT> dopo aver validato la SAML assertion.
- * Questa pagina salva il token in localStorage e fa una hard redirect a / (home).
- * Non è protetta da ProtectedRoute: deve essere accessibile senza autenticazione.
+ * SAML callback page — receives the JWT token from the backend after IdP authentication.
+ * The backend redirects here with ?token=<JWT> after validating the SAML assertion.
+ * This page saves the token to localStorage and hard-redirects to / (home).
+ * Not protected by ProtectedRoute: must be accessible without authentication.
  */
 export default function SamlCallback() {
   useEffect(() => {
@@ -17,7 +17,7 @@ export default function SamlCallback() {
     }
 
     try {
-      // Decodifica il payload JWT (base64url → base64 → JSON) senza verifica (la verifica è già avvenuta nel backend)
+      // Decode JWT payload (base64url → base64 → JSON) without verification (already verified by the backend)
       const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
       const payload = JSON.parse(atob(b64))
 
@@ -38,7 +38,7 @@ export default function SamlCallback() {
 
       localStorage.setItem('jwt_token', token)
       localStorage.setItem('jwt_user', JSON.stringify(user))
-      // Hard redirect per forzare il re-init di AuthContext dal localStorage
+      // Hard redirect to force AuthContext re-init from localStorage
       window.location.replace('/')
     } catch {
       window.location.replace('/login?error=saml_invalid_token')
@@ -48,7 +48,7 @@ export default function SamlCallback() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 gap-4">
       <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-400 text-sm">Autenticazione SAML in corso…</p>
+      <p className="text-slate-400 text-sm">SAML authentication in progress…</p>
     </div>
   )
 }

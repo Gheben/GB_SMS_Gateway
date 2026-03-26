@@ -4,9 +4,9 @@ import { useWebSocket } from '../hooks/useWebSocket'
 import { Pencil, Check, X, Smartphone, Loader2 } from 'lucide-react'
 
 function StatusBadge({ status }) {
-  if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Attiva</span>
-  if (status === 'DOWN')  return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />Non registrata</span>
-  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{status || 'N/D'}</span>
+  if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Active</span>
+  if (status === 'DOWN')  return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />Unregistered</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{status || 'N/A'}</span>
 }
 
 function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
@@ -42,7 +42,7 @@ function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
     <div className="flex items-center gap-2 group">
       {initialValue
         ? <span className={`text-sm ${mono ? 'font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{initialValue}</span>
-        : <span className="text-xs text-gray-400 italic">non impostato</span>}
+        : <span className="text-xs text-gray-400 italic">not set</span>}
       <button
         onClick={() => { setValue(initialValue || ''); setEditing(true) }}
         className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
@@ -62,14 +62,14 @@ function SimRow({ port, onSaved }) {
       <td className="px-4 py-3">
         <EditableCell
           initialValue={port.operator}
-          placeholder="es. Wind3Business"
+          placeholder="e.g. T-Mobile Business"
           onSave={operator => portsApi.setPortInfo(port.device_id, port.port_number, { operator }).then(onSaved)}
         />
       </td>
       <td className="px-4 py-3">
         <EditableCell
           initialValue={port.sim_number}
-          placeholder="+39 333 1234567"
+          placeholder="+1 555 123 4567"
           mono
           onSave={sim_number => portsApi.setPortInfo(port.device_id, port.port_number, { sim_number }).then(onSaved)}
         />
@@ -102,32 +102,32 @@ export default function SimMapping() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Smartphone size={22} className="text-blue-600" />
-        <h2 className="text-2xl font-bold text-gray-800">Mappatura SIM</h2>
+        <h2 className="text-2xl font-bold text-gray-800">SIM Mapping</h2>
       </div>
       <p className="text-sm text-gray-500">
-        Associa un numero di telefono a ogni porta con SIM attiva. Il numero è puramente informativo e viene usato per identificare quale SIM ha ricevuto un messaggio.
+        Associate a phone number with each active SIM port. The number is informational only and is used to identify which SIM received a message.
       </p>
 
       {loading ? (
         <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-          <Loader2 size={18} className="animate-spin" /> Caricamento...
+          <Loader2 size={18} className="animate-spin" /> Loading...
         </div>
       ) : ports.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Smartphone size={40} className="mx-auto mb-3 opacity-30" />
-          <p>Nessuna porta con SIM rilevata.</p>
-          <p className="text-xs mt-1">Le porte vengono aggiornate automaticamente alla connessione dei dispositivi.</p>
+          <p>No SIM ports detected.</p>
+          <p className="text-xs mt-1">Ports are updated automatically when devices connect.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dispositivo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Porta</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stato</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Operatore</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Numero SIM</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Device</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Port</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Carrier</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
               </tr>
             </thead>
             <tbody>

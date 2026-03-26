@@ -39,13 +39,13 @@ export default function Sent() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">SMS Inviati</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Sent SMS</h2>
         <span className="text-sm text-gray-500">{total} messaggi</span>
       </div>
 
       <input
         type="text"
-        placeholder="Cerca per destinatario o testo..."
+        placeholder="Search by recipient or message text..."
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
         className="w-full max-w-sm border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -55,7 +55,7 @@ export default function Sent() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Righe per pagina:</span>
+          <span>Rows per page:</span>
           {[10, 25, 50].map(n => (
             <button key={n} onClick={() => { setLimit(n); setPage(1) }}
               className={`px-2.5 py-0.5 rounded border text-xs font-medium transition-colors ${
@@ -69,12 +69,12 @@ export default function Sent() {
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-100">
-              ← Prec
+              ← Prev
             </button>
-            <span className="px-3 py-1 text-sm text-gray-600">Pag. {page} / {Math.max(1, totalPages)}</span>
+            <span className="px-3 py-1 text-sm text-gray-600">Page {page} / {Math.max(1, totalPages)}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
               className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-100">
-              Succ →
+              Next →
             </button>
           </div>
         )}

@@ -27,23 +27,23 @@ function DeviceModal({ device, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">{device ? 'Modifica dispositivo' : 'Nuovo dispositivo'}</h3>
+        <h3 className="text-lg font-bold mb-4">{device ? 'Edit device' : 'New device'}</h3>
         <form onSubmit={submit} className="space-y-3">
-          <input className="input" placeholder="Nome (es. GSM-01 Verona)" value={form.name} onChange={f('name')} required />
-          <input className="input" placeholder="Hostname / IP (es. vrnowgw-gsm01.net.dla)" value={form.host} onChange={f('host')} required />
+          <input className="input" placeholder="Name (e.g. GSM-01 Main)" value={form.name} onChange={f('name')} required />
+          <input className="input" placeholder="Hostname / IP (e.g. 192.168.1.100)" value={form.host} onChange={f('host')} required />
           <div className="flex gap-2">
             <input className="input w-24" type="number" placeholder="Porta" value={form.port} onChange={f('port')} />
             <input className="input flex-1" placeholder="Username API" value={form.username} onChange={f('username')} />
-            <input className="input flex-1" type="password" placeholder={device ? '•••••••• (lascia vuoto per mantenerla)' : 'Password API'} value={form.password} onChange={f('password')} />
+            <input className="input flex-1" type="password" placeholder={device ? '•••••••• (leave blank to keep current)' : 'API Password'} value={form.password} onChange={f('password')} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.enabled} onChange={e => setForm(p => ({ ...p, enabled: e.target.checked }))} />
-            Abilitato
+            Enabled
           </label>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-ghost">Annulla</button>
-            <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Salvo...' : 'Salva'}</button>
+            <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Saving...' : 'Save'}</button>
           </div>
         </form>
       </div>
@@ -71,23 +71,23 @@ export default function Devices() {
   }, [load]))
 
   async function remove(id, name) {
-    if (!confirm(`Rimuovere il dispositivo "${name}"?`)) return
+    if (!confirm(`Remove device "${name}"?`)) return
     await devicesApi.remove(id)
     load()
   }
 
   if (loading) return (
     <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-      <Loader2 size={18} className="animate-spin" /> Caricamento...
+      <Loader2 size={18} className="animate-spin" /> Loading...
     </div>
   )
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Dispositivi Yeastar</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Yeastar Devices</h2>
         <button onClick={() => setModal('new')} className="btn-primary flex items-center gap-2">
-          <Plus size={16} /> Aggiungi dispositivo
+          <Plus size={16} /> Add device
         </button>
       </div>
 
@@ -106,14 +106,14 @@ export default function Devices() {
             </div>
             <div className={`flex items-center gap-1.5 text-xs font-medium ${d.connected ? 'text-green-600' : 'text-red-500'}`}>
               {d.connected ? <Wifi size={13} /> : <WifiOff size={13} />}
-              {d.connected ? 'Connesso' : 'Non connesso'}
-              {!d.enabled && <span className="ml-2 text-gray-400">(disabilitato)</span>}
+              {d.connected ? 'Connected' : 'Not connected'}
+              {!d.enabled && <span className="ml-2 text-gray-400">(disabled)</span>}
             </div>
             <p className="text-xs text-gray-400">User: {d.username}</p>
           </div>
         ))}
         {devices.length === 0 && (
-          <p className="col-span-3 text-center py-12 text-gray-400">Nessun dispositivo configurato.</p>
+          <p className="col-span-3 text-center py-12 text-gray-400">No devices configured.</p>
         )}
       </div>
 

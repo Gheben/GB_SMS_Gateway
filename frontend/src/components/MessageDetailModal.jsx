@@ -1,17 +1,17 @@
 import { format } from 'date-fns'
-import { it } from 'date-fns/locale'
+import { enUS } from 'date-fns/locale'
 import { X, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 
 const STATUS_DISPATCH = {
-  sent:    { label: 'Inviata',  cls: 'text-green-700 bg-green-50 border-green-200' },
-  failed:  { label: 'Errore',   cls: 'text-red-700 bg-red-50 border-red-200' },
-  pending: { label: 'In coda',  cls: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  sent:    { label: 'Sent',    cls: 'text-green-700 bg-green-50 border-green-200' },
+  failed:  { label: 'Error',   cls: 'text-red-700 bg-red-50 border-red-200' },
+  pending: { label: 'Queued', cls: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
 }
 
 function fmt(s) {
   if (!s) return '—'
-  try { return format(new Date(s), 'dd/MM/yyyy HH:mm:ss', { locale: it }) } catch { return s }
+  try { return format(new Date(s), 'MM/dd/yyyy HH:mm:ss', { locale: enUS }) } catch { return s }
 }
 
 function Field({ label, value, mono = false }) {
@@ -49,7 +49,7 @@ export default function MessageDetailModal({ msg, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-base font-semibold text-gray-800">
-            Dettaglio messaggio
+            Message detail
           </h2>
           <button
             onClick={onClose}
@@ -64,31 +64,31 @@ export default function MessageDetailModal({ msg, onClose }) {
 
           {/* Campi info */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Field label="Tipo"       value={msg.direction === 'inbound' ? 'Ricevuto' : 'Inviato'} />
-            <Field label="Stato"      value={msg.status} />
-            <Field label="Porta SIM"  value={msg.port ? `Porta ${msg.port}` : null} />
+            <Field label="Type"     value={msg.direction === 'inbound' ? 'Received' : 'Sent'} />
+            <Field label="Status"   value={msg.status} />
+            <Field label="SIM Port" value={msg.port ? `Port ${msg.port}` : null} />
             <Field
-              label={msg.direction === 'inbound' ? 'Mittente' : 'Destinatario'}
+              label={msg.direction === 'inbound' ? 'Sender' : 'Recipient'}
               value={contact}
               mono
             />
             {msg.direction === 'inbound' && (msg.port_sim_number || msg.recipient) && (
-              <Field label="Numero SIM ricevente" value={msg.port_sim_number || msg.recipient} mono />
+              <Field label="Receiving SIM number" value={msg.port_sim_number || msg.recipient} mono />
             )}
-            <Field label="Dispositivo" value={msg.device_name} />
-            <Field label="Data"        value={fmt(msg.received_at || msg.created_at)} />
+            <Field label="Device"   value={msg.device_name} />
+            <Field label="Date"     value={fmt(msg.received_at || msg.created_at)} />
           </div>
 
           {/* Testo SMS */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Testo</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Message</p>
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors px-2 py-0.5 rounded hover:bg-blue-50"
               >
                 {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
-                {copied ? 'Copiato!' : 'Copia'}
+                {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap break-words">
@@ -100,7 +100,7 @@ export default function MessageDetailModal({ msg, onClose }) {
           {msg.dispatches && msg.dispatches.length > 0 ? (
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Inoltri email ({msg.dispatches.length})
+                Email forwards ({msg.dispatches.length})
               </p>
               <div className="space-y-2">
                 {msg.dispatches.map((d) => {
@@ -109,18 +109,18 @@ export default function MessageDetailModal({ msg, onClose }) {
                     <div key={d.id} className={`rounded-lg border px-4 py-3 text-sm ${s.cls}`}>
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="text-sm">
-                          <span className="font-semibold">{d.rule_name || 'Regola rimossa'}</span>
+                          <span className="font-semibold">{d.rule_name || 'Rule removed'}</span>
                           <span className="mx-2 opacity-50">→</span>
                           <span className="font-mono">{d.email}</span>
                         </div>
                         <span className="text-xs font-bold uppercase tracking-wide">{s.label}</span>
                       </div>
                       {d.sent_at && (
-                        <p className="mt-1 text-xs opacity-60">Inviata: {fmt(d.sent_at)}</p>
+                        <p className="mt-1 text-xs opacity-60">Sent: {fmt(d.sent_at)}</p>
                       )}
                       {d.error && (
                         <div className="mt-2 font-mono text-xs bg-red-100 text-red-800 border border-red-200 rounded px-3 py-2 break-all">
-                          <span className="font-bold">Errore: </span>{d.error}
+                          <span className="font-bold">Error: </span>{d.error}
                         </div>
                       )}
                     </div>
@@ -129,7 +129,7 @@ export default function MessageDetailModal({ msg, onClose }) {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 italic">Nessun inoltro email per questo messaggio.</p>
+            <p className="text-sm text-gray-400 italic">No email forwards for this message.</p>
           )}
         </div>
       </div>

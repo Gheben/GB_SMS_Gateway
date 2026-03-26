@@ -28,14 +28,14 @@ function StatCard({ label, value, sub, color = 'blue' }) {
 }
 
 function StatusBadge({ status }) {
-  if (status === 'sent')    return <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Inviata</span>
-  if (status === 'failed')  return <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full"><XCircle size={11} />Errore</span>
+  if (status === 'sent')    return <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Sent</span>
+  if (status === 'failed')  return <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full"><XCircle size={11} />Error</span>
   return <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full"><Clock size={11} />{status}</span>
 }
 
 function fmtDate(s) {
   if (!s) return '—'
-  return new Date(s).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(s).toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtDay(s) {
@@ -100,7 +100,7 @@ export default function Report() {
                 onClick={() => setDays(d)}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${days === d ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
               >
-                {d}g
+                {d}d
               </button>
             ))}
           </div>
@@ -112,7 +112,7 @@ export default function Report() {
 
       {loading && !data && (
         <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-          <Loader2 size={18} className="animate-spin" /> Caricamento dati...
+            <Loader2 size={18} className="animate-spin" /> Loading data...
         </div>
       )}
 
@@ -120,13 +120,13 @@ export default function Report() {
         <>
           {/* KPI cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard label="SMS ricevuti"  value={data.totals.total_inbound}  color="blue" />
-            <StatCard label="SMS inviati"   value={data.totals.total_outbound} color="green" />
-            <StatCard label="Inoltri tot."  value={data.totals.total}          color="gray" />
-            <StatCard label="Email inviate" value={data.totals.sent}           color="green" />
-            <StatCard label="Errori"        value={data.totals.failed}         color="red" />
+            <StatCard label="SMS received"  value={data.totals.total_inbound}  color="blue" />
+            <StatCard label="SMS sent"   value={data.totals.total_outbound} color="green" />
+            <StatCard label="Total forwards"  value={data.totals.total}          color="gray" />
+            <StatCard label="Emails sent" value={data.totals.sent}           color="green" />
+            <StatCard label="Errors"        value={data.totals.failed}         color="red" />
             <StatCard
-              label="Tasso successo"
+              label="Success rate"
               value={data.totals.total > 0 ? `${Math.round(data.totals.sent / data.totals.total * 100)}%` : '—'}
               color="blue"
             />
@@ -136,9 +136,9 @@ export default function Report() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* SMS per giorno */}
             <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">SMS per giorno</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">SMS per day</h3>
               {data.smsByDay.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">Nessun dato</p>
+                <p className="text-sm text-gray-400 py-8 text-center">No data</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={data.smsByDay} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -157,8 +157,8 @@ export default function Report() {
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip labelFormatter={fmtDay} />
                     <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                    <Area type="monotone" dataKey="inbound"  name="Ricevuti" stroke="#3b82f6" fill="url(#gIn)"  strokeWidth={2} dot={false} />
-                    <Area type="monotone" dataKey="outbound" name="Inviati"  stroke="#10b981" fill="url(#gOut)" strokeWidth={2} dot={false} />
+                    <Area type="monotone" dataKey="inbound"  name="Received" stroke="#3b82f6" fill="url(#gIn)"  strokeWidth={2} dot={false} />
+                    <Area type="monotone" dataKey="outbound" name="Sent"  stroke="#10b981" fill="url(#gOut)" strokeWidth={2} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -166,9 +166,9 @@ export default function Report() {
 
             {/* Inoltri per regola (pie) */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Inoltri per regola</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Forwards by rule</h3>
               {data.dispatchByRule.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">Nessun dato</p>
+                <p className="text-sm text-gray-400 py-8 text-center">No data</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -182,7 +182,7 @@ export default function Report() {
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => [v, 'inoltri']} />
+                    <Tooltip formatter={(v) => [v, 'forwards']} />
                   </PieChart>
                 </ResponsiveContainer>
               )}
@@ -192,7 +192,7 @@ export default function Report() {
           {/* Grafici riga 2: SMS per device */}
           {data.smsByDevice.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">SMS per dispositivo</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">SMS by device</h3>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={data.smsByDevice} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -200,8 +200,8 @@ export default function Report() {
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
                   <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="inbound"  name="Ricevuti" fill="#3b82f6" radius={[3,3,0,0]} />
-                  <Bar dataKey="outbound" name="Inviati"  fill="#10b981" radius={[3,3,0,0]} />
+                  <Bar dataKey="inbound"  name="Received" fill="#3b82f6" radius={[3,3,0,0]} />
+                  <Bar dataKey="outbound" name="Sent"  fill="#10b981" radius={[3,3,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -210,31 +210,31 @@ export default function Report() {
           {/* Tabella Dispatch Log */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-700">Log inoltri email</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Email forwarding log</h3>
               <input
                 className="input text-sm py-1.5 w-64"
-                placeholder="Cerca mittente, email, regola..."
+                placeholder="Search sender, email, rule..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setLogPage(1) }}
               />
             </div>
 
             {filtered.length === 0 ? (
-              <p className="text-sm text-gray-400 py-8 text-center">Nessun inoltro nel periodo selezionato</p>
+              <p className="text-sm text-gray-400 py-8 text-center">No forwards in the selected period</p>
             ) : (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">
-                        <th className="pb-2 pr-4 font-medium">Data ricezione SMS</th>
-                        <th className="pb-2 pr-4 font-medium">Mittente</th>
-                        <th className="pb-2 pr-4 font-medium">Testo</th>
-                        <th className="pb-2 pr-4 font-medium">Dispositivo</th>
-                        <th className="pb-2 pr-4 font-medium">Regola</th>
-                        <th className="pb-2 pr-4 font-medium">Email dest.</th>
-                        <th className="pb-2 pr-4 font-medium">Stato</th>
-                        <th className="pb-2 font-medium">Inviata il</th>
+                        <th className="pb-2 pr-4 font-medium">SMS received at</th>
+                        <th className="pb-2 pr-4 font-medium">Sender</th>
+                        <th className="pb-2 pr-4 font-medium">Text</th>
+                        <th className="pb-2 pr-4 font-medium">Device</th>
+                        <th className="pb-2 pr-4 font-medium">Rule</th>
+                        <th className="pb-2 pr-4 font-medium">To email</th>
+                        <th className="pb-2 pr-4 font-medium">Status</th>
+                        <th className="pb-2 font-medium">Sent at</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -243,7 +243,7 @@ export default function Report() {
                           key={r.id}
                           className="hover:bg-blue-50 cursor-pointer transition-colors select-none"
                           onDoubleClick={() => handleRowDblClick(r)}
-                          title="Doppio click per dettagli"
+                          title="Double-click for details"
                         >
                           <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">{fmtDate(r.received_at || r.created_at)}</td>
                           <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">{r.sender || '—'}</td>
@@ -264,7 +264,7 @@ export default function Report() {
                 {/* Paginazione log */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>Righe per pagina:</span>
+                    <span>Rows per page:</span>
                     {[10, 25, 50].map(n => (
                       <button key={n} onClick={() => { setLogLimit(n); setLogPage(1) }}
                         className={`px-2.5 py-0.5 rounded border text-xs font-medium transition-colors ${
@@ -273,18 +273,18 @@ export default function Report() {
                         {n}
                       </button>
                     ))}
-                    <span className="text-gray-400 ml-2">{filtered.length} totali</span>
+                    <span className="text-gray-400 ml-2">{filtered.length} total</span>
                   </div>
                   {logTotalPages > 1 && (
                     <div className="flex items-center gap-2">
                       <button onClick={() => setLogPage(p => Math.max(1, p - 1))} disabled={logPage === 1}
                         className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-100">
-                        ← Prec
+                        ← Prev
                       </button>
-                      <span className="px-3 py-1 text-sm text-gray-600">Pag. {logPage} / {logTotalPages}</span>
+                      <span className="px-3 py-1 text-sm text-gray-600">Page {logPage} / {logTotalPages}</span>
                       <button onClick={() => setLogPage(p => Math.min(logTotalPages, p + 1))} disabled={logPage >= logTotalPages}
                         className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-100">
-                        Succ →
+                        Next →
                       </button>
                     </div>
                   )}

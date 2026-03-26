@@ -3,19 +3,19 @@ import { auditApi } from '../api'
 import { ClipboardList, Search, X, Trash2, RefreshCw, Loader2 } from 'lucide-react'
 
 const ACTION_LABELS = {
-  'auth:login':        'Accesso',
-  'sms:send':          'SMS inviato',
-  'user:create':       'Utente creato',
-  'user:update':       'Utente modificato',
-  'user:delete':       'Utente eliminato',
-  'rule:create':       'Regola creata',
-  'rule:update':       'Regola modificata',
-  'rule:delete':       'Regola eliminata',
-  'group:create':      'Gruppo creato',
-  'group:update':      'Gruppo modificato',
-  'group:delete':      'Gruppo eliminato',
-  'group:add_member':  'Membro aggiunto',
-  'group:remove_member': 'Membro rimosso',
+  'auth:login':        'Login',
+  'sms:send':          'SMS sent',
+  'user:create':       'User created',
+  'user:update':       'User updated',
+  'user:delete':       'User deleted',
+  'rule:create':       'Rule created',
+  'rule:update':       'Rule updated',
+  'rule:delete':       'Rule deleted',
+  'group:create':      'Group created',
+  'group:update':      'Group updated',
+  'group:delete':      'Group deleted',
+  'group:add_member':  'Member added',
+  'group:remove_member': 'Member removed',
 }
 
 function actionBadge(action) {
@@ -45,7 +45,7 @@ function actionBadge(action) {
 function formatDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'))
-  return d.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'medium' })
+  return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' })
 }
 
 export default function AuditLog() {
@@ -83,14 +83,14 @@ export default function AuditLog() {
   }
 
   async function handlePurge() {
-    if (!confirm(`Eliminare tutte le voci di audit più vecchie di ${purgeDays} giorni?`)) return
+    if (!confirm(`Delete all audit entries older than ${purgeDays} days?`)) return
     setPurging(true)
     try {
       const { removed } = await auditApi.purge(purgeDays)
-      alert(`Eliminate ${removed} voci.`)
+      alert(`Deleted ${removed} entries.`)
       load(1)
     } catch (err) {
-      alert(err.response?.data?.error || 'Errore durante la pulizia')
+      alert(err.response?.data?.error || 'Purge error')
     } finally {
       setPurging(false)
       setPurgeOpen(false)
@@ -106,14 +106,14 @@ export default function AuditLog() {
         <div className="flex items-center gap-2">
           <ClipboardList size={22} className="text-gray-500" />
           <h2 className="text-2xl font-bold text-gray-800">Audit Log</h2>
-          <span className="text-sm text-gray-400 ml-2">{total} voci totali</span>
+          <span className="text-sm text-gray-400 ml-2">{total} total entries</span>
         </div>
         <div className="flex gap-2">
           <button onClick={() => load(page)} className="btn-ghost flex items-center gap-1.5 text-sm">
-            <RefreshCw size={14} /> Aggiorna
+            <RefreshCw size={14} /> Refresh
           </button>
           <button onClick={() => setPurgeOpen(true)} className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
-            <Trash2 size={14} /> Pulizia
+            <Trash2 size={14} /> Purge
           </button>
         </div>
       </div>
@@ -122,46 +122,46 @@ export default function AuditLog() {
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[140px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Utente</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">User</label>
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 className="input pl-7 text-sm"
-                placeholder="Filtra per utente..."
+                placeholder="Filter by user..."
                 value={filters.username}
                 onChange={e => setFilters(p => ({ ...p, username: e.target.value }))}
               />
             </div>
           </div>
           <div className="flex-1 min-w-[140px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Azione</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Action</label>
             <select
               className="input text-sm"
               value={filters.action}
               onChange={e => setFilters(p => ({ ...p, action: e.target.value }))}
             >
-              <option value="">Tutte le azioni</option>
+              <option value="">All actions</option>
               {Object.entries(ACTION_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
             </select>
           </div>
           <div className="flex-1 min-w-[120px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Risorsa</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Resource</label>
             <select
               className="input text-sm"
               value={filters.resource_type}
               onChange={e => setFilters(p => ({ ...p, resource_type: e.target.value }))}
             >
-              <option value="">Tutte le risorse</option>
+              <option value="">All resources</option>
               <option value="message">SMS</option>
-              <option value="user">Utente</option>
-              <option value="rule">Regola</option>
-              <option value="local_group">Gruppo locale</option>
+              <option value="user">User</option>
+              <option value="rule">Rule</option>
+              <option value="local_group">Local group</option>
             </select>
           </div>
           <div className="min-w-[130px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Dal</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
             <input
               type="date"
               className="input text-sm"
@@ -170,7 +170,7 @@ export default function AuditLog() {
             />
           </div>
           <div className="min-w-[130px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Al</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
             <input
               type="date"
               className="input text-sm"
@@ -180,7 +180,7 @@ export default function AuditLog() {
           </div>
           {hasFilters && (
             <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <X size={14} /> Resetta
+              <X size={14} /> Reset
             </button>
           )}
         </div>
@@ -190,19 +190,19 @@ export default function AuditLog() {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center py-12 text-gray-400 gap-2">
-            <Loader2 size={18} className="animate-spin" /> Caricamento...
+            <Loader2 size={18} className="animate-spin" /> Loading...
           </div>
         ) : data.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">Nessuna voce trovata.</div>
+          <div className="text-center py-12 text-gray-400">No entries found.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Data/Ora</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Utente</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Azione</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide hidden md:table-cell">Dettaglio</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Date/Time</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">User</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Action</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide hidden md:table-cell">Detail</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide hidden lg:table-cell">IP</th>
                 </tr>
               </thead>
@@ -228,7 +228,7 @@ export default function AuditLog() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Pagina {page} di {totalPages} — {total} voci
+            Page {page} of {totalPages} — {total} entries
           </p>
           <div className="flex gap-2">
             <button
@@ -236,14 +236,14 @@ export default function AuditLog() {
               onClick={() => load(page - 1)}
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              ← Precedente
+              ← Previous
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => load(page + 1)}
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Successiva →
+              Next →
             </button>
           </div>
         </div>
@@ -255,10 +255,10 @@ export default function AuditLog() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 m-4">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
               <Trash2 size={18} className="text-red-500" />
-              Pulizia Audit Log
+              Audit Log Purge
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Elimina tutte le voci più vecchie di:
+              Delete all entries older than:
             </p>
             <div className="flex items-center gap-3 mb-6">
               <input
@@ -269,16 +269,16 @@ export default function AuditLog() {
                 onChange={e => setPurgeDays(Number(e.target.value))}
                 className="input w-28"
               />
-              <span className="text-sm text-gray-600">giorni</span>
+              <span className="text-sm text-gray-600">days</span>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setPurgeOpen(false)} className="btn-ghost">Annulla</button>
+              <button onClick={() => setPurgeOpen(false)} className="btn-ghost">Cancel</button>
               <button
                 onClick={handlePurge}
                 disabled={purging}
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {purging ? 'Eliminazione...' : 'Elimina'}
+                {purging ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

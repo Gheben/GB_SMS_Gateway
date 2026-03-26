@@ -20,13 +20,13 @@ export default function SendSMS() {
     }).catch(() => {})
   }, [])
 
-  // Carica porte dal DB quando cambia il dispositivo selezionato (per annotazioni)
+  // Load ports from DB when the selected device changes (for annotations)
   useEffect(() => {
     if (!form.device_id) { setPorts([]); return }
     portsApi.getAll({ device_id: form.device_id }).then(list => {
-      // Solo porte con SIM: READY o DOWN (no NO_SIM, no senza dati)
+      // Only ports with SIM: READY or DOWN (not NO_SIM or without data)
       const withSim = list.filter(p => p.status === 'READY' || p.status === 'DOWN')
-      // Se l'utente non è admin e ha porte assegnate, filtra solo quelle
+      // If user is not admin and has allowed ports, filter only those
       const allowedPorts = user?.allowed_ports || []
       const filtered = (isAdmin || allowedPorts.length === 0)
         ? withSim
@@ -40,15 +40,15 @@ export default function SendSMS() {
 
   function validate() {
     const e = {}
-    if (!form.device_id) e.device_id = 'Seleziona un dispositivo'
+    if (!form.device_id) e.device_id = 'Select a device'
     if (!form.port || isNaN(form.port) || form.port < 1 || form.port > 16)
-      e.port = 'Seleziona una porta valida (1–16)'
+      e.port = 'Select a valid port (1–16)'
     if (!form.recipient || !/^\+?[\d\s\-]{6,20}$/.test(form.recipient))
-      e.recipient = 'Numero di telefono non valido'
+      e.recipient = 'Invalid phone number'
     if (!form.message || form.message.trim().length === 0)
-      e.message = 'Il messaggio non può essere vuoto'
+      e.message = 'Message cannot be empty'
     if (form.message.length > 1024)
-      e.message = 'Massimo 1024 caratteri'
+      e.message = 'Maximum 1024 characters'
     return e
   }
 
@@ -66,10 +66,10 @@ export default function SendSMS() {
         recipient: form.recipient.trim(),
         message: form.message.trim(),
       })
-      setResult({ success: true, message: `SMS inviato. ID: ${res.id}` })
+      setResult({ success: true, message: `SMS sent. ID: ${res.id}` })
       setForm(f => ({ ...f, message: '' }))
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Errore durante l\'invio'
+      const msg = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Error sending message'
       setResult({ success: false, message: msg })
     } finally {
       setLoading(false)
@@ -78,24 +78,24 @@ export default function SendSMS() {
 
   return (
     <div className="max-w-xl space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Invia SMS</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Send SMS</h2>
 
       {devices.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-lg">
-          Nessun dispositivo connesso. Configura i dispositivi nella sezione <strong>Dispositivi</strong>.
+          No connected devices. Set up devices in the <strong>Devices</strong> section.
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         {/* Dispositivo */}
         <div>
-          <label className="label">Dispositivo</label>
+          <label className="label">Device</label>
           <select
             value={form.device_id}
             onChange={(e) => setForm(f => ({ ...f, device_id: e.target.value }))}
             className="input"
           >
-            <option value="">— seleziona —</option>
+            <option value="">— select —</option>
             {devices.map(d => (
               <option key={d.id} value={d.id}>{d.name} ({d.host})</option>
             ))}
@@ -105,10 +105,10 @@ export default function SendSMS() {
 
         {/* Porta SIM */}
         <div>
-          <label className="label">Porta SIM</label>
+          <label className="label">SIM Port</label>
           {ports.length === 0 ? (
             <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-              Nessuna porta con SIM rilevata per questo dispositivo.
+              No SIM ports detected for this device.
             </p>
           ) : (
             <select
@@ -118,10 +118,10 @@ export default function SendSMS() {
             >
               {ports.map(p => {
                 const label = [
-                  `Porta ${p.port_number}`,
+                  `Port ${p.port_number}`,
                   p.operator ? `— ${p.operator}` : '',
                   p.sim_number ? `(${p.sim_number})` : '',
-                  p.status === 'READY' ? '✓' : '(non pronta)',
+                  p.status === 'READY' ? '✓' : '(not ready)',
                 ].filter(Boolean).join(' ')
                 return <option key={p.port_number} value={p.port_number}>{label}</option>
               })}
@@ -132,10 +132,10 @@ export default function SendSMS() {
 
         {/* Numero destinatario */}
         <div>
-          <label className="label">Numero destinatario</label>
+          <label className="label">Recipient number</label>
           <input
             type="text"
-            placeholder="+39 333 1234567"
+            placeholder="+1 555 123 4567"
             value={form.recipient}
             onChange={(e) => setForm(f => ({ ...f, recipient: e.target.value }))}
             className="input"
@@ -146,14 +146,14 @@ export default function SendSMS() {
         {/* Testo */}
         <div>
           <label className="label">
-            Testo
+            Message
             <span className="text-gray-400 font-normal ml-2">{form.message.length}/1024</span>
           </label>
           <textarea
             rows={5}
             value={form.message}
             onChange={(e) => setForm(f => ({ ...f, message: e.target.value }))}
-            placeholder="Scrivi il messaggio..."
+            placeholder="Type your message..."
             className="input resize-none"
           />
           {errors.message && <p className="text-red-500 text-xs mt-1">{errors.message}</p>}
@@ -165,7 +165,7 @@ export default function SendSMS() {
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {loading ? 'Invio in corso...' : 'Invia SMS'}
+          {loading ? 'Sending...' : 'Send SMS'}
         </button>
       </form>
 

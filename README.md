@@ -8,67 +8,67 @@
 
 ---
 
-## 📋 Descrizione
+## 📋 Description
 
-**GB SMS Gateway** è un sistema completo per la gestione e il monitoraggio di SMS ricevuti e inviati tramite gateway GSM **Yeastar TG1600**. Permette di visualizzare i messaggi in tempo reale, configurare regole di inoltro automatico via email, gestire utenti con autenticazione locale, LDAP/Active Directory e SSO.
+**GB SMS Gateway** is a complete system for managing and monitoring SMS messages received and sent through **Yeastar TG1600** GSM gateways. It provides real-time message viewing, automatic email forwarding rules, and user management with local, LDAP/Active Directory, and SSO authentication.
 
-Ideale per aziende che utilizzano gateway GSM Yeastar e vogliono centralizzare la ricezione degli SMS con visibilità granulare basata su gruppi AD.
-
----
-
-### ✨ Funzionalità principali
-
-- 📊 **Dashboard in tempo reale** — Statistiche giornaliere: SMS ricevuti, inviati, falliti; stato connessione dispositivi
-- 📥 **Inbox SMS** — Tutti gli SMS inbound con ricerca, filtro e anteprima
-- 📤 **SMS inviati** — Storico messaggi outbound con stato consegna
-- ✉️ **Invio SMS** — Form di invio manuale con selezione dispositivo e porta SIM
-- 📡 **Gestione dispositivi** — Aggiungi/modifica dispositivi Yeastar con monitoraggio connessione AMI
-- 🔌 **Gestione porte SIM** — Visualizza stato porte, operatore, IMEI, numero SIM assegnato
-- 📋 **Regole di inoltro** — Motor di routing con condizioni multiple (mittente, testo, regex), priorità, stop-on-match e inoltro email/SMS
-- 👁️ **Visibilità per gruppi** — Ogni regola può limitare la visibilità dei messaggi ai soli utenti LDAP/AD autorizzati
-- 📊 **Report e statistiche** — Analisi SMS per giorno, per dispositivo, per regola con log inoltri
-- ⚙️ **Impostazioni SMTP** — Configurazione mail server e template HTML email personalizzabile
-- 👥 **Gestione utenti** — Ruoli `superadmin`, `admin`, `user` con permessi granulari per sezione
-- 🏘️ **Gruppi locali** — Crea gruppi di utenti locali con ereditarietà permessi
-- 📜 **Audit log** — Traccia completa di tutte le operazioni (solo superadmin)
-- 🔐 **Autenticazione** — Locale, LDAP/Active Directory, SSO (Authentik, NetScaler ADC, Nginx)
-- 🔄 **WebSocket** — Aggiornamenti in tempo reale su nuovi SMS e stato dispositivi
-- 📱 **PWA** — Installabile come app su desktop e mobile
-- 🔏 **SAML 2.0 / SSO aziendale** — Login federato tramite NetScaler, ADFS o Azure AD (SP-initiated, configurabile da UI)
+Ideal for organizations using Yeastar GSM gateways that want to centralize SMS reception with granular AD group-based visibility.
 
 ---
 
-## 🚀 Installazione
+### ✨ Key Features
 
-### Opzione 1: Docker (Raccomandato)
+- 📊 **Real-time Dashboard** — Daily statistics: SMS received, sent, failed; device connection status
+- 📥 **SMS Inbox** — All inbound SMS with search, filter, and preview
+- 📤 **Sent SMS** — Outbound message history with delivery status
+- ✉️ **Send SMS** — Manual send form with device and SIM port selection
+- 📡 **Device Management** — Add/edit Yeastar devices with AMI connection monitoring
+- 🔌 **SIM Port Management** — View port status, carrier, IMEI, assigned SIM number
+- 📋 **Forwarding Rules** — Routing engine with multiple conditions (sender, text, regex), priority, stop-on-match, and email/SMS forwarding
+- 👁️ **Group Visibility** — Each rule can restrict message visibility to authorized LDAP/AD group members only
+- 📊 **Reports & Statistics** — SMS analysis by day, device, and rule with forwarding logs
+- ⚙️ **SMTP Settings** — Mail server configuration and customizable HTML email template
+- 👥 **User Management** — `superadmin`, `admin`, `user` roles with granular per-section permissions
+- 🏘️ **Local Groups** — Create local user groups with permission inheritance
+- 📜 **Audit Log** — Complete record of all operations (superadmin only)
+- 🔐 **Authentication** — Local, LDAP/Active Directory, SSO (Authentik, NetScaler ADC, Nginx)
+- 🔄 **WebSocket** — Real-time updates for new SMS and device status
+- 📱 **PWA** — Installable as an app on desktop and mobile
+- 🔏 **SAML 2.0 / Enterprise SSO** — Federated login via NetScaler, ADFS, or Azure AD (SP-initiated, configurable from UI)
 
-**Prerequisiti:**
-- Docker e Docker Compose installati
-- Porte disponibili: `4674` (frontend web)
+---
 
-**Deploy rapido:**
+## 🚀 Installation
+
+### Option 1: Docker (Recommended)
+
+**Prerequisites:**
+- Docker and Docker Compose installed
+- Available port: `4674` (web frontend)
+
+**Quick deploy:**
 
 ```bash
-# Clona il repository
+# Clone the repository
 cd /volume3/docker   # Synology NAS
-# oppure: cd /opt/docker  # Linux VPS
+# or: cd /opt/docker  # Linux VPS
 
 git clone https://git.ballarini.app/guido/GB-SMS-Gateway.git smsgateway
 cd smsgateway
 
-# Crea il file di configurazione
+# Create the configuration file
 cp .env.example .env
 
-# Modifica le variabili obbligatorie
-vi .env   # imposta JWT_SECRET e SUPERADMIN_PASSWORD
+# Edit required variables
+vi .env   # set JWT_SECRET and SUPERADMIN_PASSWORD
 
-# Avvia i container
+# Start the containers
 docker compose up -d --build
 
-# Verifica lo stato
+# Check status
 docker ps
 
-# Visualizza i log
+# View logs
 docker logs smsgateway-backend
 docker logs smsgateway-frontend
 ```
@@ -77,31 +77,31 @@ Accedi all'applicazione su `http://localhost:4674`
 
 ---
 
-**Configurazione `docker-compose.yml`:**
+**`docker-compose.yml` configuration:**
 
 ```yaml
 services:
-  init-dirs:        # crea ./data e ./logs sull'host (Synology compat)
+  init-dirs:        # creates ./data and ./logs on the host (Synology compat)
     image: alpine
     command: sh -c "mkdir -p /host/data /host/logs"
 
-  backend:          # API + WebSocket, porta interna 4673
+  backend:          # API + WebSocket, internal port 4673
     depends_on:
       init-dirs:
         condition: service_completed_successfully
 
-  frontend:         # React UI via nginx, porta 4674
+  frontend:         # React UI via nginx, port 4674
     ports:
       - "${FRONTEND_PORT:-4674}:80"
 ```
 
-Volumi persistenti:
-- `./data/smsgateway.db` — Database SQLite (backup = copia questo file)
-- `./logs/app.log` — Log applicazione
+Persistent volumes:
+- `./data/smsgateway.db` — SQLite database (backup = copy this file)
+- `./logs/app.log` — Application log
 
 ---
 
-**Aggiornamento:**
+**Update:**
 
 ```bash
 cd /volume3/docker/smsgateway
@@ -112,13 +112,13 @@ docker compose up -d --build
 
 ---
 
-### Opzione 2: Installazione manuale (sviluppo)
+### Option 2: Manual installation (development)
 
-**Prerequisiti:**
-- Node.js 22+ (richiesto per `node:sqlite` built-in)
+**Prerequisites:**
+- Node.js 22+ (required for `node:sqlite` built-in)
 - npm
 
-**Passi:**
+**Steps:**
 
 ```bash
 git clone https://git.ballarini.app/guido/GB-SMS-Gateway.git
@@ -127,193 +127,193 @@ cd GB-SMS-Gateway
 # Backend
 cd backend
 npm install
-cp .env.example .env   # configura le variabili
+cp .env.example .env   # configure variables
 node --experimental-sqlite src/index.js
 
-# Frontend (in un altro terminale)
+# Frontend (in another terminal)
 cd frontend
 npm install
 npm run dev   # Vite dev server → http://localhost:3000
 ```
 
-Il frontend (Vite) gira su `http://localhost:3000` e proxia `/api` verso il backend su `localhost:4673`.
+The frontend (Vite) runs on `http://localhost:3000` and proxies `/api` to the backend on `localhost:4673`.
 
 ---
 
-## 🔑 Primo Accesso
+## 🔑 First Login
 
-All'avvio, il sistema crea automaticamente l'utente superamministratore:
+On startup, the system automatically creates the super-administrator user:
 
-- **Username**: `sysadmin` (configurabile via `SUPERADMIN_USERNAME`)
-- **Password**: `Password!` (configurabile via `SUPERADMIN_PASSWORD`)
+- **Username**: `sysadmin` (configurable via `SUPERADMIN_USERNAME`)
+- **Password**: `Password!` (configurable via `SUPERADMIN_PASSWORD`)
 
-> ⚠️ **IMPORTANTE**: Cambia la password immediatamente dopo il primo accesso! Imposta un `JWT_SECRET` lungo e casuale nel `.env` prima di andare in produzione.
+> ⚠️ **IMPORTANT**: Change the password immediately after first login! Set a long, random `JWT_SECRET` in `.env` before going to production.
 
 ---
 
-## ⚙️ Configurazione (`.env`)
+## ⚙️ Configuration (`.env`)
 
 ```dotenv
 # ─── Backend ────────────────────────────────────────────────────────
 PORT=4673
 LOG_LEVEL=info          # error | warn | info | debug
-CORS_ORIGIN=*           # oppure: http://192.168.1.50:4674
+CORS_ORIGIN=*           # or: http://192.168.1.50:4674
 
-# ─── Autenticazione ─────────────────────────────────────────────────
+# ─── Authentication ─────────────────────────────────────────────────
 SUPERADMIN_USERNAME=sysadmin
-SUPERADMIN_PASSWORD=Password!          # Cambia in produzione!
-JWT_SECRET=cambia-con-stringa-lunga-e-casuale
-JWT_EXPIRES_IN=8h                      # es. 8h, 1d, 7d
+SUPERADMIN_PASSWORD=Password!          # Change in production!
+JWT_SECRET=change-with-long-random-string
+JWT_EXPIRES_IN=8h                      # e.g. 8h, 1d, 7d
 
-# ─── Frontend (solo Docker) ─────────────────────────────────────────
+# ─── Frontend (Docker only) ─────────────────────────────────────────
 FRONTEND_PORT=4674
 
-# ─── SSO tramite proxy (opzionale) ─────────────────────────────────
+# ─── SSO via proxy (optional) ─────────────────────────────────────
 # SSO_ENABLED=true
 # SSO_HEADER=X-Remote-User
 ```
 
-> SMTP e LDAP si configurano direttamente dall'interfaccia web → **Impostazioni** e **Gestione utenti**.
+> SMTP and LDAP are configured directly from the web interface → **Settings** and **User management**.
 
 ---
 
-## 🔐 Autenticazione
+## 🔐 Authentication
 
-### Utenti locali
-Credenziali memorizzate nel DB con password hashed bcrypt (cost 12). Gestiti dalla sezione **Gestione utenti**.
+### Local users
+Credentials stored in the DB with bcrypt-hashed passwords (cost 12). Managed from the **User management** section.
 
 ### LDAP / Active Directory
-Configurabile dalla UI → **Gestione utenti → LDAP / Active Directory**:
-- Bind con account di servizio
-- Ricerca utente tramite filtro personalizzabile (default: `sAMAccountName`)
-- Risoluzione gruppi nested (AD con `LDAP_MATCHING_RULE_IN_CHAIN` o BFS standard)
-- Mapping gruppi DN → ruolo con permessi granulari
-- Al primo accesso LDAP l'utente viene inserito nel DB locale e aggiornato ad ogni login
+Configurable from the UI → **User management → LDAP / Active Directory**:
+- Bind with a service account
+- User search via customizable filter (default: `sAMAccountName`)
+- Nested group resolution (AD with `LDAP_MATCHING_RULE_IN_CHAIN` or standard BFS)
+- DN group → role mapping with granular permissions
+- On first LDAP login the user is inserted into the local DB and updated on every subsequent login
 
 ### SSO (Authentik / NetScaler ADC / Nginx)
-Se `SSO_ENABLED=true`, il frontend tenta automaticamente `GET /api/auth/sso` all'avvio.
+If `SSO_ENABLED=true`, the frontend automatically attempts `GET /api/auth/sso` on startup.
 
-Il proxy autentica l'utente, aggiunge l'header `X-Remote-User: john.smith` a ogni richiesta.
-Il backend legge lo username, lo risolve via LDAP (se configurato) e restituisce un JWT senza richiedere password.
+The proxy authenticates the user, adds the header `X-Remote-User: john.smith` to each request.
+The backend reads the username, resolves it via LDAP (if configured), and returns a JWT without requiring a password.
 
-> ℹ️ Abilitare `SSO_ENABLED=true` **non disabilita** il login manuale — i due meccanismi coesistono.
+> ℹ️ Enabling `SSO_ENABLED=true` **does not disable** manual login — both mechanisms coexist.
 
 ### SAML 2.0 (NetScaler / ADFS / Azure AD)
-Flusso SP-initiated configurabile dall'UI → **Impostazioni → SAML / SSO** (solo Superadmin).
+SP-initiated flow configurable from the UI → **Settings → SAML / SSO** (Superadmin only).
 
-**Come configurare:**
-1. Accedi come `sysadmin` → Impostazioni → tab **SAML / SSO**
-2. Inserisci la SP Base URL (URL pubblico dell'applicazione, es. `https://smsgateway.azienda.it`)
-3. Inserisci la **IdP SSO URL** e il **Certificato X.509** forniti dall'admin NetScaler
-4. Configura il mapping attributi (attributo username, display name)
-5. Scegli il ruolo di default per i nuovi utenti SAML *(usato solo se LDAP non ha mapping per i suoi gruppi)*
-6. Salva e abilita
+**How to configure:**
+1. Log in as `sysadmin` → Settings → **SAML / SSO** tab
+2. Enter the SP Base URL (public URL of the application, e.g. `https://smsgateway.company.com`)
+3. Enter the **IdP SSO URL** and **X.509 Certificate** provided by the NetScaler admin
+4. Configure attribute mapping (username attribute, display name)
+5. Choose the default role for new SAML users *(used only if LDAP has no mapping for their groups)*
+6. Save and enable
 
-**Dati da comunicare al tecnico IdP (NetScaler):**
+**Data to share with the IdP technician (NetScaler):**
 
-| Campo | Valore |
-|-------|--------|
-| ACS URL | `https://tuodominio/api/auth/saml/callback` |
-| SP Entity ID | `https://tuodominio/api/auth/saml/metadata` |
+| Field | Value |
+|-------|-------|
+| ACS URL | `https://yourdomain/api/auth/saml/callback` |
+| SP Entity ID | `https://yourdomain/api/auth/saml/metadata` |
 | Binding | HTTP-POST |
-| SP Metadata XML | `https://tuodominio/api/auth/saml/metadata` |
+| SP Metadata XML | `https://yourdomain/api/auth/saml/metadata` |
 | NameID format | `unspecified` |
-| Firma richiesta | Nessuna |
-| Attributi raccomandati | `displayName`, `sAMAccountName`, `memberOf` |
+| Signature required | None |
+| Recommended attributes | `displayName`, `sAMAccountName`, `memberOf` |
 
-**Risoluzione ruolo per utenti SAML (priorità):**
-1. I gruppi AD vengono letti dall'attributo SAML `memberOf` **e/o** tramite lookup LDAP con service account
-2. Se uno dei gruppi corrisponde a un mapping configurato in **LDAP → Mappatura gruppi**, viene usato quel ruolo/permessi
-3. Se nessun gruppo corrisponde a un mapping LDAP, viene usato il **Ruolo predefinito** configurato nel tab SAML
-4. Ad ogni accesso successivo il ruolo viene sincronizzato (se LDAP mapping attivo)
+**Role resolution for SAML users (priority):**
+1. AD groups are read from the SAML `memberOf` attribute **and/or** via LDAP lookup with a service account
+2. If any group matches a mapping configured in **LDAP → Group mappings**, that role/permissions are used
+3. If no group matches an LDAP mapping, the **Default role** configured in the SAML tab is used
+4. On each subsequent login the role is synchronized (if LDAP mapping is active)
 
-> Nessuna variabile `.env` necessaria — tutta la configurazione SAML è nel DB.
+> No `.env` variables needed — all SAML configuration is stored in the DB.
 
 ---
 
-## 📖 Guida utente
+## 📖 User Guide
 
 ### 1. Dashboard
-Accedi a `http://localhost:4674` (Docker) o `http://localhost:3000` (dev).
+Access at `http://localhost:4674` (Docker) or `http://localhost:3000` (dev).
 
-Visualizza:
-- Statistiche del giorno: SMS ricevuti, inviati, totale inbound, falliti
-- Ultimi messaggi ricevuti
-- Stato connessione dispositivi Yeastar
+Displays:
+- Daily statistics: SMS received, sent, total inbound, failed
+- Latest received messages
+- Yeastar device connection status
 
-### 2. Inbox e SMS inviati
-- **Inbox**: tutti gli SMS ricevuti, con ricerca per mittente, testo, dispositivo
-- **Inviati**: storico messaggi outbound con stato consegna
+### 2. Inbox and Sent SMS
+- **Inbox**: all received SMS, searchable by sender, text, device
+- **Sent**: outbound message history with delivery status
 
-### 3. Invio SMS
-1. Vai su **Invia SMS**
-2. Seleziona il dispositivo e la porta SIM
-3. Inserisci il numero destinatario e il testo
-4. Clicca **Invia**
+### 3. Send SMS
+1. Go to **Send SMS**
+2. Select the device and SIM port
+3. Enter the recipient number and message text
+4. Click **Send**
 
-### 4. Gestione dispositivi Yeastar
-1. Vai su **Dispositivi**
-2. Clicca **Aggiungi dispositivo**
-3. Configura:
-   - **Host**: IP del TG1600
-   - **Porta AMI**: `5038` (default)
-   - **Username / Password**: credenziali AMI (configurate nel TG1600 → System → AMI)
-4. Il backend mantiene la connessione persistente con riconnessione automatica
+### 4. Yeastar Device Management
+1. Go to **Devices**
+2. Click **Add device**
+3. Configure:
+   - **Host**: IP of the TG1600
+   - **AMI Port**: `5038` (default)
+   - **Username / Password**: AMI credentials (configured in TG1600 → System → AMI)
+4. The backend maintains a persistent connection with automatic reconnection
 
-### 5. Porte SIM
-Visualizza lo stato di ogni porta SIM del dispositivo:
-- Stato (registrata, non registrata, assente)
-- Operatore carrier
+### 5. SIM Ports
+View the status of each device SIM port:
+- Status (registered, unregistered, absent)
+- Carrier
 - IMEI
-- Numero SIM assegnato (editabile)
+- Assigned SIM number (editable)
 
-### 6. Regole di inoltro
+### 6. Forwarding Rules
 
-Le regole determinano come vengono instradati gli SMS in ingresso:
+Rules determine how incoming SMS are routed:
 
-1. Vai su **Regole**
-2. Clicca **Nuova regola**
-3. Configura:
-   - **Nome** e **Priorità** (ordine di valutazione)
-   - **Condizioni**: mittente, contenuto, dispositivo, porta — con operatori `=`, `contiene`, `regex`
-   - **Operatore**: `TUTTI` (AND) o `ALMENO UNO` (OR)
-   - **Destinatari email**: per inoltro automatico con template HTML
-   - **Stop at match**: se attivo, le regole successive non vengono valutate
-   - **Gruppi di visibilità**: DN LDAP/AD — solo gli utenti di quei gruppi vedranno i messaggi
+1. Go to **Rules**
+2. Click **New rule**
+3. Configure:
+   - **Name** and **Priority** (evaluation order)
+   - **Conditions**: sender, content, device, port — with operators `=`, `contains`, `regex`
+   - **Operator**: `ALL` (AND) or `AT LEAST ONE` (OR)
+   - **Email recipients**: for automatic forwarding with HTML template
+   - **Stop at match**: if active, subsequent rules are not evaluated
+   - **Visibility groups**: LDAP/AD DN — only users in those groups will see the messages
 
-> | Situazione | Visibilità |
-> |-----------|-----------|
-> | Admin / Superadmin | Tutti i messaggi |
-> | Utente + Gruppo AD | Messaggi delle regole dove il suo gruppo è incluso |
-> | Regola senza gruppi | Visibile a tutti gli utenti autenticati |
+> | Situation | Visibility |
+> |-----------|------------|
+> | Admin / Superadmin | All messages |
+> | User + AD Group | Messages of rules where their group is included |
+> | Rule without groups | Visible to all authenticated users |
 
-### 7. Impostazioni SMTP
-Vai su **Impostazioni**:
-- Configura host, porta, TLS, username/password SMTP
-- Testa la configurazione con **Invia email di test**
-- Personalizza il template HTML delle email di inoltro
+### 7. SMTP Settings
+Go to **Settings**:
+- Configure host, port, TLS, SMTP username/password
+- Test the configuration with **Send test email**
+- Customize the HTML email template for forwarded messages
 
-### 8. Report
-Vai su **Report** per visualizzare:
-- SMS per giorno (grafico)
-- SMS per dispositivo
-- Inoltri per regola
-- Log dettagliato degli inoltri email
+### 8. Reports
+Go to **Reports** to view:
+- SMS per day (chart)
+- SMS per device
+- Forwards per rule
+- Detailed email forwarding log
 
-### 9. Gestione utenti
-Ruoli disponibili:
-- **superadmin**: accesso totale + audit log
-- **admin**: gestione utenti e configurazione
-- **user**: accesso limitato ai permessi assegnati
+### 9. User Management
+Available roles:
+- **superadmin**: full access + audit log
+- **admin**: user management and configuration
+- **user**: access limited to assigned permissions
 
-Permessi granulari: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`
+Granular permissions: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`
 
-### 10. Audit log (solo superadmin)
-Accedi su **Audit log** per vedere tutte le operazioni eseguite: login, modifiche utenti, invio SMS, modifiche regole, ecc.
+### 10. Audit Log (superadmin only)
+Go to **Audit log** to see all operations performed: logins, user changes, SMS sends, rule changes, etc.
 
 ---
 
-## 🗂️ Struttura del progetto
+## 🗂️ Project structure
 
 ```
 GB-SMS-Gateway/
@@ -323,44 +323,44 @@ GB-SMS-Gateway/
 │   │   ├── db/
 │   │   │   └── database.js       # Schema SQLite + migrations
 │   │   ├── middleware/
-│   │   │   └── authMiddleware.js # JWT, ruoli, permessi
-│   │   ├── routes/               # 10 router Express
+│   │   │   └── authMiddleware.js # JWT, roles, permissions
+│   │   ├── routes/               # 10 Express routers
 │   │   │   ├── auth.js           # login, SSO, /me
-│   │   │   ├── messages.js       # inbox, sent, invio, stats
-│   │   │   ├── devices.js        # CRUD dispositivi Yeastar
-│   │   │   ├── ports.js          # stato e mappatura porte SIM
-│   │   │   ├── rules.js          # regole di inoltro
-│   │   │   ├── settings.js       # SMTP e template email
-│   │   │   ├── users.js          # utenti, LDAP, permessi
-│   │   │   ├── localGroups.js    # gruppi locali
-│   │   │   ├── report.js         # statistiche e analytics
-│   │   │   └── audit.js          # log di audit
+│   │   │   ├── messages.js       # inbox, sent, send, stats
+│   │   │   ├── devices.js        # CRUD Yeastar devices
+│   │   │   ├── ports.js          # SIM port status and mapping
+│   │   │   ├── rules.js          # forwarding rules
+│   │   │   ├── settings.js       # SMTP and email template
+│   │   │   ├── users.js          # users, LDAP, permissions
+│   │   │   ├── localGroups.js    # local groups
+│   │   │   ├── report.js         # statistics and analytics
+│   │   │   └── audit.js          # audit log
 │   │   ├── services/
 │   │   │   ├── authService.js    # JWT, bcrypt, seed superadmin
 │   │   │   ├── ldapService.js    # LDAP/AD integration
 │   │   │   ├── samlService.js    # SAML 2.0 SP (node-saml)
-│   │   │   ├── messageService.js # accesso messaggi con filtro permessi
-│   │   │   ├── routingEngine.js  # motore di routing SMS
-│   │   │   ├── deviceManager.js  # gestione connessioni AMI
-│   │   │   ├── yeastarConnector.js # protocollo AMI Yeastar
+│   │   │   ├── messageService.js # message access with permission filter
+│   │   │   ├── routingEngine.js  # SMS routing engine
+│   │   │   ├── deviceManager.js  # AMI connection management
+│   │   │   ├── yeastarConnector.js # Yeastar AMI protocol
 │   │   │   ├── wsService.js      # WebSocket real-time
 │   │   │   └── auditService.js   # audit trail
 │   │   └── utils/
 │   │       ├── logger.js         # Winston logger
-│   │       └── encryption.js     # cifratura credenziali DB
+│   │       └── encryption.js     # DB credential encryption
 │   ├── Dockerfile
 │   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx               # Routing React
-│   │   ├── api.js                # Axios client + metodi API
+│   │   ├── api.js                # Axios client + API methods
 │   │   ├── contexts/
 │   │   │   └── AuthContext.jsx   # JWT storage, SSO auto-login
 │   │   ├── hooks/
-│   │   │   └── useWebSocket.js   # Hook WebSocket
-│   │   ├── pages/                # 13 pagine
+│   │   │   └── useWebSocket.js   # WebSocket hook
+│   │   ├── pages/                # 13 pages
 │   │   │   ├── LoginPage.jsx
-│   │   │   ├── SamlCallback.jsx  # riceve token JWT dal backend SAML
+│   │   │   ├── SamlCallback.jsx  # receives JWT token from SAML backend
 │   │   │   ├── Dashboard.jsx
 │   │   │   ├── Inbox.jsx
 │   │   │   ├── Sent.jsx
@@ -384,170 +384,170 @@ GB-SMS-Gateway/
 
 ---
 
-## 🔧 Stack tecnologico
+## 🔧 Tech Stack
 
 ### Backend
-- **Node.js 22** — Runtime JavaScript con `node:sqlite` built-in
-- **Express 4** — Web framework REST API
-- **SQLite** (`node:sqlite`) — Database embedded, zero config
-- **bcryptjs** — Hashing password (cost 12)
-- **jsonwebtoken** — Autenticazione JWT stateless
-- **ldapjs** — Integrazione LDAP/Active Directory
+- **Node.js 22** — JavaScript runtime with `node:sqlite` built-in
+- **Express 4** — REST API web framework
+- **SQLite** (`node:sqlite`) — Embedded database, zero config
+- **bcryptjs** — Password hashing (cost 12)
+- **jsonwebtoken** — Stateless JWT authentication
+- **ldapjs** — LDAP/Active Directory integration
 - **@node-saml/node-saml** — SAML 2.0 SP (SP-initiated, NetScaler/ADFS/AzureAD)
-- **winston** — Logging strutturato
-- **ws** — WebSocket server per aggiornamenti real-time
+- **winston** — Structured logging
+- **ws** — WebSocket server for real-time updates
 
 ### Frontend
-- **React 18** — UI component-based
-- **Vite 5** — Build tool e dev server
+- **React 18** — Component-based UI
+- **Vite 5** — Build tool and dev server
 - **Tailwind CSS 3** — Utility-first styling
-- **Axios** — HTTP client con interceptor JWT
-- **PWA** — Service worker + manifest per installazione offline
+- **Axios** — HTTP client with JWT interceptor
+- **PWA** — Service worker + manifest for offline installation
 
-### Infrastruttura
-- **Docker** + **Docker Compose** — Deploy containerizzato
-- **nginx** — Reverse proxy frontend + gzip + cache headers
-- **AMI** (Asterisk Manager Interface) — Connessione al Yeastar TG1600
+### Infrastructure
+- **Docker** + **Docker Compose** — Containerized deployment
+- **nginx** — Frontend reverse proxy + gzip + cache headers
+- **AMI** (Asterisk Manager Interface) — Connection to Yeastar TG1600
 
 ---
 
 ## 📊 API Endpoints
 
-### Autenticazione
-- `POST /api/auth/login` — Login con username/password
-- `GET /api/auth/sso` — Login SSO via header proxy
-- `GET /api/auth/me` — Info utente corrente dal token JWT
-- `GET /api/auth/saml/status` — Verifica se SAML è abilitato *(pubblico)*
-- `GET /api/auth/saml/metadata` — SP Metadata XML per configurazione IdP *(pubblico)*
-- `GET /api/auth/saml/login` — Avvio flusso SAML SP-initiated (redirect a IdP)
-- `POST /api/auth/saml/callback` — ACS endpoint (POST dall'IdP dopo autenticazione)
+### Authentication
+- `POST /api/auth/login` — Login with username/password
+- `GET /api/auth/sso` — SSO login via proxy header
+- `GET /api/auth/me` — Current user info from JWT token
+- `GET /api/auth/saml/status` — Check if SAML is enabled *(public)*
+- `GET /api/auth/saml/metadata` — SP Metadata XML for IdP configuration *(public)*
+- `GET /api/auth/saml/login` — Start SAML SP-initiated flow (redirect to IdP)
+- `POST /api/auth/saml/callback` — ACS endpoint (POST from IdP after authentication)
 
-### Messaggi
-- `GET /api/messages` — Lista messaggi (filtri: direction, device_id, search, paginazione)
-- `GET /api/messages/stats` — Statistiche (received_today, sent_today, total_inbound, failed)
-- `GET /api/messages/:id` — Dettaglio messaggio
-- `POST /api/messages/send` — Invia SMS (device, porta, destinatario, testo)
+### Messages
+- `GET /api/messages` — List messages (filters: direction, device_id, search, pagination)
+- `GET /api/messages/stats` — Statistics (received_today, sent_today, total_inbound, failed)
+- `GET /api/messages/:id` — Message detail
+- `POST /api/messages/send` — Send SMS (device, port, recipient, text)
 
-### Dispositivi
-- `GET /api/devices` — Lista dispositivi con stato connessione
-- `POST /api/devices` — Crea dispositivo Yeastar
-- `PUT /api/devices/:id` — Modifica dispositivo
-- `DELETE /api/devices/:id` — Elimina dispositivo
+### Devices
+- `GET /api/devices` — List devices with connection status
+- `POST /api/devices` — Create Yeastar device
+- `PUT /api/devices/:id` — Update device
+- `DELETE /api/devices/:id` — Delete device
 
-### Porte SIM
-- `GET /api/ports?device_id=` — Stato porte SIM del dispositivo
-- `PUT /api/ports/:device_id/:port_number/info` — Aggiorna numero SIM / operatore
+### SIM Ports
+- `GET /api/ports?device_id=` — Device SIM port status
+- `PUT /api/ports/:device_id/:port_number/info` — Update SIM number / carrier
 
-### Regole di inoltro
-- `GET /api/rules` — Lista regole con condizioni e destinatari
-- `POST /api/rules` — Crea regola (condizioni, email targets, gruppi visibilità)
-- `PUT /api/rules/:id` — Modifica regola
-- `DELETE /api/rules/:id` — Elimina regola
+### Forwarding Rules
+- `GET /api/rules` — List rules with conditions and recipients
+- `POST /api/rules` — Create rule (conditions, email targets, visibility groups)
+- `PUT /api/rules/:id` — Update rule
+- `DELETE /api/rules/:id` — Delete rule
 
-### Impostazioni
-- `GET/POST /api/settings/smtp` — Configurazione SMTP
-- `POST /api/settings/smtp/test` — Test invio email
-- `GET/POST /api/settings/email-template` — Template HTML email
-- `GET/POST /api/settings/email-subject` — Oggetto email personalizzato
-- `GET/POST /api/settings/saml` — Configurazione SAML 2.0 *(solo superadmin)*
+### Settings
+- `GET/POST /api/settings/smtp` — SMTP configuration
+- `POST /api/settings/smtp/test` — Test email send
+- `GET/POST /api/settings/email-template` — HTML email template
+- `GET/POST /api/settings/email-subject` — Custom email subject
+- `GET/POST /api/settings/saml` — SAML 2.0 configuration *(superadmin only)*
 
-### Utenti e gruppi
-- `GET/POST /api/users` — Lista / crea utenti
-- `PUT/DELETE /api/users/:id` — Modifica / elimina utente
-- `GET/POST /api/users/ldap-settings` — Configurazione LDAP
-- `POST /api/users/ldap-test` — Test connessione LDAP
-- `GET/POST /api/groups` — Gestione gruppi locali
-- `POST /api/groups/:id/members` — Aggiungi utente a gruppo
+### Users and groups
+- `GET/POST /api/users` — List / create users
+- `PUT/DELETE /api/users/:id` — Update / delete user
+- `GET/POST /api/users/ldap-settings` — LDAP configuration
+- `POST /api/users/ldap-test` — Test LDAP connection
+- `GET/POST /api/groups` — Manage local groups
+- `POST /api/groups/:id/members` — Add user to group
 
-### Report e audit
-- `GET /api/report?days=30` — Statistiche SMS aggregati
-- `GET /api/audit` — Log di audit con filtri (solo superadmin)
-- `DELETE /api/audit?days=N` — Purge voci vecchie
+### Reports and audit
+- `GET /api/report?days=30` — Aggregated SMS statistics
+- `GET /api/audit` — Audit log with filters (superadmin only)
+- `DELETE /api/audit?days=N` — Purge old entries
 
 ### Health check
-- `GET /api/health` — Stato backend e dispositivi connessi
+- `GET /api/health` — Backend status and connected devices
 
 ---
 
-## 🗃️ Database SQLite
+## 🗃️ SQLite Database
 
-| Tabella | Contenuto |
-|---------|-----------|
-| `devices` | Gateway Yeastar configurati |
-| `ports` | Porte SIM con stato, operatore, IMEI, numero SIM |
-| `messages` | SMS inbound/outbound |
-| `routing_rules` | Regole di inoltro con `allowed_groups` (JSON) |
-| `rule_conditions` | Condizioni delle regole |
-| `rule_targets` | Email destinatari degli inoltri |
-| `dispatches` | Log inoltri email per ogni SMS |
-| `users` | Utenti locali e LDAP (`source`, `ldap_dn`, `ldap_groups`) |
-| `settings` | Configurazioni chiave-valore (SMTP, LDAP, template email) |
-| `audit_log` | Audit trail completo delle operazioni |
+| Table | Contents |
+|-------|----------|
+| `devices` | Configured Yeastar gateways |
+| `ports` | SIM ports with status, carrier, IMEI, SIM number |
+| `messages` | Inbound/outbound SMS |
+| `routing_rules` | Forwarding rules with `allowed_groups` (JSON) |
+| `rule_conditions` | Rule conditions |
+| `rule_targets` | Email recipients for forwarding |
+| `dispatches` | Email forwarding log per SMS |
+| `users` | Local and LDAP users (`source`, `ldap_dn`, `ldap_groups`) |
+| `settings` | Key-value configuration (SMTP, LDAP, email template) |
+| `audit_log` | Complete operation audit trail |
 
 ---
 
-## 🔒 Sicurezza
+## 🔒 Security
 
-- ✅ **Password hashing** — bcrypt con cost 12
-- ✅ **JWT stateless** — Token firmati con segreto configurabile, scadenza impostabile
-- ✅ **Middleware auth** — Ogni route verifica ruolo e permessi specifici
-- ✅ **Input validation** — express-validator su tutti gli endpoint pubblici
+- ✅ **Password hashing** — bcrypt with cost 12
+- ✅ **Stateless JWT** — Tokens signed with a configurable secret, expiry configurable
+- ✅ **Auth middleware** — Every route verifies role and specific permissions
+- ✅ **Input validation** — express-validator on all public endpoints
 - ✅ **SQL Injection** — Prepared statements (SQLite built-in)
-- ✅ **Helmet** — HTTP security headers automatici
-- ✅ **CORS** — Origine configurabile (default `*`, restringi in produzione)
-- ✅ **Credenziali LDAP cifrate** — Stored nel DB con cifratura AES
-- ✅ **SSO sicuro** — Endpoint `/api/auth/sso` disabilitato di default; va abilitato solo se il proxy impedisce accesso diretto al backend
-- ✅ **Audit trail** — Tutte le operazioni sensibili vengono tracciate nel log di audit
+- ✅ **Helmet** — Automatic HTTP security headers
+- ✅ **CORS** — Configurable origin (default `*`, restrict in production)
+- ✅ **Encrypted LDAP credentials** — Stored in DB with AES encryption
+- ✅ **Secure SSO** — `/api/auth/sso` endpoint disabled by default; enable only if the proxy prevents direct backend access
+- ✅ **Audit trail** — All sensitive operations are recorded in the audit log
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Il container non parte
+### Container won't start
 ```bash
 docker logs smsgateway-backend
 ```
 
-Errori comuni:
-- `ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite` → immagine Node.js troppo vecchia, servono Node 22+ e il flag `--experimental-sqlite`
-- `Bind mount failed` → le cartelle `./data` e `./logs` non esistono sull'host (il servizio `init-dirs` le crea automaticamente)
+Common errors:
+- `ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite` → Node.js image too old, requires Node 22+ and the `--experimental-sqlite` flag
+- `Bind mount failed` → the `./data` and `./logs` folders don't exist on the host (the `init-dirs` service creates them automatically)
 
-### Password errata al login su Docker
-Possibile causa: il file `.env` ha line ending `CRLF` (copiato da Windows). Fix:
+### Wrong password when logging in via Docker
+Possible cause: the `.env` file has `CRLF` line endings (copied from Windows). Fix:
 ```bash
 sed -i 's/\r//' .env
 docker compose down && docker compose up -d --build
 ```
 
-### Dispositivo Yeastar non si connette
-- Verifica che l'AMI sia abilitato nel TG1600 (System → AMI → Enable)
-- Controlla host, porta (default `5038`), username e password AMI
-- Verifica che il firewall non blocchi la porta 5038
+### Yeastar device won't connect
+- Check that AMI is enabled on the TG1600 (System → AMI → Enable)
+- Verify host, port (default `5038`), AMI username and password
+- Ensure the firewall is not blocking port 5038
 
-### Nessun SMS ricevuto
-- Verifica lo stato porte in **Porte SIM** — le SIM devono essere in stato "Registrata"
-- Controlla che almeno una regola di inoltro sia attiva
+### No SMS received
+- Check port status in **SIM Mapping** — SIMs must be in "Registered" state
+- Ensure at least one forwarding rule is active
 
 ---
 
-## 🔄 Backup e Ripristino
+## 🔄 Backup & Restore
 
-### Backup manuale
+### Manual backup
 ```bash
-# Il database è un singolo file SQLite
+# The database is a single SQLite file
 cp /volume3/docker/smsgateway/data/smsgateway.db smsgateway_$(date +%Y%m%d).db
 ```
 
-### Ripristino
+### Restore
 ```bash
 docker compose down
 cp smsgateway_backup.db /volume3/docker/smsgateway/data/smsgateway.db
 docker compose up -d
 ```
 
-### Backup automatico (cron)
+### Automatic backup (cron)
 ```bash
-# Aggiungere al crontab (crontab -e)
+# Add to crontab (crontab -e)
 0 3 * * * cp /volume3/docker/smsgateway/data/smsgateway.db /backup/smsgateway_$(date +\%Y\%m\%d).db
 ```
 
@@ -555,49 +555,49 @@ docker compose up -d
 
 ## 📝 Changelog
 
-### v1.1.0 (Marzo 2026)
-- ✅ Fix: `node:sqlite` → richiede Node 22+ e `--experimental-sqlite`
-- ✅ Fix: Dockerfile aggiornato a `node:22-alpine`
-- ✅ Fix: `.gitattributes` per line ending LF (compatibilità Synology)
-- ✅ Fix: `.trim()` su `SUPERADMIN_PASSWORD` per prevenire bug CRLF
-- ✅ Fix: servizio `init-dirs` in docker-compose per creare cartelle bind mount su Synology
-- ✅ Remote git multipli: `git.ballarini.app` + `git.airdolomiti.it`
-- ✅ Logging diagnostico login
+### v1.1.0 (March 2026)
+- ✅ Fix: `node:sqlite` → requires Node 22+ and `--experimental-sqlite`
+- ✅ Fix: Dockerfile updated to `node:22-alpine`
+- ✅ Fix: `.gitattributes` for LF line endings (Synology compatibility)
+- ✅ Fix: `.trim()` on `SUPERADMIN_PASSWORD` to prevent CRLF bugs
+- ✅ Fix: `init-dirs` service in docker-compose to create bind mount folders on Synology
+- ✅ Multiple git remotes: `git.ballarini.app` + `git.airdolomiti.it`
+- ✅ Login diagnostic logging
 
-### v1.0.0 (Gennaio 2026)
-- ✅ Monitoraggio real-time porte SIM (segnale, operatore, IMEI)
-- ✅ Ricezione e inoltro SMS con motore di routing
-- ✅ Invio SMS manuale
-- ✅ Inoltro email automatico con template HTML personalizzabile
-- ✅ Autenticazione locale + LDAP/AD + SSO
-- ✅ Visibilità messaggi per gruppi LDAP/AD
-- ✅ Report e statistiche
-- ✅ Gestione utenti con ruoli e permessi granulari
-- ✅ Gruppi locali con ereditarietà permessi
-- ✅ Audit log completo
-- ✅ WebSocket per aggiornamenti real-time
-- ✅ PWA installabile
-- ✅ Deploy Docker con volumi persistenti
-
----
-
-## 🤝 Contribuire
-
-1. Fai un fork del progetto
-2. Crea un branch (`git checkout -b feature/NuovaFunzionalita`)
-3. Committa le modifiche (`git commit -m 'feat: aggiungi NuovaFunzionalita'`)
-4. Push del branch (`git push origin feature/NuovaFunzionalita`)
-5. Apri una Pull Request
+### v1.0.0 (January 2026)
+- ✅ Real-time SIM port monitoring (signal, carrier, IMEI)
+- ✅ SMS reception and forwarding with routing engine
+- ✅ Manual SMS sending
+- ✅ Automatic email forwarding with customizable HTML template
+- ✅ Local + LDAP/AD + SSO authentication
+- ✅ Message visibility by LDAP/AD groups
+- ✅ Reports and statistics
+- ✅ User management with roles and granular permissions
+- ✅ Local groups with permission inheritance
+- ✅ Complete audit log
+- ✅ WebSocket for real-time updates
+- ✅ Installable PWA
+- ✅ Docker deployment with persistent volumes
 
 ---
 
-## 📄 Licenza
+## 🤝 Contributing
 
-Uso privato — © 2026 Guido Ballarini
+1. Fork the project
+2. Create a branch (`git checkout -b feature/NewFeature`)
+3. Commit your changes (`git commit -m 'feat: add NewFeature'`)
+4. Push the branch (`git push origin feature/NewFeature`)
+5. Open a Pull Request
 
 ---
 
-## 👨‍💻 Autore
+## 📄 License
+
+Private use — © 2026 Guido Ballarini
+
+---
+
+## 👨‍💻 Author
 
 **Guido Ballarini**
 
@@ -606,61 +606,61 @@ Uso privato — © 2026 Guido Ballarini
 
 ---
 
-## 💖 Supporta il progetto
+## 💶 Support the project
 
-Se trovi utile questo progetto, offrimi un caffè! ☕
+If you find this project useful, buy me a coffee! ☕
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-guidoballau-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/guidoballau)
 [![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=8RF28JBPLYASN)
 
-⭐ Se ti piace il progetto, lascia una stella! ⭐
+⭐ If you like the project, leave a star! ⭐
 
 *Made with ❤️ by Guido Ballarini — © 2026*
 
 
 ---
 
-## Funzionalità principali
+## Key Features
 
-- **Monitoraggio real-time** delle porte SIM (stato, operatore, segnale, IMEI)
-- **Ricezione e inoltro SMS** tramite regole configurabili (routing engine)
-- **Invio SMS** manuale da dashboard web
-- **Inoltro email** automatico al match delle regole con template HTML personalizzabile
-- **Autenticazione** locale, LDAP/Active Directory e SSO (Authentik, NetScaler ADC)
-- **Autorizzazioni per gruppo AD**: ogni regola di inoltro può limitare la visibilità dei messaggi a specifici gruppi
-- **Report e statistiche** SMS ricevuti/inviati
-- **Gestione utenti** completa con ruoli: `superadmin`, `admin`, `user`
-- **PWA** installabile su desktop e mobile
+- **Real-time monitoring** of SIM ports (status, carrier, signal, IMEI)
+- **SMS reception and forwarding** via configurable rules (routing engine)
+- **Manual SMS sending** from web dashboard
+- **Automatic email forwarding** on rule match with customizable HTML template
+- **Authentication**: local, LDAP/Active Directory and SSO (Authentik, NetScaler ADC)
+- **AD group permissions**: each forwarding rule can restrict message visibility to specific groups
+- **SMS reports and statistics** received/sent
+- **Full user management** with roles: `superadmin`, `admin`, `user`
+- **PWA** installable on desktop and mobile
 
 ---
 
-## Stack tecnologico
+## Tech Stack
 
-| Layer | Tecnologia |
-|-------|-----------|
+| Layer | Technology |
+|-------|------------|
 | Backend | Node.js 25 + Express 4 |
 | Database | SQLite (`node:sqlite`, builtin Node.js 25) |
 | Frontend | React 18 + Vite 5 + Tailwind CSS 3 |
 | Auth | JWT (jsonwebtoken) + bcryptjs + ldapjs |
-| Connettore | AMI (Asterisk Manager Interface) → Yeastar TG1600 |
+| Connector | AMI (Asterisk Manager Interface) → Yeastar TG1600 |
 | Container | Docker + Docker Compose |
 
 ---
 
-## Struttura del progetto
+## Project Structure
 
 ```
 GB-SMS-Gateway/
 ├── backend/
 │   ├── src/
-│   │   ├── db/            # Database SQLite (schema + migrations)
+│   │   ├── db/            # SQLite database (schema + migrations)
 │   │   ├── middleware/    # Auth middleware (JWT, roles)
 │   │   ├── routes/        # Express routes (auth, users, messages, rules, ports, devices, settings)
 │   │   ├── services/      # Business logic (authService, ldapService, messageService, routingEngine, deviceManager, yeastarConnector)
 │   │   ├── utils/         # Logger (winston)
 │   │   └── index.js       # Entry point
-│   ├── data/              # SQLite DB (bind mount Docker)
-│   ├── logs/              # Log files (bind mount Docker)
+│   ├── data/              # SQLite DB (Docker bind mount)
+│   ├── logs/              # Log files (Docker bind mount)
 │   └── package.json
 ├── frontend/
 │   ├── src/

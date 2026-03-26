@@ -8,22 +8,22 @@ import {
 
 const ALL_PERMS = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'inbox',     label: 'Ricevuti' },
-  { key: 'sent',      label: 'Inviati' },
-  { key: 'send',      label: 'Invia SMS' },
-  { key: 'report',    label: 'Report' },
-  { key: 'devices',   label: 'Dispositivi' },
-  { key: 'ports',     label: 'Mappatura SIM' },
-  { key: 'rules',     label: 'Regole inoltro' },
-  { key: 'settings',  label: 'Impostazioni' },
-  { key: 'users',     label: 'Gestione utenti' },
-  { key: 'api',       label: 'Accesso API' },
+  { key: 'inbox',     label: 'Inbox' },
+  { key: 'sent',      label: 'Sent' },
+  { key: 'send',      label: 'Send SMS' },
+  { key: 'report',    label: 'Reports' },
+  { key: 'devices',   label: 'Devices' },
+  { key: 'ports',     label: 'SIM Mapping' },
+  { key: 'rules',     label: 'Forward Rules' },
+  { key: 'settings',  label: 'Settings' },
+  { key: 'users',     label: 'User management' },
+  { key: 'api',       label: 'API Access' },
 ]
 
 function RoleBadge({ role }) {
   if (role === 'superadmin') return <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">Super Admin</span>
   if (role === 'admin')      return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Admin</span>
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">Utente</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">User</span>
 }
 
 function SourceBadge({ source }) {
@@ -32,7 +32,7 @@ function SourceBadge({ source }) {
       <Server size={10} />LDAP
     </span>
   )
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 font-medium">Locale</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 font-medium">Local</span>
 }
 
 function PermissionsEditor({ value, onChange, disabled }) {
@@ -98,7 +98,7 @@ function UserModal({ user, onClose, onSaved }) {
       onSaved()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.error || 'Errore durante il salvataggio')
+      setError(err.response?.data?.error || 'Error saving')
     } finally {
       setSaving(false)
     }
@@ -108,7 +108,7 @@ function UserModal({ user, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8 overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-800">{isNew ? 'Nuovo utente' : `Modifica: ${user.username}`}</h2>
+          <h2 className="font-semibold text-gray-800">{isNew ? 'New user' : `Edit: ${user.username}`}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -122,7 +122,7 @@ function UserModal({ user, onClose, onSaved }) {
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              {isNew ? 'Password' : 'Nuova password (lascia vuoto per non cambiare)'}
+              {isNew ? 'Password' : 'New password (leave blank to keep current)'}
             </label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               required={isNew} minLength={6}
@@ -131,17 +131,17 @@ function UserModal({ user, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Ruolo</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Role</label>
             <select value={role} onChange={e => setRole(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-              <option value="user">Utente</option>
+              <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Permessi {role !== 'user' && <span className="text-gray-400 font-normal ml-1">(gli admin hanno accesso completo)</span>}
+              Permissions {role !== 'user' && <span className="text-gray-400 font-normal ml-1">(admins have full access)</span>}
             </label>
             <PermissionsEditor value={permissions} onChange={setPermissions} disabled={role !== 'user'} />
           </div>
@@ -149,19 +149,19 @@ function UserModal({ user, onClose, onSaved }) {
           {role === 'user' && permissions.send && (
             <div className="border border-blue-100 rounded-lg p-4 bg-blue-50 space-y-2">
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Porte SIM consentite per invio SMS
+                Allowed SIM ports for sending SMS
               </label>
               <p className="text-xs text-gray-400">
-                Se non selezioni nulla, l'utente può usare tutte le porte disponibili.
+                If nothing is selected, the user can use all available ports.
               </p>
               {availablePorts.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">Nessuna porta con SIM rilevata.</p>
+                <p className="text-xs text-gray-400 italic">No SIM ports detected.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
                   {availablePorts.map(p => {
                     const label = [
                       p.device_name,
-                      `Porta ${p.port_number}`,
+                      `Port ${p.port_number}`,
                       p.operator ? `— ${p.operator}` : '',
                       p.sim_number ? `(${p.sim_number})` : '',
                     ].filter(Boolean).join(' ')
@@ -185,10 +185,10 @@ function UserModal({ user, onClose, onSaved }) {
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Annulla</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
             <button type="submit" disabled={saving}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors">
-              {saving ? 'Salvataggio...' : isNew ? 'Crea utente' : 'Salva modifiche'}
+              {saving ? 'Saving...' : isNew ? 'Create user' : 'Save changes'}
             </button>
           </div>
         </form>
@@ -208,7 +208,7 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!groupDn.trim()) { setError('Il DN del gruppo è obbligatorio'); return }
+    if (!groupDn.trim()) { setError('Group DN is required'); return }
     onSaved({ id: mapping?.id || null, group_dn: groupDn.trim(), role, permissions: role === 'admin' ? {} : permissions })
   }
 
@@ -216,21 +216,21 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-800">{isNew ? 'Nuovo mapping gruppo' : 'Modifica mapping'}</h2>
+          <h2 className="font-semibold text-gray-800">{isNew ? 'New group mapping' : 'Edit mapping'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Group DN (percorso completo)</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Group DN (full path)</label>
             <input value={groupDn} onChange={e => setGroupDn(e.target.value)} required
               placeholder="CN=SMS_Admins,OU=Groups,DC=example,DC=com"
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            <p className="mt-1 text-xs text-gray-400">Distinguished Name completo del gruppo AD. Sono supportati i gruppi annidati (gruppi di gruppi).</p>
+            <p className="mt-1 text-xs text-gray-400">Full Distinguished Name of the AD group. Nested groups (groups of groups) are supported.</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Ruolo assegnato</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned role</label>
             <div className="flex gap-6">
-              {[{ v: 'admin', label: 'Admin (accesso completo)' }, { v: 'user', label: 'Utente (permessi specifici)' }].map(opt => (
+              {[{ v: 'admin', label: 'Admin (full access)' }, { v: 'user', label: 'User (specific permissions)' }].map(opt => (
                 <label key={opt.v} className="flex items-center gap-2 cursor-pointer text-sm select-none">
                   <input type="radio" checked={role === opt.v} onChange={() => setRole(opt.v)} className="accent-blue-600" />
                   {opt.label}
@@ -240,21 +240,21 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
           </div>
           {role === 'user' && (
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permessi</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permissions</label>
               <PermissionsEditor value={permissions} onChange={setPermissions} disabled={false} />
             </div>
           )}
           {role === 'admin' && (
             <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg px-4 py-3">
-              Gli utenti Admin hanno accesso completo a tutte le sezioni.
+              Admin users have full access to all sections.
             </div>
           )}
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Annulla</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
             <button type="submit"
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
-              {isNew ? 'Aggiungi' : 'Salva'}
+              {isNew ? 'Add' : 'Save'}
             </button>
           </div>
         </form>
@@ -280,18 +280,18 @@ function LocalUsersTab() {
   useEffect(() => { load() }, [load])
 
   async function handleDelete(u) {
-    if (!confirm(`Eliminare l'utente "${u.username}"?`)) return
+    if (!confirm(`Delete user "${u.username}"?`)) return
     try {
       await usersApi.remove(u.id)
       load()
     } catch (err) {
-      alert(err.response?.data?.error || 'Errore eliminazione')
+      alert(err.response?.data?.error || 'Delete error')
     }
   }
 
   if (loading) return (
     <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-      <Loader2 size={18} className="animate-spin" /> Caricamento...
+      <Loader2 size={18} className="animate-spin" /> Loading...
     </div>
   )
 
@@ -300,7 +300,7 @@ function LocalUsersTab() {
       <div className="flex justify-end">
         <button onClick={() => setModal('new')}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors">
-          <Plus size={16} />Nuovo utente locale
+          <Plus size={16} />New local user
         </button>
       </div>
 
@@ -309,10 +309,10 @@ function LocalUsersTab() {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fonte</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ruolo</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permessi</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Creato il</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created on</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -325,33 +325,33 @@ function LocalUsersTab() {
                     <div className="flex items-center gap-2">
                       {u.role === 'superadmin' ? <Shield size={15} className="text-purple-500" /> : <User size={15} className="text-gray-400" />}
                       {u.username}
-                      {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(tu)</span>}
+                      {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(you)</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3"><SourceBadge source={u.source || 'local'} /></td>
                   <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {isLdap
-                      ? <span className="italic text-cyan-600">Da mappatura LDAP</span>
+                      ? <span className="italic text-cyan-600">From LDAP mapping</span>
                       : u.role !== 'user'
-                        ? <span className="italic">Accesso completo</span>
+                        ? <span className="italic">Full access</span>
                         : ALL_PERMS.filter(p => u.permissions?.[p.key]).map(p => p.label).join(', ') ||
-                          <span className="italic text-gray-400">Nessun permesso</span>
+                          <span className="italic text-gray-400">No permissions</span>
                     }
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
-                    {u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '—'}
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('en-US') : '—'}
                   </td>
                   <td className="px-4 py-3">
                     {u.role !== 'superadmin' && (
                       <div className="flex items-center gap-2 justify-end">
                         {!isLdap && (
-                          <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 p-1" title="Modifica">
+                          <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 p-1" title="Edit">
                             <Pencil size={15} />
                           </button>
                         )}
                         {u.id !== me?.id && (
-                          <button onClick={() => handleDelete(u)} className="text-gray-400 hover:text-red-600 p-1" title="Elimina">
+                          <button onClick={() => handleDelete(u)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
                             <Trash2 size={15} />
                           </button>
                         )}
@@ -366,8 +366,8 @@ function LocalUsersTab() {
       </div>
 
       <p className="text-xs text-gray-400 px-1">
-        Gli utenti LDAP appaiono in questa lista automaticamente dopo il primo accesso con credenziali di dominio.
-        I loro permessi vengono aggiornati ad ogni login in base alla mappatura dei gruppi configurata.
+        LDAP users appear in this list automatically after their first login with domain credentials.
+        Their permissions are updated on every login based on the configured group mapping.
       </p>
 
       {modal && (
@@ -453,9 +453,9 @@ function LdapSettingsTab() {
     setTestResult(null)
     try {
       const res = await ldapApi.testConn()
-      setTestResult({ ok: true, message: res.message || 'Connessione riuscita' })
+      setTestResult({ ok: true, message: res.message || 'Connection successful' })
     } catch (err) {
-      setTestResult({ ok: false, message: err.response?.data?.message || 'Connessione fallita' })
+      setTestResult({ ok: false, message: err.response?.data?.message || 'Connection failed' })
     } finally {
       setTesting(false)
     }
@@ -466,11 +466,11 @@ function LdapSettingsTab() {
     setSaveMsg(null)
     try {
       await ldapApi.saveSettings({ ...form, group_mappings: mappings })
-      setSaveMsg({ ok: true, text: 'Impostazioni salvate' })
+      setSaveMsg({ ok: true, text: 'Settings saved' })
       const updated = await ldapApi.getSettings()
       setSavedSettings(updated)
     } catch (err) {
-      setSaveMsg({ ok: false, text: err.response?.data?.error || 'Errore nel salvataggio' })
+      setSaveMsg({ ok: false, text: err.response?.data?.error || 'Save error' })
     } finally {
       setSaving(false)
     }
@@ -482,10 +482,10 @@ function LdapSettingsTab() {
     try {
       // Invia tutto il form ma con password vuota (il backend mantiene quella esistente)
       await ldapApi.saveSettings({ ...form, ldap_service_password: '', bind_password: '', group_mappings: newMappings })
-      setMappingMsg({ ok: true, text: 'Mapping salvati' })
+      setMappingMsg({ ok: true, text: 'Mappings saved' })
       setTimeout(() => setMappingMsg(null), 3000)
     } catch {
-      setMappingMsg({ ok: false, text: 'Errore nel salvataggio' })
+      setMappingMsg({ ok: false, text: 'Save error' })
     } finally {
       setMappingSaving(false)
     }
@@ -503,7 +503,7 @@ function LdapSettingsTab() {
   }
 
   function removeMapping(id) {
-    if (!confirm('Eliminare questo mapping?')) return
+    if (!confirm('Delete this mapping?')) return
     setMappings(prev => {
       const next = prev.filter(x => x.id !== id)
       saveMappingsNow(next)
@@ -515,7 +515,7 @@ function LdapSettingsTab() {
 
   if (loadingCfg) return (
     <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-      <Loader2 size={18} className="animate-spin" /> Caricamento...
+      <Loader2 size={18} className="animate-spin" /> Loading...
     </div>
   )
 
@@ -527,10 +527,10 @@ function LdapSettingsTab() {
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <input type="checkbox" checked={form.enabled} onChange={e => setField('enabled', e.target.checked)}
               className="w-4 h-4 accent-blue-600" />
-            <span className="font-semibold text-gray-800">Abilita autenticazione LDAP / Active Directory</span>
+            <span className="font-semibold text-gray-800">Enable LDAP / Active Directory authentication</span>
           </label>
           {form.enabled && (
-            <p className="mt-2 text-sm text-cyan-700">LDAP abilitato — gli utenti potranno accedere con le credenziali di dominio.</p>
+            <p className="mt-2 text-sm text-cyan-700">LDAP enabled — users will be able to sign in with domain credentials.</p>
           )}
         </div>
       )}
@@ -539,22 +539,22 @@ function LdapSettingsTab() {
         {/* Connessione — superadmin only */}
         {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Connessione LDAP</h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">LDAP Connection</h3>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Server LDAP</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">LDAP Server</label>
             <input value={form.ldap_server} onChange={e => setField('ldap_server', e.target.value)}
-              placeholder="ldaps://dc.azienda.local  oppure  ldap://192.168.1.10"
+              placeholder="ldaps://dc.company.local  or  ldap://192.168.1.10"
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            <p className="mt-1 text-xs text-gray-400">Usa <code>ldaps://</code> per LDAP su TLS (porta 636), <code>ldap://</code> per connessione non cifrata (porta 389).</p>
+            <p className="mt-1 text-xs text-gray-400">Use <code>ldaps://</code> for LDAP over TLS (port 636), <code>ldap://</code> for unencrypted connection (port 389).</p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Dominio Active Directory</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Active Directory Domain</label>
             <input value={form.ldap_domain} onChange={e => setField('ldap_domain', e.target.value)}
-              placeholder="azienda.local"
+              placeholder="company.local"
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            <p className="mt-1 text-xs text-gray-400">Usato per il bind dell'account di servizio nel formato <code>username@dominio</code>.</p>
+            <p className="mt-1 text-xs text-gray-400">Used for binding the service account in the format <code>username@domain</code>.</p>
           </div>
 
           <div>
@@ -564,18 +564,18 @@ function LdapSettingsTab() {
                 <button type="button"
                   onClick={() => setField('ldap_base_dn', computeBaseDn(form.ldap_domain))}
                   className="text-xs text-blue-600 hover:underline">
-                  Calcola da dominio
+                  Derive from domain
                 </button>
               )}
             </div>
             <input value={form.ldap_base_dn} onChange={e => setField('ldap_base_dn', e.target.value)}
-              placeholder="DC=azienda,DC=local"
+              placeholder="DC=company,DC=local"
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
             <input type="checkbox" checked={form.skip_cert_verify} onChange={e => setField('skip_cert_verify', e.target.checked)} className="accent-blue-600" />
-            Ignora verifica certificato TLS
+            Skip TLS certificate verification
           </label>
         </div>
         )}{/* end Connessione */}
@@ -583,9 +583,9 @@ function LdapSettingsTab() {
         {/* Service account — superadmin only */}
         {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Account di servizio</h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Service account</h3>
           <p className="text-xs text-gray-400">
-            Account usato per cercare gli utenti nell'AD. Verrà autenticato come <code>username@dominio</code>.
+            Account used to search for users in AD. Will authenticate as <code>username@domain</code>.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -597,7 +597,7 @@ function LdapSettingsTab() {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Password</label>
               <input type="password" value={form.ldap_service_password} onChange={e => setField('ldap_service_password', e.target.value)}
-                placeholder={passwordIsSaved ? '••••••••  (lascia vuoto per mantenerla)' : 'Password account di servizio'}
+                placeholder={passwordIsSaved ? '••••••••  (leave blank to keep current)' : 'Service account password'}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
           </div>
@@ -607,9 +607,9 @@ function LdapSettingsTab() {
         {/* Ricerca utenti — superadmin only */}
         {isSuperAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Ricerca utenti</h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">User search</h3>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Filtro utente</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">User filter</label>
             <input value={form.user_filter} onChange={e => setField('user_filter', e.target.value)}
               placeholder="(sAMAccountName={{username}})"
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -618,8 +618,8 @@ function LdapSettingsTab() {
           <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
             <input type="checkbox" checked={form.ad_mode} onChange={e => setField('ad_mode', e.target.checked)} className="accent-blue-600" />
             <span>
-              Modalità Active Directory
-              <span className="text-gray-400 text-xs ml-1 font-normal">(gruppi nested con LDAP_MATCHING_RULE_IN_CHAIN)</span>
+              Active Directory mode
+              <span className="text-gray-400 text-xs ml-1 font-normal">(nested groups via LDAP_MATCHING_RULE_IN_CHAIN)</span>
             </span>
           </label>
         </div>
@@ -630,7 +630,7 @@ function LdapSettingsTab() {
         <div className="flex items-center gap-4 flex-wrap">
           <button onClick={handleTest} disabled={testing || !form.ldap_server}
             className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors">
-            <Server size={15} />{testing ? 'Test in corso...' : 'Test connessione'}
+            <Server size={15} />{testing ? 'Testing...' : 'Test connection'}
           </button>
           {testResult && (
             <span className={`flex items-center gap-1.5 text-sm font-medium ${testResult.ok ? 'text-green-600' : 'text-red-600'}`}>
@@ -644,7 +644,7 @@ function LdapSettingsTab() {
           )}
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors">
-            {saving ? 'Salvataggio...' : 'Salva impostazioni'}
+            {saving ? 'Saving...' : 'Save settings'}
           </button>
         </div>
         )}{/* end Actions */}
@@ -653,13 +653,13 @@ function LdapSettingsTab() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div>
-              <h3 className="font-semibold text-gray-800">Mappatura gruppi AD → Ruolo</h3>
+              <h3 className="font-semibold text-gray-800">AD Group → Role mapping</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Permessi aggiornati ad ogni accesso. Più gruppi supportati — Admin prevale sempre.
+                Permissions updated on every login. Multiple groups supported — Admin always takes precedence.
               </p>
             </div>
             <div className="flex items-center gap-3 ml-4">
-              {mappingSaving && <span className="text-xs text-gray-400">Salvataggio...</span>}
+              {mappingSaving && <span className="text-xs text-gray-400">Saving...</span>}
               {mappingMsg && !mappingSaving && (
                 <span className={`flex items-center gap-1 text-xs font-medium ${mappingMsg.ok ? 'text-green-600' : 'text-red-500'}`}>
                   {mappingMsg.ok ? <CheckCircle size={13} /> : <XCircle size={13} />}
@@ -668,22 +668,22 @@ function LdapSettingsTab() {
               )}
               <button onClick={() => setMappingModal('new')}
                 className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700">
-                <Plus size={15} />Aggiungi mapping
+                <Plus size={15} />Add mapping
               </button>
             </div>
           </div>
           {mappings.length === 0 ? (
             <div className="py-10 text-center text-gray-400 text-sm">
-              Nessun mapping configurato.<br />
-              <span className="text-xs">Aggiungi almeno un gruppo per permettere l'accesso con credenziali LDAP.</span>
+              No mappings configured.<br />
+              <span className="text-xs">Add at least one group to allow login with LDAP credentials.</span>
             </div>
           ) : (
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gruppo LDAP (DN)</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ruolo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permessi</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group (DN)</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -696,15 +696,15 @@ function LdapSettingsTab() {
                     <td className="px-4 py-3"><RoleBadge role={m.role} /></td>
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {m.role === 'admin'
-                        ? <span className="italic">Accesso completo</span>
+                        ? <span className="italic">Full access</span>
                         : ALL_PERMS.filter(p => m.permissions?.[p.key]).map(p => p.label).join(', ') ||
-                          <span className="italic text-gray-400">Nessun permesso</span>
+                          <span className="italic text-gray-400">No permissions</span>
                       }
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => setMappingModal(m)} className="text-gray-400 hover:text-blue-600 p-1" title="Modifica"><Pencil size={14} /></button>
-                        <button onClick={() => removeMapping(m.id)} className="text-gray-400 hover:text-red-600 p-1" title="Elimina"><Trash2 size={14} /></button>
+                        <button onClick={() => setMappingModal(m)} className="text-gray-400 hover:text-blue-600 p-1" title="Edit"><Pencil size={14} /></button>
+                        <button onClick={() => removeMapping(m.id)} className="text-gray-400 hover:text-red-600 p-1" title="Delete"><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -750,7 +750,7 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
       onSaved()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Errore durante il salvataggio')
+      setError(err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Error saving')
     } finally {
       setSaving(false)
     }
@@ -760,24 +760,24 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-800">{isNew ? 'Nuovo gruppo locale' : `Modifica: ${group.name}`}</h2>
+          <h2 className="font-semibold text-gray-800">{isNew ? 'New local group' : `Edit: ${group.name}`}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Nome gruppo</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Group name</label>
             <input value={name} onChange={e => setName(e.target.value)} required
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Descrizione (opzionale)</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description (optional)</label>
             <input value={description} onChange={e => setDescription(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Ruolo assegnato ai membri</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Role assigned to members</label>
             <div className="flex gap-6">
-              {[{ v: 'admin', label: 'Admin (accesso completo)' }, { v: 'user', label: 'Utente (permessi specifici)' }].map(opt => (
+              {[{ v: 'admin', label: 'Admin (full access)' }, { v: 'user', label: 'User (specific permissions)' }].map(opt => (
                 <label key={opt.v} className="flex items-center gap-2 cursor-pointer text-sm select-none">
                   <input type="radio" checked={role === opt.v} onChange={() => setRole(opt.v)} className="accent-blue-600" />
                   {opt.label}
@@ -787,21 +787,21 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
           </div>
           {role === 'user' && (
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permessi</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permissions</label>
               <PermissionsEditor value={permissions} onChange={setPermissions} disabled={false} />
             </div>
           )}
           {role === 'admin' && (
             <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg px-4 py-3">
-              I membri Admin hanno accesso completo a tutte le sezioni.
+              Admin members have full access to all sections.
             </div>
           )}
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Annulla</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
             <button type="submit" disabled={saving}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors">
-              {saving ? 'Salvataggio...' : isNew ? 'Crea gruppo' : 'Salva modifiche'}
+              {saving ? 'Saving...' : isNew ? 'Create group' : 'Save changes'}
             </button>
           </div>
         </form>
@@ -828,7 +828,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
       setMembers(updated.members || [])
       onSaved()
     } catch (err) {
-      alert(err.response?.data?.error || 'Errore aggiunta membro')
+      alert(err.response?.data?.error || 'Error adding member')
     } finally { setAdding(null) }
   }
 
@@ -839,7 +839,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
       setMembers(prev => prev.filter(m => m.id !== userId))
       onSaved()
     } catch (err) {
-      alert(err.response?.data?.error || 'Errore rimozione membro')
+      alert(err.response?.data?.error || 'Error removing member')
     } finally { setRemovingId(null) }
   }
 
@@ -847,15 +847,15 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-800">Membri: {group.name}</h2>
+          <h2 className="font-semibold text-gray-800">Members: {group.name}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
         </div>
         <div className="p-6 space-y-4">
           {/* Membri attuali */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Membri attuali ({members.length})</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Current members ({members.length})</p>
             {members.length === 0
-              ? <p className="text-sm text-gray-400 italic">Nessun membro</p>
+              ? <p className="text-sm text-gray-400 italic">No members</p>
               : <div className="space-y-1 max-h-40 overflow-y-auto">
                   {members.map(m => (
                     <div key={m.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
@@ -868,7 +868,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
                         onClick={() => remove(m.id)}
                         disabled={removingId === m.id}
                         className="text-red-400 hover:text-red-600 p-1 disabled:opacity-40"
-                        title="Rimuovi dal gruppo"
+                        title="Remove from group"
                       >
                         <UserMinus size={15} />
                       </button>
@@ -880,16 +880,16 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
 
           {/* Aggiungi membri */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Aggiungi utente</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add user</p>
             <input
               className="w-full border rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Cerca utente..."
+              placeholder="Search user..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {nonMembers.length === 0
-                ? <p className="text-sm text-gray-400 italic">Nessun utente da aggiungere</p>
+                ? <p className="text-sm text-gray-400 italic">No users to add</p>
                 : nonMembers.map(u => (
                     <div key={u.id} className="flex items-center justify-between px-3 py-2 bg-blue-50 rounded-lg">
                       <div className="flex items-center gap-2">
@@ -901,7 +901,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
                         onClick={() => add(u.id)}
                         disabled={adding === u.id}
                         className="text-blue-600 hover:text-blue-800 p-1 disabled:opacity-40"
-                        title="Aggiungi al gruppo"
+                        title="Add to group"
                       >
                         <UserPlus size={15} />
                       </button>
@@ -912,7 +912,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
           </div>
 
           <div className="flex justify-end pt-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Chiudi</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Close</button>
           </div>
         </div>
       </div>
@@ -940,12 +940,12 @@ function LocalGroupsTab() {
   useEffect(() => { load() }, [load])
 
   async function handleDelete(g) {
-    if (!confirm(`Eliminare il gruppo "${g.name}"?`)) return
+    if (!confirm(`Delete group "${g.name}"?`)) return
     try {
       await localGroupsApi.remove(g.id)
       load()
     } catch (err) {
-      alert(err.response?.data?.error || 'Errore eliminazione')
+      alert(err.response?.data?.error || 'Delete error')
     }
   }
 
@@ -958,7 +958,7 @@ function LocalGroupsTab() {
 
   if (loading) return (
     <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
-      <Loader2 size={18} className="animate-spin" /> Caricamento...
+      <Loader2 size={18} className="animate-spin" /> Loading...
     </div>
   )
 
@@ -966,18 +966,18 @@ function LocalGroupsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
-          I gruppi locali funzionano come i gruppi LDAP: assegnano ruoli e permessi e possono limitare la visibilità nelle regole di inoltro.
+          Local groups work like LDAP groups: they assign roles and permissions and can restrict visibility in forwarding rules.
         </p>
         <button onClick={() => setModal('new')}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors flex-shrink-0 ml-4">
-          <Plus size={16} />Nuovo gruppo
+          <Plus size={16} />New group
         </button>
       </div>
 
       {groups.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white border border-gray-200 rounded-xl">
           <UsersRound size={32} className="mx-auto mb-3 opacity-30" />
-          <p>Nessun gruppo locale. Creane uno per iniziare.</p>
+          <p>No local groups. Create one to get started.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -989,24 +989,24 @@ function LocalGroupsTab() {
                     <span className="font-semibold text-gray-800">{g.name}</span>
                     <RoleBadge role={g.role} />
                     <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {g.member_count} {g.member_count === 1 ? 'membro' : 'membri'}
+                      {g.member_count} {g.member_count === 1 ? 'member' : 'members'}
                     </span>
                   </div>
                   {g.description && <p className="text-sm text-gray-500 mt-1">{g.description}</p>}
                   {g.role === 'user' && (
                     <p className="text-xs text-gray-400 mt-1">
-                      Permessi: {ALL_PERMS.filter(p => g.permissions?.[p.key]).map(p => p.label).join(', ') || 'nessuno'}
+                      Permissions: {ALL_PERMS.filter(p => g.permissions?.[p.key]).map(p => p.label).join(', ') || 'none'}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openMembers(g)} className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600" title="Gestisci membri">
+                  <button onClick={() => openMembers(g)} className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600" title="Manage members">
                     <UsersRound size={15} />
                   </button>
-                  <button onClick={() => setModal(g)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Modifica">
+                  <button onClick={() => setModal(g)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Edit">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(g)} className="p-1.5 rounded hover:bg-red-50 text-red-400" title="Elimina">
+                  <button onClick={() => handleDelete(g)} className="p-1.5 rounded hover:bg-red-50 text-red-400" title="Delete">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -1037,8 +1037,8 @@ function LocalGroupsTab() {
 }
 
 const ALL_TABS = [
-  { key: 'local',  label: 'Utenti locali',           Icon: Users,        superadminOnly: false },
-  { key: 'groups', label: 'Gruppi locali',            Icon: UsersRound,   superadminOnly: false },
+  { key: 'local',  label: 'Local users',            Icon: Users,        superadminOnly: false },
+  { key: 'groups', label: 'Local groups',            Icon: UsersRound,   superadminOnly: false },
   { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server,       superadminOnly: false },
 ]
 
@@ -1051,7 +1051,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Users size={22} className="text-blue-600" />
-        <h2 className="text-2xl font-bold text-gray-800">Utenti/Gruppi</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Users/Groups</h2>
       </div>
 
       {/* Tabs */}

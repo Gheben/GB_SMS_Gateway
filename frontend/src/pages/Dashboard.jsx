@@ -49,17 +49,17 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Ricevuti oggi"   value={stats?.received_today} icon={MessageSquare} color="green" />
-        <StatCard label="Inviati oggi"    value={stats?.sent_today}     icon={Send}          color="blue" />
-        <StatCard label="Totale ricevuti" value={stats?.total_inbound}  icon={TrendingUp}    color="green" />
-        <StatCard label="Falliti"         value={stats?.failed}         icon={AlertCircle}   color="red" />
+        <StatCard label="Received today"   value={stats?.received_today} icon={MessageSquare} color="green" />
+        <StatCard label="Sent today"        value={stats?.sent_today}     icon={Send}          color="blue" />
+        <StatCard label="Total received"    value={stats?.total_inbound}  icon={TrendingUp}    color="green" />
+        <StatCard label="Failed"            value={stats?.failed}         icon={AlertCircle}   color="red" />
       </div>
 
       {/* Devices status — only shown to users with devices permission */}
       {can('devices') && (
         <div>
           <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <Server size={18} /> Stato dispositivi
+            <Server size={18} /> Device status
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {devices.map(d => (
@@ -75,7 +75,7 @@ export default function Dashboard() {
               </div>
             ))}
             {devices.length === 0 && !loading && (
-              <p className="text-sm text-gray-400 col-span-3">Nessun dispositivo configurato.</p>
+              <p className="text-sm text-gray-400 col-span-3">No devices configured.</p>
             )}
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function Dashboard() {
 
       {/* Recent messages */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">Messaggi recenti</h3>
+        <h3 className="text-lg font-semibold text-gray-700 mb-3">Recent messages</h3>
         <MessageTable messages={recent} loading={loading} />
       </div>
     </div>
