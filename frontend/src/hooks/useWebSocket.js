@@ -7,10 +7,12 @@ export function useWebSocket(onMessage, onConnect) {
   const [connected, setConnected] = useState(false)
   const onMessageRef = useRef(onMessage)
   const onConnectRef = useRef(onConnect)
+  const activeRef = useRef(true)
   onMessageRef.current = onMessage
   onConnectRef.current = onConnect
 
   const connect = useCallback(() => {
+    if (!activeRef.current) return
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
 
@@ -20,7 +22,7 @@ export function useWebSocket(onMessage, onConnect) {
     }
     ws.onclose = () => {
       setConnected(false)
-      setTimeout(connect, 3000)
+      if (activeRef.current) setTimeout(connect, 3000)
     }
     ws.onerror = () => ws.close()
     ws.onmessage = (e) => {
@@ -32,8 +34,10 @@ export function useWebSocket(onMessage, onConnect) {
   }, []) // stable — callbacks accessed via refs
 
   useEffect(() => {
+    activeRef.current = true
     connect()
     return () => {
+      activeRef.current = false
       if (wsRef.current) wsRef.current.close()
     }
   }, [connect])
