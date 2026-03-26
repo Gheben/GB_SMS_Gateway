@@ -447,7 +447,7 @@ export default function Settings() {
 
             {/* Info da comunicare al tecnico IdP */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Dati da comunicare al tecnico IdP (NetScaler / ADFS)</p>
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Dati da comunicare a IdP</p>
               <div className="space-y-2">
                 <div>
                   <span className="text-xs text-blue-600 font-medium">ACS URL (Assertion Consumer Service):</span>
@@ -473,6 +473,23 @@ export default function Settings() {
                   <span className="text-xs text-blue-800 ml-1">HTTP-POST</span>
                 </div>
               </div>
+            </div>
+
+            {/* Note LDAP mapping */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Integrazione con mapping gruppi LDAP</p>
+              <p className="text-xs text-amber-700">
+                Se sono configurati dei mapping di gruppi in <strong>Gestione utenti → LDAP / Active Directory</strong>,
+                il sistema li applica automaticamente anche agli utenti SAML: ad ogni accesso vengono recuperati
+                i gruppi AD dell&rsquo;utente e il ruolo viene assegnato in base alla mappatura configurata.
+                Solo se nessun gruppo corrisponde viene usato il <em>Ruolo predefinito</em> configurato qui sotto.
+              </p>
+              <p className="text-xs text-amber-600">
+                <strong>Suggerimento:</strong> chiedi al tecnico IdP di includere l&rsquo;attributo{' '}
+                <code className="bg-amber-100 px-1 rounded">memberOf</code> nella SAML assertion —
+                riduce il traffico verso il Domain Controller e garantisce la risoluzione dei gruppi
+                anche se il DC non è temporaneamente raggiungibile dal gateway.
+              </p>
             </div>
 
             {/* SP Config */}
