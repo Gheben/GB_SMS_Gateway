@@ -71,6 +71,15 @@ const swaggerDistPath = path.join(__dirname, '../node_modules/swagger-ui-dist');
 // Expose the OpenAPI spec as JSON (public, no auth)
 app.get('/api/docs.json', (req, res) => res.json(openApiSpec));
 
+// Override CSP for /docs — Helmet's default blocks inline scripts required by swagger-ui
+app.use('/docs', (req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+  );
+  next();
+});
+
 // Swagger UI wrapper HTML — MUST be registered before express.static catch-all
 // NOTE: express non-strict routing makes '/docs' match '/docs/' too, causing a redirect loop.
 // Use an array of paths to serve HTML directly without any redirect.
