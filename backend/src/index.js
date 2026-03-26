@@ -62,6 +62,7 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(morgan('combined'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
 
 // API routes — auth (pubblica)
 app.use('/api/auth', authRouter);

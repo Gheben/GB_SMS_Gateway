@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -9,6 +9,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [samlEnabled, setSamlEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/auth/saml/status')
+      .then(r => r.json())
+      .then(d => setSamlEnabled(!!d.enabled))
+      .catch(() => {})
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -80,6 +88,20 @@ export default function LoginPage() {
           >
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>
+
+          {samlEnabled && (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="text-xs text-gray-400">oppure</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+              <a href="/api/auth/saml/login"
+                className="block w-full text-center border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                Accedi con SSO aziendale (SAML)
+              </a>
+            </>
+          )}
         </form>
       </div>
 

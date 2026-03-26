@@ -4,6 +4,7 @@ const { login, safeUser, signToken: _st } = require('../services/authService');
 // Re-export signToken for SSO use
 const authService = require('../services/authService');
 const ldapService = require('../services/ldapService');
+const samlService = require('../services/samlService');
 const { getDb } = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
@@ -122,6 +123,117 @@ router.get('/me', requireAuth, (req, res) => {
       allowed_ports: JSON.parse(dbUser.allowed_ports || '[]'),
     } : null,
   });
+});
+
+// ── SAML 2.0 routes ─────────────────────────────────────────────────────────
+
+// GET /api/auth/saml/status — public, returns whether SAML is actively configured
+router.get('/saml/status', (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    const enabled = !!(cfg?.enabled && cfg?.idp_sso_url && cfg?.idp_cert);
+    res.json({ enabled });
+  } catch {
+    res.json({ enabled: false });
+  }
+});
+
+// GET /api/auth/saml/metadata — SP metadata XML (public, used by IdP setup)
+router.get('/saml/metadata', (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    if (!cfg?.enabled) return res.status(404).json({ error: 'SAML non configurato o non abilitato' });
+    const xml = samlService.getMetadataXml(cfg);
+    res.set('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (err) {
+    logger.error(`[SAML] metadata error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/auth/saml/login — avvia il flusso SP-initiated SAML (redirect a IdP)
+router.get('/saml/login', async (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    if (!cfg?.enabled) return res.status(404).json({ error: 'SAML non configurato o non abilitato' });
+    const saml = samlService.createSamlInstance(cfg);
+    const { context: loginUrl } = await saml.getAuthorizeUrlAsync('', req.hostname, {});
+    res.redirect(loginUrl);
+  } catch (err) {
+    logger.error(`[SAML] login redirect error: ${err.message}`);
+    res.redirect('/login?error=saml_error');
+  }
+});
+
+// POST /api/auth/saml/callback — ACS endpoint (l'IdP fa POST qui dopo l'autenticazione)
+router.post('/saml/callback', async (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    if (!cfg?.enabled) return res.status(404).json({ error: 'SAML non configurato o non abilitato' });
+    const saml = samlService.createSamlInstance(cfg);
+    const { profile } = await saml.validatePostResponseAsync(req.body);
+    if (!profile) {
+      logger.warn('[SAML] validatePostResponseAsync: nessun profilo restituito');
+      return res.redirect('/login?error=saml_no_profile');
+    }
+
+    // Estrai username
+    const usernameAttr = cfg.username_attribute;
+    const rawUsername = usernameAttr
+      ? (profile[usernameAttr] || profile.nameID)
+      : profile.nameID;
+    const username = (rawUsername || '').toString().trim();
+    if (!username) {
+      logger.warn(`[SAML] Nessuno username nel profilo: ${JSON.stringify(profile)}`);
+      return res.redirect('/login?error=saml_no_username');
+    }
+
+    // Estrai displayName
+    const displayNameAttr = cfg.display_name_attribute || 'displayName';
+    const displayName = (
+      profile[displayNameAttr] ||
+      profile['http://schemas.microsoft.com/identity/claims/displayname'] ||
+      profile['urn:oid:2.16.840.1.113730.3.1.241'] ||
+      username
+    ).toString().trim();
+
+    // Upsert utente SAML nel DB
+    const db = getDb();
+    const defaultRole = cfg.default_role || 'user';
+    const { PERMISSION_KEYS } = authService;
+    const defaultPerms = defaultRole === 'admin'
+      ? Object.fromEntries(PERMISSION_KEYS.map(k => [k, k !== 'users']))
+      : { dashboard: true, inbox: true, sent: true };
+
+    let dbUser = db.prepare(
+      "SELECT * FROM users WHERE username = ? COLLATE NOCASE AND source = 'saml'"
+    ).get(username);
+
+    if (!dbUser) {
+      const id = uuidv4();
+      db.prepare(
+        `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name)
+         VALUES (?, ?, '', ?, ?, 'saml', ?)`
+      ).run(id, username, defaultRole, JSON.stringify(defaultPerms), displayName);
+      dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    } else {
+      db.prepare(
+        `UPDATE users SET display_name=?, updated_at=datetime('now') WHERE id=?`
+      ).run(displayName, dbUser.id);
+      dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(dbUser.id);
+    }
+
+    const permissions  = JSON.parse(dbUser.permissions  || '{}');
+    const allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
+    const token = authService.signJwt({ ...dbUser, permissions, allowed_ports });
+    auditService.log(dbUser.id, dbUser.username, 'auth:saml_login', 'user', dbUser.id, null, req.ip);
+
+    res.redirect(`/saml-callback?token=${encodeURIComponent(token)}`);
+  } catch (err) {
+    logger.error(`[SAML] callback error: ${err.message}\n${err.stack}`);
+    res.redirect('/login?error=saml_failed');
+  }
 });
 
 module.exports = router;

@@ -107,5 +107,29 @@ router.post('/email-subject', [
   res.json({ ok: true });
 });
 
+// GET /api/settings/saml
+router.get('/saml', (req, res) => {
+  const raw = getSetting('saml_config');
+  if (!raw) return res.json({ enabled: false });
+  try { res.json(JSON.parse(raw)); } catch { res.json({ enabled: false }); }
+});
+
+// POST /api/settings/saml
+router.post('/saml', [
+  body('enabled').isBoolean().toBoolean(),
+  body('sp_base_url').optional({ checkFalsy: true }).isString().trim(),
+  body('sp_entity_id').optional({ checkFalsy: true }).isString().trim(),
+  body('idp_sso_url').optional({ checkFalsy: true }).isString().trim(),
+  body('idp_cert').optional({ checkFalsy: true }).isString(),
+  body('username_attribute').optional({ checkFalsy: true }).isString().trim(),
+  body('display_name_attribute').optional({ checkFalsy: true }).isString().trim(),
+  body('default_role').optional({ checkFalsy: true }).isIn(['admin', 'user']),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  setSettings({ saml_config: JSON.stringify(req.body) });
+  res.json({ ok: true });
+});
+
 module.exports = router;
 

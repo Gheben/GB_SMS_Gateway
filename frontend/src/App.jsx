@@ -14,6 +14,7 @@ import Report from './pages/Report'
 import LoginPage from './pages/LoginPage'
 import UsersPage from './pages/UsersPage'
 import AuditLog from './pages/AuditLog'
+import SamlCallback from './pages/SamlCallback'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useWebSocket } from './hooks/useWebSocket'
 import { devicesApi } from './api'
@@ -136,6 +137,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/saml-callback" element={<SamlCallback />} />
           <Route path="/*" element={<RequireLogin />} />
         </Routes>
       </AuthProvider>

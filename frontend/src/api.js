@@ -107,6 +107,8 @@ export const settingsApi = {
   saveTemplate:  (template) => api.post('/settings/email-template', { template }).then(r => r.data),
   getSubject:    () => api.get('/settings/email-subject').then(r => r.data),
   saveSubject:   (subject) => api.post('/settings/email-subject', { subject }).then(r => r.data),
+  getSaml:       () => api.get('/settings/saml').then(r => r.data),
+  saveSaml:      (data) => api.post('/settings/saml', data).then(r => r.data),
 }
 
 export const reportApi = {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2 } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -87,13 +87,23 @@ export default function Settings() {
   const [subjectDirty, setSubjectDirty]   = useState(false)
   const [subjectSaving, setSubjectSaving] = useState(false)
 
+  // SAML
+  const [saml, setSaml] = useState({
+    enabled: false, sp_base_url: window.location.origin, sp_entity_id: '',
+    idp_sso_url: '', idp_cert: '', username_attribute: '', display_name_attribute: 'displayName', default_role: 'user',
+  })
+  const [samlDirty, setSamlDirty]   = useState(false)
+  const [samlSaving, setSamlSaving] = useState(false)
+  const [samlResult, setSamlResult] = useState(null)
+
   useEffect(() => {
-    Promise.all([settingsApi.getSmtp(), settingsApi.getTemplate(), settingsApi.getSubject()])
-      .then(([smtpData, tplData, subjData]) => {
+    Promise.all([settingsApi.getSmtp(), settingsApi.getTemplate(), settingsApi.getSubject(), settingsApi.getSaml()])
+      .then(([smtpData, tplData, subjData, samlData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)
         setSubject(subjData.subject || DEFAULT_SUBJECT)
+        if (samlData) setSaml(s => ({ ...s, ...samlData }))
         setLoading(false)
       }).catch(() => setLoading(false))
   }, [])
@@ -161,6 +171,19 @@ export default function Settings() {
     }
   }
 
+  async function handleSaveSaml() {
+    setSamlSaving(true); setSamlResult(null)
+    try {
+      await settingsApi.saveSaml(saml)
+      setSamlDirty(false)
+      setSamlResult({ success: true, message: 'Configurazione SAML salvata.' })
+    } catch {
+      setSamlResult({ success: false, message: 'Errore nel salvataggio SAML.' })
+    } finally {
+      setSamlSaving(false)
+    }
+  }
+
   if (loading) return (
     <div className="flex justify-center items-center py-8 text-gray-400 gap-2">
       <Loader2 size={18} className="animate-spin" /> Caricamento...
@@ -176,6 +199,7 @@ export default function Settings() {
         {[
           { key: 'smtp',     label: 'SMTP & Test email',   icon: <Mail size={14} /> },
           { key: 'template', label: 'Template email',       icon: <FileCode size={14} /> },
+          { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} /> },
         ].map(t => (
           <button
             key={t.key}
@@ -392,6 +416,130 @@ export default function Settings() {
               }`}>
                 {templateResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                 {templateResult.message}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* ── SAML / SSO ── */}
+      {tab === 'saml' && (
+        <div className="space-y-4">
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+            <div>
+              <h3 className="text-base font-semibold text-gray-700">Autenticazione SAML 2.0</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Abilita il login tramite un Identity Provider SAML (es. NetScaler, ADFS, Azure AD).
+                Il Service Provider è configurato come SP-initiated (il browser viene reindirizzato all&rsquo;IdP e poi torna qui).
+              </p>
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={saml.enabled}
+                onChange={e => { setSaml(s => ({ ...s, enabled: e.target.checked })); setSamlDirty(true) }}
+                className="w-4 h-4 accent-blue-600" />
+              <span className="text-sm font-medium text-gray-700">Abilita autenticazione SAML 2.0</span>
+            </label>
+
+            {/* Info da comunicare al tecnico IdP */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Dati da comunicare al tecnico IdP (NetScaler / ADFS)</p>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-xs text-blue-600 font-medium">ACS URL (Assertion Consumer Service):</span>
+                  <code className="block text-xs bg-white border border-blue-200 rounded px-2 py-1 mt-0.5 break-all">
+                    {saml.sp_base_url}/api/auth/saml/callback
+                  </code>
+                </div>
+                <div>
+                  <span className="text-xs text-blue-600 font-medium">SP Entity ID:</span>
+                  <code className="block text-xs bg-white border border-blue-200 rounded px-2 py-1 mt-0.5 break-all">
+                    {saml.sp_entity_id || `${saml.sp_base_url}/api/auth/saml/metadata`}
+                  </code>
+                </div>
+                <div>
+                  <span className="text-xs text-blue-600 font-medium">SP Metadata XML:</span>
+                  <a href="/api/auth/saml/metadata" target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-700 underline mt-0.5 hover:text-blue-900">
+                    <ExternalLink size={11} /> /api/auth/saml/metadata
+                  </a>
+                </div>
+                <div>
+                  <span className="text-xs text-blue-600 font-medium">Binding:</span>
+                  <span className="text-xs text-blue-800 ml-1">HTTP-POST</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SP Config */}
+            <div>
+              <label className="label">SP Base URL <span className="text-gray-400 font-normal">(URL pubblico di questa applicazione)</span></label>
+              <input className="input" placeholder="https://smsgateway.azienda.it"
+                value={saml.sp_base_url}
+                onChange={e => { setSaml(s => ({ ...s, sp_base_url: e.target.value })); setSamlDirty(true) }} />
+              <p className="text-xs text-gray-400 mt-1">Deve corrispondere all&rsquo;URL con cui gli utenti raggiungono l&rsquo;applicazione.</p>
+            </div>
+            <div>
+              <label className="label">SP Entity ID <span className="text-gray-400 font-normal">(lascia vuoto per usare il default)</span></label>
+              <input className="input" placeholder={`${saml.sp_base_url}/api/auth/saml/metadata`}
+                value={saml.sp_entity_id}
+                onChange={e => { setSaml(s => ({ ...s, sp_entity_id: e.target.value })); setSamlDirty(true) }} />
+            </div>
+
+            {/* IdP Config */}
+            <div>
+              <label className="label">IdP SSO URL <span className="text-gray-400 font-normal">(URL di login dell&rsquo;Identity Provider)</span></label>
+              <input className="input" placeholder="https://netscaler.azienda.it/saml/login"
+                value={saml.idp_sso_url}
+                onChange={e => { setSaml(s => ({ ...s, idp_sso_url: e.target.value })); setSamlDirty(true) }} />
+            </div>
+            <div>
+              <label className="label">Certificato IdP (X.509 PEM)</label>
+              <textarea className="input font-mono text-xs" rows={6}
+                placeholder={'-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----'}
+                value={saml.idp_cert}
+                onChange={e => { setSaml(s => ({ ...s, idp_cert: e.target.value })); setSamlDirty(true) }} />
+              <p className="text-xs text-gray-400 mt-1">Incolla il certificato X.509 fornito dall&rsquo;amministratore NetScaler. Accettato sia con che senza header PEM.</p>
+            </div>
+
+            {/* Attribute mapping */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Attributo username <span className="text-gray-400 font-normal">(vuoto = NameID)</span></label>
+                <input className="input" placeholder="NameID (default)"
+                  value={saml.username_attribute}
+                  onChange={e => { setSaml(s => ({ ...s, username_attribute: e.target.value })); setSamlDirty(true) }} />
+              </div>
+              <div>
+                <label className="label">Attributo display name</label>
+                <input className="input" placeholder="displayName"
+                  value={saml.display_name_attribute}
+                  onChange={e => { setSaml(s => ({ ...s, display_name_attribute: e.target.value })); setSamlDirty(true) }} />
+              </div>
+            </div>
+            <div>
+              <label className="label">Ruolo predefinito per nuovi utenti SAML</label>
+              <select className="input" value={saml.default_role}
+                onChange={e => { setSaml(s => ({ ...s, default_role: e.target.value })); setSamlDirty(true) }}>
+                <option value="user">Utente (user)</option>
+                <option value="admin">Amministratore (admin)</option>
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Il ruolo può essere modificato individualmente in &ldquo;Gestione utenti&rdquo; dopo il primo accesso.</p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button type="button" onClick={handleSaveSaml} disabled={samlSaving || !samlDirty}
+                className="btn-primary flex items-center gap-2">
+                <Save size={15} />{samlSaving ? 'Salvataggio...' : 'Salva configurazione SAML'}
+              </button>
+            </div>
+
+            {samlResult && (
+              <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                samlResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {samlResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                {samlResult.message}
               </div>
             )}
           </section>
