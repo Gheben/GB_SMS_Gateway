@@ -1,22 +1,22 @@
 version: '3.9'
 
-# Dati persistenti: bind mount su cartelle locali dell'host (es. Synology).
-# Per spostare tutto su un altro server basta copiare le cartelle ./data e ./logs
-# insieme a questo docker-compose.yml.
+# Persistent data: bind mounts to local host folders (e.g. Synology).
+# To migrate to another server, just copy the ./data and ./logs folders
+# along with this docker-compose.yml.
 #
-# Struttura su disco host:
+# Host disk layout:
 #   /volume1/docker/smsgateway/
 #   ├── docker-compose.yml
 #   ├── .env
 #   ├── data/
-#   │   └── smsgateway.db    ← database SQLite (backup = copia questo file)
+#   │   └── smsgateway.db    ← SQLite database (backup = copy this file)
 #   └── logs/
 #       └── app.log
 
 services:
 
-  # Crea le cartelle ./data e ./logs sull'host prima che il backend parta.
-  # Necessario su Synology dove Docker non crea automaticamente le cartelle di bind mount.
+  # Creates the ./data and ./logs folders on the host before the backend starts.
+  # Required on Synology where Docker does not automatically create bind-mount folders.
   init-dirs:
     image: alpine
     command: sh -c "mkdir -p /host/data /host/logs"
@@ -41,8 +41,8 @@ services:
       - PORT=4673
       - DB_PATH=/app/data/smsgateway.db
       - LOG_FILE=/app/logs/app.log
-      # SSO tramite proxy (Authentik, NetScaler ADC, ecc.)
-      # Decommenta e imposta nel .env oppure direttamente qui:
+      # SSO via reverse proxy (Authentik, NetScaler ADC, etc.)
+      # Uncomment and set in .env or directly here:
       # - SSO_ENABLED=true
       # - SSO_HEADER=X-Remote-User
     volumes:

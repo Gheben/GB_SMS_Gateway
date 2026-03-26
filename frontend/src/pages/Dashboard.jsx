@@ -86,7 +86,7 @@ export default function Dashboard() {
       {/* Recent messages */}
       <div>
         <h3 className="text-lg font-semibold text-gray-700 mb-3">Recent messages</h3>
-        <MessageTable messages={recent} loading={loading} onRowDoubleClick={setSelectedMessage} />
+        <MessageTable messages={recent} loading={loading} onDoubleClick={setSelectedMessage} />
       </div>
 
       <MessageDetailModal message={selectedMessage} onClose={() => setSelectedMessage(null)} />
