@@ -149,30 +149,29 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
       logger.warn(`[LDAP] AD chain search failed: ${err.message}, usando BFS memberOf`);
     }
 
-    // Tentativo 2: quando la chain search globale fallisce (es. Size Limit Exceeded su AD grandi),
-    // verifica la membership transitiva per ogni gruppo configurato nel mapping.
-    // Usa scope=base sul DN dell'utente: non genera risultati multipli, non colpisce mai il size limit.
+    // Tentativo 2: unica query con filtro OR su tutti i gruppi configurati nel mapping.
+    // Cerca da baseDN con (|(distinguishedName=DN1 & member:OID:=userDN)(DN2 & ...)...).
+    // I risultati sono al massimo N (numero di mapping) → il size limit non viene mai colpito.
     const mappings = cfg.group_mappings || [];
     if (mappings.length) {
-      const foundGroups = [];
-      for (const m of mappings) {
-        try {
-          const entries = await ldapSearch(client, userDN, {
-            scope: 'base',
-            filter: `(memberOf:1.2.840.113556.1.4.1941:=${escapeLdap(m.group_dn)})`,
-            attributes: ['dn'],
-            sizeLimit: 1,
-          });
-          if (entries.length) {
-            foundGroups.push(m.group_dn);
-            logger.info(`[LDAP] Targeted check: user is transitive member of ${m.group_dn}`);
-          }
-        } catch (err) {
-          logger.warn(`[LDAP] Targeted group check failed for ${m.group_dn}: ${err.message}`);
+      try {
+        const parts = mappings.map(m =>
+          `(&(distinguishedName=${escapeLdap(m.group_dn)})(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)}))`
+        );
+        const filter = parts.length === 1 ? parts[0] : `(|${parts.join('')})`;
+        const entries = await ldapSearch(client, _baseDn(cfg), {
+          scope: 'sub',
+          filter,
+          attributes: ['dn'],
+          sizeLimit: mappings.length + 1,
+        });
+        const matched = entries.map(e => e.dn || e.objectName).filter(Boolean);
+        if (matched.length) {
+          logger.info(`[LDAP] Single targeted query: user is transitive member of ${matched.length} configured group(s)`);
+          return [...new Set([...directGroups, ...matched])];
         }
-      }
-      if (foundGroups.length) {
-        return [...new Set([...directGroups, ...foundGroups])];
+      } catch (err) {
+        logger.warn(`[LDAP] Single targeted query failed: ${err.message}, falling back to BFS`);
       }
     }
   }
