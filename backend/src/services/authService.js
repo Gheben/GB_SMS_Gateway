@@ -87,9 +87,17 @@ async function login(username, password) {
     return { token: signToken({ ...localUser, permissions }), user: safeUser({ ...localUser, permissions }) };
   }
 
-  // 1b. Fallback: cerca per username senza filtro source (es. utente senza colonna source)
+  // 1b. Fallback: utente con source diverso da 'local' ma con password_hash settato
+  // (es. superadmin, o account migrati) — non tentare per source ldap/saml (no password locale)
   const anyUser = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username);
   logger.info(`[Auth] login user="${username}" localFound=false anyFound=${!!anyUser} anySource=${anyUser?.source}`);
+  if (anyUser && anyUser.password_hash && anyUser.source !== 'ldap' && anyUser.source !== 'saml') {
+    const ok = verifyPassword(password, anyUser.password_hash);
+    logger.info(`[Auth] login fallback user="${username}" source=${anyUser.source} passwordMatch=${ok}`);
+    if (!ok) return null;
+    const permissions = JSON.parse(anyUser.permissions || '{}');
+    return { token: signToken({ ...anyUser, permissions }), user: safeUser({ ...anyUser, permissions }) };
+  }
 
   // 2. Prova autenticazione LDAP
   const ldapResult = await ldapService.authenticate(username, password);

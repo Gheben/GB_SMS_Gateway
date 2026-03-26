@@ -72,8 +72,9 @@ const swaggerDistPath = path.join(__dirname, '../node_modules/swagger-ui-dist');
 app.get('/api/docs.json', (req, res) => res.json(openApiSpec));
 
 // Swagger UI wrapper HTML — MUST be registered before express.static catch-all
-app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
-app.get('/docs/', (req, res) => {
+// NOTE: express non-strict routing makes '/docs' match '/docs/' too, causing a redirect loop.
+// Use an array of paths to serve HTML directly without any redirect.
+app.get(['/docs', '/docs/'], (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html lang="en">
