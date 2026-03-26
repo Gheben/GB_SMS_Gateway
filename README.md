@@ -561,7 +561,6 @@ docker compose up -d
 - ✅ Fix: `.gitattributes` for LF line endings (Synology compatibility)
 - ✅ Fix: `.trim()` on `SUPERADMIN_PASSWORD` to prevent CRLF bugs
 - ✅ Fix: `init-dirs` service in docker-compose to create bind mount folders on Synology
-- ✅ Multiple git remotes: `git.ballarini.app` + `git.airdolomiti.it`
 - ✅ Login diagnostic logging
 
 ### v1.0.0 (January 2026)
