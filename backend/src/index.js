@@ -65,16 +65,15 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
 
-// Swagger UI — public, CDN-based (avoids static file serving issues with webpack/helmet)
-// Expose the OpenAPI spec as JSON (no auth, mounted before requireAuth)
+// Swagger UI — served from local node_modules (no CDN, no CSP issues)
+const swaggerDistPath = path.join(__dirname, '../node_modules/swagger-ui-dist');
+
+// Expose the OpenAPI spec as JSON (public, no auth)
 app.get('/api/docs.json', (req, res) => res.json(openApiSpec));
 
-// Serve Swagger UI using CDN assets — no dependency on swagger-ui-express static files
+// Swagger UI wrapper HTML — MUST be registered before express.static catch-all
+app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
 app.get('/docs/', (req, res) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' unpkg.com; style-src 'self' 'unsafe-inline' unpkg.com; img-src 'self' data: unpkg.com; font-src 'self' data: unpkg.com;"
-  );
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -82,12 +81,12 @@ app.get('/docs/', (req, res) => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SMS Gateway — API Docs</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
-  <style>body { margin: 0; } .swagger-ui .topbar { display: none; }</style>
+  <link rel="stylesheet" href="/docs/swagger-ui.css" />
+  <style>body{margin:0}.swagger-ui .topbar{display:none}</style>
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="/docs/swagger-ui-bundle.js"></script>
   <script>
     window.onload = function () {
       SwaggerUIBundle({
@@ -103,7 +102,8 @@ app.get('/docs/', (req, res) => {
 </body>
 </html>`);
 });
-app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
+// Serve swagger-ui-dist assets (CSS, JS, etc.) from local node_modules
+app.use('/docs', express.static(swaggerDistPath));
 
 // API routes — auth (pubblica)
 app.use('/api/auth', authRouter);
