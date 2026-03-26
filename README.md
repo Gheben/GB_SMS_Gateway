@@ -5,6 +5,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-builtin-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Swagger](https://img.shields.io/badge/Swagger-UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)
 
 ---
 
@@ -35,6 +36,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 - 🔄 **WebSocket** — Real-time updates for new SMS and device status
 - 📱 **PWA** — Installable as an app on desktop and mobile
 - 🔏 **SAML 2.0 / Enterprise SSO** — Federated login via NetScaler, ADFS, or Azure AD (SP-initiated, configurable from UI)
+- 📖 **Swagger UI / API Docs** — Interactive REST API reference at `/docs`, auto-authenticated when already logged in
 
 ---
 
@@ -311,6 +313,19 @@ Granular permissions: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`,
 ### 10. Audit Log (superadmin only)
 Go to **Audit log** to see all operations performed: logins, user changes, SMS sends, rule changes, etc.
 
+### 11. API Reference (Swagger UI)
+The full interactive REST API documentation is available at `/docs` (opens in a new tab from the sidebar **API Docs** link, visible to `admin` and `superadmin` roles).
+
+**Features:**
+- **Auto-authentication** — If you are already logged in to the app, your JWT token is automatically injected into all "Try it out" requests. A green banner confirms the authenticated state.
+- **Manual authorization** — If not logged in, click the **Authorize 🔓** button and paste a token obtained from `POST /api/auth/login`. A yellow banner provides step-by-step instructions.
+- Full OpenAPI 3.0 spec: all endpoints, request/response schemas, and security requirements documented.
+
+> **URLs:**
+> - Docker: `http://localhost:4674/docs`
+> - Dev: `http://localhost:3000/docs`
+> - Direct backend: `http://localhost:4673/docs`
+
 ---
 
 ## 🗂️ Project structure
@@ -467,6 +482,10 @@ GB-SMS-Gateway/
 ### Health check
 - `GET /api/health` — Backend status and connected devices
 
+### API Reference (Swagger UI)
+- `GET /docs` — Interactive Swagger UI with full OpenAPI 3.0 spec (admin/superadmin)
+- `GET /api/docs.json` — Raw OpenAPI 3.0 JSON spec
+
 ---
 
 ## 🗃️ SQLite Database
@@ -554,6 +573,13 @@ docker compose up -d
 ---
 
 ## 📝 Changelog
+
+### v1.2.0 (March 2026)
+- ✅ Feat: Interactive Swagger UI at `/docs` with dark theme and full OpenAPI 3.0 spec
+- ✅ Feat: Swagger auto-populates JWT token from app session — no manual copy-paste needed
+- ✅ Feat: SAML 2.0 SP-initiated login (NetScaler, ADFS, Azure AD)
+- ✅ Perf: LDAP group resolution via single OR-combined query (no size limit issues)
+- ✅ Fix: `/docs` proxied correctly through nginx in Docker deployment
 
 ### v1.1.0 (March 2026)
 - ✅ Fix: `node:sqlite` → requires Node 22+ and `--experimental-sqlite`
