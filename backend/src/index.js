@@ -355,11 +355,24 @@ app.get(['/docs', '/docs/'], (req, res) => {
 
     function copyToken() {
       const t = getStoredToken();
-      if (t) navigator.clipboard.writeText(t).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = 'Copy token', 1500);
-      });
+      if (!t) return;
+      const btn = document.querySelector('.copy-btn');
+      const done = () => { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy token', 1500); };
+      const fail = () => { btn.textContent = 'Error!';  setTimeout(() => btn.textContent = 'Copy token', 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(done).catch(() => fallbackCopy(t, done, fail));
+      } else {
+        fallbackCopy(t, done, fail);
+      }
+    }
+    function fallbackCopy(text, done, fail) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy') ? done() : fail(); } catch(e) { fail(); }
+      document.body.removeChild(ta);
     }
 
     window.onload = function () {
