@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const links = [
@@ -16,6 +16,8 @@ const links = [
   { divider: true },
   { to: '/users',   label: 'Users/Groups', icon: Users,           perm: 'users' },
   { to: '/audit',   label: 'Audit Log',    icon: ClipboardList,   superadminOnly: true },
+  { divider: true },
+  { href: '/docs',  label: 'API Docs',     icon: BookOpen,        adminOnly: true },
 ]
 
 export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout }) {
@@ -63,6 +65,19 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
             if (l.perm && !can(l.perm)) return null
             if (l.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return null
             if (l.superadminOnly && user?.role !== 'superadmin') return null
+            if (l.href) return (
+              <a
+                key={l.href}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <l.icon size={17} className="flex-shrink-0" />
+                {l.label}
+              </a>
+            )
             return (
               <NavLink
                 key={l.to}

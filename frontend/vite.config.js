@@ -16,6 +16,10 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      '/docs': {
+        target: 'http://localhost:4673',
+        changeOrigin: true,
+      },
     },
   },
   build: {
