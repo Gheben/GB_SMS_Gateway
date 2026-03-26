@@ -67,7 +67,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
 
 // Swagger UI — public, no auth required
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+// Helmet's default CSP blocks swagger-ui's inline scripts, so we relax it for /docs only
+app.use('/docs', (req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
+  );
+  next();
+}, swaggerUi.serve, swaggerUi.setup(openApiSpec, {
   customSiteTitle: 'SMS Gateway API Docs',
   swaggerOptions: { persistAuthorization: true, docExpansion: 'none' },
 }));
