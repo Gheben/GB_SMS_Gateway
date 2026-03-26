@@ -17,7 +17,7 @@ const links = [
   { to: '/users',   label: 'Users/Groups', icon: Users,           perm: 'users' },
   { to: '/audit',   label: 'Audit Log',    icon: ClipboardList,   superadminOnly: true },
   { divider: true },
-  { href: '/docs',  label: 'API Docs',     icon: BookOpen,        adminOnly: true },
+  { href: '/docs/',  label: 'API Docs',     icon: BookOpen,        adminOnly: true },
 ]
 
 export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout }) {

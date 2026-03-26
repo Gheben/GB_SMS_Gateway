@@ -67,6 +67,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
 
 // Swagger UI — public, no auth required
+// Redirect /docs → /docs/ so that relative asset URLs in swagger-ui resolve correctly
+app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
 // Helmet's default CSP blocks swagger-ui's inline scripts, so we relax it for /docs only
 app.use('/docs', (req, res, next) => {
   res.setHeader(
