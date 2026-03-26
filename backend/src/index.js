@@ -25,7 +25,6 @@ const auditRouter    = require('./routes/audit');
 const groupsRouter   = require('./routes/localGroups');
 const { requireAuth } = require('./middleware/authMiddleware');
 const { seedSuperAdmin } = require('./services/authService');
-const swaggerUi = require('swagger-ui-express');
 const openApiSpec = require('./openapi');
 
 // Ensure data and logs directories exist
@@ -66,20 +65,45 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // necessario per SAML callback (form POST IdP)
 
-// Swagger UI — public, no auth required
-// Redirect /docs → /docs/ so that relative asset URLs in swagger-ui resolve correctly
-app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
-// Helmet's default CSP blocks swagger-ui's inline scripts, so we relax it for /docs only
-app.use('/docs', (req, res, next) => {
+// Swagger UI — public, CDN-based (avoids static file serving issues with webpack/helmet)
+// Expose the OpenAPI spec as JSON (no auth, mounted before requireAuth)
+app.get('/api/docs.json', (req, res) => res.json(openApiSpec));
+
+// Serve Swagger UI using CDN assets — no dependency on swagger-ui-express static files
+app.get('/docs/', (req, res) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' unpkg.com; style-src 'self' 'unsafe-inline' unpkg.com; img-src 'self' data: unpkg.com; font-src 'self' data: unpkg.com;"
   );
-  next();
-}, swaggerUi.serve, swaggerUi.setup(openApiSpec, {
-  customSiteTitle: 'SMS Gateway API Docs',
-  swaggerOptions: { persistAuthorization: true, docExpansion: 'none' },
-}));
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SMS Gateway — API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>body { margin: 0; } .swagger-ui .topbar { display: none; }</style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = function () {
+      SwaggerUIBundle({
+        url: '/api/docs.json',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+        layout: 'BaseLayout',
+        persistAuthorization: true,
+        docExpansion: 'none',
+      });
+    };
+  </script>
+</body>
+</html>`);
+});
+app.get('/docs', (req, res) => res.redirect(301, '/docs/'));
 
 // API routes — auth (pubblica)
 app.use('/api/auth', authRouter);
