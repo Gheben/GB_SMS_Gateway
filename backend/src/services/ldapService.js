@@ -1,4 +1,4 @@
-// Carica ldapjs in modo che il server non crashi se il pacchetto non fosse installato
+// Load ldapjs gracefully — if the package is not installed the server will still start
 let ldap;
 try { ldap = require('ldapjs'); } catch { ldap = null; }
 
@@ -22,14 +22,14 @@ function getLdapSettings() {
 function saveLdapSettings(cfg) {
   const db = getDb();
   const existing = getLdapSettings();
-  // Mantieni password esistente se non ri-inviata (entrambi i formati)
+  // Keep existing password if not re-submitted (both field name formats)
   if (!cfg.ldap_service_password) {
     if (existing?.ldap_service_password) cfg.ldap_service_password = existing.ldap_service_password;
   }
   if (!cfg.bind_password) {
     if (existing?.bind_password) cfg.bind_password = existing.bind_password;
   }
-  // Cifra le password prima di salvarle (guard: non ricifrare se già cifrate)
+  // Encrypt passwords before saving (guard: skip if already encrypted)
   if (cfg.ldap_service_password && !isEncrypted(cfg.ldap_service_password)) {
     cfg.ldap_service_password = encrypt(cfg.ldap_service_password);
   }
@@ -43,7 +43,7 @@ function saveLdapSettings(cfg) {
 
 /* ─── Client helpers ─────────────────────────────────────────── */
 
-/** Restituisce il DN/UPN con cui eseguire il bind dell'account di servizio */
+/** Returns the DN/UPN used to bind the service account. */
 function _serviceBindPrincipal(cfg) {
   if (cfg.ldap_service_username && cfg.ldap_domain) {
     return `${cfg.ldap_service_username}@${cfg.ldap_domain}`;
@@ -51,19 +51,19 @@ function _serviceBindPrincipal(cfg) {
   return cfg.bind_dn || '';
 }
 
-/** Restituisce la password dell'account di servizio (decifrata) */
+/** Returns the service account password (decrypted). */
 function _servicePassword(cfg) {
   const raw = cfg.ldap_service_password || cfg.bind_password || '';
   return decrypt(raw);
 }
 
-/** Restituisce il Base DN */
+/** Returns the Base DN. */
 function _baseDn(cfg) {
   return cfg.ldap_base_dn || cfg.base_dn || '';
 }
 
 function makeClient(cfg) {
-  // Nuovo formato: ldap_server è l'URL completo (ldap:// o ldaps://)
+  // New format: ldap_server is the full URL (ldap:// or ldaps://)
   const url = cfg.ldap_server ||
     `${cfg.use_tls ? 'ldaps' : 'ldap'}://${cfg.host}:${cfg.port || (cfg.use_tls ? 636 : 389)}`;
   const client = ldap.createClient({
@@ -73,7 +73,7 @@ function makeClient(cfg) {
     timeout: 8000,
     connectTimeout: 8000,
   });
-  // MUST handle error event — altrimenti Node.js lancia eccezione non gestita
+  // MUST handle error event — otherwise Node.js throws an unhandled exception
   client.on('error', err => logger.warn(`[LDAP] client error: ${err.message}`));
   return client;
 }
@@ -90,9 +90,9 @@ function ldapSearch(client, base, options) {
     client.search(base, options, (err, res) => {
       if (err) return reject(err);
       res.on('searchEntry', e => {
-        // ldapjs v3: leggi da e.attributes (array di {type, values})
-        // ldapjs v1/v2: leggi da e.object (plain object)
-        // Normalizziamo tutte le chiavi in lowercase per uniformità
+        // ldapjs v3: read from e.attributes (array of {type, values})
+        // ldapjs v1/v2: read from e.object (plain object)
+        // Normalise all keys to lowercase for consistency
         const obj = {};
         if (Array.isArray(e.attributes)) {
           for (const attr of e.attributes) {
@@ -128,13 +128,13 @@ function escapeLdap(s) {
 /* ─── Group resolution ───────────────────────────────────────── */
 
 /**
- * Risolve tutti i gruppi (anche nested) a cui l'utente appartiene.
- * In modalità AD usa LDAP_MATCHING_RULE_IN_CHAIN (ricorsione automatica).
- * Altrimenti fa BFS sui memberOf di ogni gruppo.
+ * Resolves all groups (including nested) the user belongs to.
+ * In AD mode uses LDAP_MATCHING_RULE_IN_CHAIN (automatic recursion by the DC).
+ * Otherwise falls back to BFS over each group's memberOf attribute.
  */
 async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
   if (cfg.ad_mode !== false) {
-    // Tentativo 1: chain search globale per tutti i gruppi dell'utente
+    // Strategy 1: global AD chain search for all groups the user belongs to
     try {
       const filter = `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`;
       const entries = await ldapSearch(client, _baseDn(cfg), {
@@ -146,12 +146,12 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
       const dns = entries.map(e => e.dn || e.objectName).filter(Boolean);
       if (dns.length) return dns;
     } catch (err) {
-      logger.warn(`[LDAP] AD chain search failed: ${err.message}, usando BFS memberOf`);
+      logger.warn(`[LDAP] AD chain search failed: ${err.message}, falling back to targeted query`);
     }
 
-    // Tentativo 2: unica query con filtro OR su tutti i gruppi configurati nel mapping.
-    // Cerca da baseDN con (|(distinguishedName=DN1 & member:OID:=userDN)(DN2 & ...)...).
-    // I risultati sono al massimo N (numero di mapping) → il size limit non viene mai colpito.
+    // Strategy 2: single OR-combined query over all configured group mappings.
+    // Searches from baseDN with (|(distinguishedName=DN1 & member:OID:=userDN)(DN2 & ...)...).
+    // Results are bounded to at most N entries (number of mappings) — size limit is never hit.
     const mappings = cfg.group_mappings || [];
     if (mappings.length) {
       try {
@@ -176,7 +176,7 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
     }
   }
 
-  // BFS standard (fallback per non-AD o quando tutti i metodi falliscono)
+  // Strategy 3: BFS fallback (non-AD mode or when all AD strategies fail)
   const visited = new Set(directGroups);
   const queue   = [...directGroups];
   while (queue.length) {
@@ -199,22 +199,22 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
 /* ─── Public API ─────────────────────────────────────────────── */
 
 async function testConnection() {
-  if (!ldap) throw new Error('ldapjs non installato nel backend');
+  if (!ldap) throw new Error('ldapjs is not installed in the backend');
   const cfg = getLdapSettings();
-  if (!cfg?.enabled) throw new Error('LDAP non abilitato');
-  if (!cfg.host && !cfg.ldap_server) throw new Error('Server LDAP non configurato');
+  if (!cfg?.enabled) throw new Error('LDAP is not enabled');
+  if (!cfg.host && !cfg.ldap_server) throw new Error('LDAP server is not configured');
   const client = makeClient(cfg);
   try {
     await ldapBind(client, _serviceBindPrincipal(cfg), _servicePassword(cfg));
-    return { ok: true, message: 'Connessione riuscita' };
+    return { ok: true, message: 'Connection successful' };
   } finally {
     await ldapUnbind(client);
   }
 }
 
 /**
- * Autentica un utente tramite LDAP.
- * Restituisce { dn, username, displayName, email, groups } oppure null.
+ * Authenticates a user via LDAP.
+ * Returns { dn, username, displayName, email, groups } or null.
  */
 async function authenticate(username, password) {
   if (!ldap) return null;
@@ -223,12 +223,12 @@ async function authenticate(username, password) {
 
   const svcClient = makeClient(cfg);
   try {
-    // 1. Bind con service account
+    // 1. Bind with service account
     await ldapBind(svcClient, _serviceBindPrincipal(cfg), _servicePassword(cfg));
     logger.info(`[LDAP] Service bind OK`);
 
-    // 2. Trova utente
-    // Normalizza username: rimuovi dominio (user@domain o DOMAIN\user)
+    // 2. Find user
+    // Normalise username: strip domain prefix (user@domain or DOMAIN\user)
     const bareUsername = username.includes('@') ? username.split('@')[0]
       : username.includes('\\') ? username.split('\\').pop()
       : username;
@@ -250,19 +250,19 @@ async function authenticate(username, password) {
     const userDN = entry.dn || entry.objectName;
     logger.info(`[LDAP] User found: DN=${userDN}`);
 
-    // 3. Verifica password utente
+    // 3. Verify user password
     const userClient = makeClient(cfg);
     try {
       await ldapBind(userClient, userDN, password);
     } catch (e) {
       logger.warn(`[LDAP] Invalid password for "${username}": ${e.message}`);
       await ldapUnbind(userClient);
-      return null; // password errata
+      return null; // wrong password
     }
     await ldapUnbind(userClient);
     logger.info(`[LDAP] Password OK for "${bareUsername}"`);
 
-    // 4. Risolvi gruppi (anche nested)
+    // 4. Resolve groups (including nested)
     const directGroups = [].concat(entry.memberOf || []);
     logger.info(`[LDAP] Direct groups (${directGroups.length}): ${directGroups.slice(0, 5).join('; ')}${directGroups.length > 5 ? '...' : ''}`);
     const allGroups    = await getAllGroupsForUser(svcClient, cfg, userDN, directGroups);
@@ -284,8 +284,8 @@ async function authenticate(username, password) {
 }
 
 /**
- * Dati i gruppi DN dell'utente, restituisce { role, permissions }
- * in base al group_mappings configurato. Primo mapping admin vince.
+ * Given the user's group DNs, returns { role, permissions }
+ * based on the configured group_mappings. First admin mapping wins.
  */
 function resolvePermissions(groups) {
   const cfg = getLdapSettings();
@@ -302,7 +302,7 @@ function resolvePermissions(groups) {
     if (!groupSet.has(m.group_dn.toLowerCase())) continue;
     if (m.role === 'admin') return { role: 'admin', permissions: {} };
     role = 'user';
-    // Merge permessi (unione — se più gruppi, tutte le sezioni permesse)
+    // Merge permissions (union — if user matches multiple groups, all sections are granted)
     Object.entries(m.permissions || {}).forEach(([k, v]) => { if (v) merged[k] = true; });
   }
 
@@ -315,9 +315,9 @@ function resolvePermissions(groups) {
 }
 
 /**
- * Cerca un utente tramite service account senza verificare la sua password.
- * Usato per SSO dove il proxy ha già autenticato l'utente.
- * Restituisce { dn, username, displayName, email, groups } oppure null.
+ * Looks up a user via service account without verifying their password.
+ * Used for SSO flows where the upstream proxy has already authenticated the user.
+ * Returns { dn, username, displayName, email, groups } or null.
  */
 async function lookupUser(username) {
   if (!ldap) return null;
