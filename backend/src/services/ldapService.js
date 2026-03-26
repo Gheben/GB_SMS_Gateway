@@ -134,21 +134,50 @@ function escapeLdap(s) {
  */
 async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
   if (cfg.ad_mode !== false) {
+    // Tentativo 1: chain search globale per tutti i gruppi dell'utente
     try {
       const filter = `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`;
-      const entries = await ldapSearch(client, _baseDn(cfg), {        scope: 'sub',        filter,
+      const entries = await ldapSearch(client, _baseDn(cfg), {
+        scope: 'sub',
+        filter,
         attributes: ['dn'],
         sizeLimit: 500,
       });
-      // ad_mode restituisce anche gli objectName come DN
       const dns = entries.map(e => e.dn || e.objectName).filter(Boolean);
       if (dns.length) return dns;
     } catch (err) {
       logger.warn(`[LDAP] AD chain search failed: ${err.message}, usando BFS memberOf`);
     }
+
+    // Tentativo 2: quando la chain search globale fallisce (es. Size Limit Exceeded su AD grandi),
+    // verifica la membership transitiva per ogni gruppo configurato nel mapping.
+    // Usa scope=base sul DN dell'utente: non genera risultati multipli, non colpisce mai il size limit.
+    const mappings = cfg.group_mappings || [];
+    if (mappings.length) {
+      const foundGroups = [];
+      for (const m of mappings) {
+        try {
+          const entries = await ldapSearch(client, userDN, {
+            scope: 'base',
+            filter: `(memberOf:1.2.840.113556.1.4.1941:=${escapeLdap(m.group_dn)})`,
+            attributes: ['dn'],
+            sizeLimit: 1,
+          });
+          if (entries.length) {
+            foundGroups.push(m.group_dn);
+            logger.info(`[LDAP] Targeted check: user is transitive member of ${m.group_dn}`);
+          }
+        } catch (err) {
+          logger.warn(`[LDAP] Targeted group check failed for ${m.group_dn}: ${err.message}`);
+        }
+      }
+      if (foundGroups.length) {
+        return [...new Set([...directGroups, ...foundGroups])];
+      }
+    }
   }
 
-  // BFS standard
+  // BFS standard (fallback per non-AD o quando tutti i metodi falliscono)
   const visited = new Set(directGroups);
   const queue   = [...directGroups];
   while (queue.length) {
