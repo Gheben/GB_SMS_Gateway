@@ -62,15 +62,19 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
           {links.map((l, i) => {
             if (l.divider) {
-              // Show divider only if there is at least one visible item after it
-              const hasVisibleAfter = links.slice(i + 1).some(next => {
-                if (next.divider) return false
-                if (next.perm && !can(next.perm)) return false
-                if (next.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false
-                if (next.superadminOnly && user?.role !== 'superadmin') return false
+              const isVisible = link => {
+                if (link.divider) return false
+                if (link.perm && !can(link.perm)) return false
+                if (link.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false
+                if (link.superadminOnly && user?.role !== 'superadmin') return false
                 return true
-              })
-              return hasVisibleAfter ? <div key={i} className="border-t border-gray-700 my-2" /> : null
+              }
+              // Find the index of the previous divider (or -1 if none)
+              const prevDividerIdx = links.slice(0, i).reduce((acc, x, j) => x.divider ? j : acc, -1)
+              // Show only if there is at least one visible item on BOTH sides
+              const hasVisibleBefore = links.slice(prevDividerIdx + 1, i).some(isVisible)
+              const hasVisibleAfter  = links.slice(i + 1).some(isVisible)
+              return (hasVisibleBefore && hasVisibleAfter) ? <div key={i} className="border-t border-gray-700 my-2" /> : null
             }
             if (l.perm && !can(l.perm)) return null
             if (l.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return null
