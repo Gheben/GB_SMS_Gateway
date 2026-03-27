@@ -126,19 +126,27 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 /**
- * GET /api/auth/refresh-token — emette un nuovo JWT con role/permissions aggiornati dal DB.
+ * GET /api/auth/refresh-token — emette un nuovo JWT con role/permissions aggiornati.
+ * Per gli utenti LDAP i permessi sono già ri-risolti dai group_mappings in requireAuth.
  * Usato dal frontend per aggiornare la UI senza re-login.
  */
 router.get('/refresh-token', requireAuth, (req, res) => {
-  const db = getDb();
-  const dbUser = db.prepare(
-    'SELECT id, username, display_name, role, permissions, allowed_ports, source FROM users WHERE id = ?'
+  // req.user contiene già role/permissions/allowed_ports aggiornati dal middleware
+  // (per LDAP: ri-risolti dai group_mappings correnti; per local: letti dal DB).
+  // Leggiamo solo display_name dal DB perché non è in req.user.
+  const dbUser = getDb().prepare(
+    'SELECT display_name FROM users WHERE id = ?'
   ).get(req.user.id);
   if (!dbUser) return res.status(404).json({ error: 'Utente non trovato' });
   const { signJwt } = require('../services/authService');
-  const permissions = JSON.parse(dbUser.permissions || '{}');
-  const allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
-  const token = signJwt({ ...dbUser, permissions, allowed_ports });
+  const token = signJwt({
+    id: req.user.id,
+    username: req.user.username,
+    display_name: dbUser.display_name,
+    role: req.user.role,
+    permissions: req.user.permissions,
+    allowed_ports: req.user.allowed_ports,
+  });
   res.json({ token });
 });
 

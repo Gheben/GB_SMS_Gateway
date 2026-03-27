@@ -1,10 +1,12 @@
 const { verifyToken } = require('../services/authService');
 const { getDb } = require('../db/database');
+const ldapService = require('../services/ldapService');
 
 /**
  * Middleware che verifica il token JWT.
  * Popola req.user con { id, username, role, permissions, groups }.
- * Per gli utenti LDAP non-admin, carica i gruppi AD dal DB (non dal JWT).
+ * Per gli utenti LDAP, ri-risolve i permessi dai ldap_groups salvati + config corrente,
+ * così le modifiche alle group_mappings hanno effetto immediato senza re-login.
  */
 function requireAuth(req, res, next) {
   const auth = req.headers['authorization'] || '';
@@ -15,18 +17,38 @@ function requireAuth(req, res, next) {
     // Legge sempre role, permissions e allowed_ports dal DB per applicare
     // immediatamente qualsiasi modifica senza richiedere il re-login.
     const dbUser = getDb().prepare(
-      'SELECT role, permissions, allowed_ports, ldap_groups FROM users WHERE id = ?'
+      'SELECT role, permissions, allowed_ports, ldap_groups, source FROM users WHERE id = ?'
     ).get(payload.sub);
     if (!dbUser) return res.status(401).json({ error: 'Utente non trovato' });
-    const isAdmin = dbUser.role === 'superadmin' || dbUser.role === 'admin';
+
+    let role = dbUser.role;
+    let permissions = JSON.parse(dbUser.permissions || '{}');
+    let allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
+
+    // Per gli utenti LDAP, ri-risolve i permessi dalla configurazione corrente dei group_mappings.
+    // Questo garantisce che le modifiche alle mappature siano visibili al prossimo tick di polling
+    // (o al prossimo F5) senza bisogno di logout/login.
+    if (dbUser.source === 'ldap' && dbUser.ldap_groups) {
+      try {
+        const groups = JSON.parse(dbUser.ldap_groups);
+        const resolved = ldapService.resolvePermissions(groups);
+        if (resolved) {
+          role = resolved.role;
+          permissions = resolved.permissions || {};
+          allowed_ports = resolved.allowed_ports || [];
+        }
+      } catch { /* ignora, usa i valori del DB */ }
+    }
+
+    const isAdmin = role === 'superadmin' || role === 'admin';
     const groups = !isAdmin && dbUser.ldap_groups ? JSON.parse(dbUser.ldap_groups) : [];
     req.user = {
       id: payload.sub,
       username: payload.username,
       displayName: payload.displayName,
-      role: dbUser.role,
-      permissions: JSON.parse(dbUser.permissions || '{}'),
-      allowed_ports: JSON.parse(dbUser.allowed_ports || '[]'),
+      role,
+      permissions,
+      allowed_ports,
       groups,
     };
     next();
