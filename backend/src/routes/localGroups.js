@@ -29,6 +29,7 @@ function getGroupFull(db, id) {
   return {
     ...group,
     permissions: JSON.parse(group.permissions || '{}'),
+    allowed_ports: JSON.parse(group.allowed_ports || '[]'),
     members,
   };
 }
@@ -46,6 +47,7 @@ router.get('/', (req, res) => {
   res.json(groups.map(g => ({
     ...g,
     permissions: JSON.parse(g.permissions || '{}'),
+    allowed_ports: JSON.parse(g.allowed_ports || '[]'),
   })));
 });
 
@@ -63,16 +65,17 @@ router.post('/', [
   body('description').optional().isString().trim().isLength({ max: 500 }),
   body('role').optional().isIn(['admin', 'user']),
   body('permissions').optional().isObject(),
+  body('allowed_ports').optional().isArray(),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
   const id = uuidv4();
-  const { name, description = '', role = 'user', permissions = {} } = req.body;
+  const { name, description = '', role = 'user', permissions = {}, allowed_ports = [] } = req.body;
   try {
     db.prepare(`
-      INSERT INTO local_groups (id, name, description, role, permissions)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, name.trim(), description.trim(), role, JSON.stringify(permissions));
+      INSERT INTO local_groups (id, name, description, role, permissions, allowed_ports)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, name.trim(), description.trim(), role, JSON.stringify(permissions), JSON.stringify(allowed_ports));
     auditService.log(req.user.id, req.user.username, 'group:create', 'local_group', id, `Nome: ${name}`, req.ip);
     res.status(201).json(getGroupFull(db, id));
   } catch (err) {
@@ -90,21 +93,23 @@ router.put('/:id', [
   body('description').optional().isString().trim().isLength({ max: 500 }),
   body('role').optional().isIn(['admin', 'user']),
   body('permissions').optional().isObject(),
+  body('allowed_ports').optional().isArray(),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
   const existing = db.prepare('SELECT * FROM local_groups WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Gruppo non trovato' });
 
-  const name = req.body.name !== undefined ? req.body.name.trim() : existing.name;
-  const description = req.body.description !== undefined ? req.body.description.trim() : existing.description;
-  const role = req.body.role !== undefined ? req.body.role : existing.role;
-  const permissions = req.body.permissions !== undefined ? req.body.permissions : JSON.parse(existing.permissions || '{}');
+  const name        = req.body.name        !== undefined ? req.body.name.trim()           : existing.name;
+  const description = req.body.description !== undefined ? req.body.description.trim()    : existing.description;
+  const role        = req.body.role        !== undefined ? req.body.role                  : existing.role;
+  const permissions = req.body.permissions !== undefined ? req.body.permissions           : JSON.parse(existing.permissions || '{}');
+  const allowed_ports = req.body.allowed_ports !== undefined ? req.body.allowed_ports     : JSON.parse(existing.allowed_ports || '[]');
 
   try {
     db.prepare(`
-      UPDATE local_groups SET name=?, description=?, role=?, permissions=? WHERE id=?
-    `).run(name, description, role, JSON.stringify(permissions), req.params.id);
+      UPDATE local_groups SET name=?, description=?, role=?, permissions=?, allowed_ports=? WHERE id=?
+    `).run(name, description, role, JSON.stringify(permissions), JSON.stringify(allowed_ports), req.params.id);
     auditService.log(req.user.id, req.user.username, 'group:update', 'local_group', req.params.id, `Nome: ${name}`, req.ip);
     res.json(getGroupFull(db, req.params.id));
   } catch (err) {

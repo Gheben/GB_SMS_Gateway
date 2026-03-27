@@ -246,12 +246,29 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
   const [groupDn, setGroupDn]         = useState(mapping?.group_dn || '')
   const [role, setRole]               = useState(mapping?.role || 'user')
   const [permissions, setPermissions] = useState(mapping?.permissions || {})
+  const [allowedPorts, setAllowedPorts] = useState(mapping?.allowed_ports || [])
+  const [availablePorts, setAvailablePorts] = useState([])
   const [error, setError]             = useState('')
+
+  useEffect(() => {
+    portsApi.getAll().then(list => setAvailablePorts(list.filter(p => p.status === 'READY' || p.status === 'DOWN'))).catch(() => {})
+  }, [])
+
+  function isPortAllowed(device_id, port_number) {
+    return allowedPorts.some(p => p.device_id === device_id && p.port_number === port_number)
+  }
+  function togglePort(device_id, port_number) {
+    setAllowedPorts(prev =>
+      isPortAllowed(device_id, port_number)
+        ? prev.filter(p => !(p.device_id === device_id && p.port_number === port_number))
+        : [...prev, { device_id, port_number }]
+    )
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!groupDn.trim()) { setError('Group DN is required'); return }
-    onSaved({ id: mapping?.id || null, group_dn: groupDn.trim(), role, permissions: role === 'admin' ? {} : permissions })
+    onSaved({ id: mapping?.id || null, group_dn: groupDn.trim(), role, permissions: role === 'admin' ? {} : permissions, allowed_ports: role === 'user' && permissions.send ? allowedPorts : [] })
   }
 
   return (
@@ -284,6 +301,42 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permissions</label>
               <PermissionsEditor value={permissions} onChange={setPermissions} disabled={false} />
+            </div>
+          )}
+          {role === 'user' && permissions.send && (
+            <div className="border border-blue-100 rounded-lg p-4 bg-blue-50 space-y-2">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Allowed SIM ports for sending SMS
+              </label>
+              <p className="text-xs text-gray-400">If nothing is selected, members can use all available ports.</p>
+              {availablePorts.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No SIM ports detected.</p>
+              ) : (
+                <div className="flex justify-end mb-1">
+                  <button type="button"
+                    onClick={() => setAllowedPorts(
+                      allowedPorts.length === availablePorts.length
+                        ? []
+                        : availablePorts.map(p => ({ device_id: p.device_id, port_number: p.port_number }))
+                    )}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    {allowedPorts.length === availablePorts.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              )}
+              {availablePorts.length > 0 && (
+                <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
+                  {availablePorts.map(p => {
+                    const label = [p.device_name, `Port ${p.port_number}`, p.operator ? `— ${p.operator}` : '', p.sim_number ? `(${p.sim_number})` : ''].filter(Boolean).join(' ')
+                    return (
+                      <label key={`${p.device_id}-${p.port_number}`} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input type="checkbox" checked={isPortAllowed(p.device_id, p.port_number)} onChange={() => togglePort(p.device_id, p.port_number)} className="accent-blue-600" />
+                        {label}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
           {role === 'admin' && (
@@ -778,15 +831,32 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
   const [description, setDescription] = useState(group?.description || '')
   const [role, setRole]               = useState(group?.role || 'user')
   const [permissions, setPermissions] = useState(group?.permissions || {})
+  const [allowedPorts, setAllowedPorts] = useState(group?.allowed_ports || [])
+  const [availablePorts, setAvailablePorts] = useState([])
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState('')
+
+  useEffect(() => {
+    portsApi.getAll().then(list => setAvailablePorts(list.filter(p => p.status === 'READY' || p.status === 'DOWN'))).catch(() => {})
+  }, [])
+
+  function isPortAllowed(device_id, port_number) {
+    return allowedPorts.some(p => p.device_id === device_id && p.port_number === port_number)
+  }
+  function togglePort(device_id, port_number) {
+    setAllowedPorts(prev =>
+      isPortAllowed(device_id, port_number)
+        ? prev.filter(p => !(p.device_id === device_id && p.port_number === port_number))
+        : [...prev, { device_id, port_number }]
+    )
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setSaving(true)
     try {
-      const payload = { name: name.trim(), description: description.trim(), role, permissions: role === 'admin' ? {} : permissions }
+      const payload = { name: name.trim(), description: description.trim(), role, permissions: role === 'admin' ? {} : permissions, allowed_ports: role === 'user' && permissions.send ? allowedPorts : [] }
       if (isNew) await localGroupsApi.create(payload)
       else await localGroupsApi.update(group.id, payload)
       onSaved()
@@ -831,6 +901,42 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Permissions</label>
               <PermissionsEditor value={permissions} onChange={setPermissions} disabled={false} />
+            </div>
+          )}
+          {role === 'user' && permissions.send && (
+            <div className="border border-blue-100 rounded-lg p-4 bg-blue-50 space-y-2">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Allowed SIM ports for sending SMS
+              </label>
+              <p className="text-xs text-gray-400">If nothing is selected, members can use all available ports.</p>
+              {availablePorts.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No SIM ports detected.</p>
+              ) : (
+                <div className="flex justify-end mb-1">
+                  <button type="button"
+                    onClick={() => setAllowedPorts(
+                      allowedPorts.length === availablePorts.length
+                        ? []
+                        : availablePorts.map(p => ({ device_id: p.device_id, port_number: p.port_number }))
+                    )}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    {allowedPorts.length === availablePorts.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              )}
+              {availablePorts.length > 0 && (
+                <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
+                  {availablePorts.map(p => {
+                    const label = [p.device_name, `Port ${p.port_number}`, p.operator ? `— ${p.operator}` : '', p.sim_number ? `(${p.sim_number})` : ''].filter(Boolean).join(' ')
+                    return (
+                      <label key={`${p.device_id}-${p.port_number}`} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input type="checkbox" checked={isPortAllowed(p.device_id, p.port_number)} onChange={() => togglePort(p.device_id, p.port_number)} className="accent-blue-600" />
+                        {label}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
           {role === 'admin' && (

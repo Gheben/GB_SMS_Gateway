@@ -297,13 +297,21 @@ function resolvePermissions(groups) {
   const groupSet = new Set(groups.map(g => g.toLowerCase()));
   let role   = null;
   let merged = {};
+  let mergedPorts = [];
 
   for (const m of cfg.group_mappings) {
     if (!groupSet.has(m.group_dn.toLowerCase())) continue;
-    if (m.role === 'admin') return { role: 'admin', permissions: {} };
+    if (m.role === 'admin') return { role: 'admin', permissions: {}, allowed_ports: [] };
     role = 'user';
     // Merge permissions (union — if user matches multiple groups, all sections are granted)
     Object.entries(m.permissions || {}).forEach(([k, v]) => { if (v) merged[k] = true; });
+    // Merge allowed_ports (union — accumulate all allowed ports across matched groups)
+    const mPorts = Array.isArray(m.allowed_ports) ? m.allowed_ports : [];
+    mPorts.forEach(ap => {
+      if (!mergedPorts.some(p => String(p.device_id) === String(ap.device_id) && p.port_number === ap.port_number)) {
+        mergedPorts.push(ap);
+      }
+    });
   }
 
   if (!role) {
@@ -311,7 +319,7 @@ function resolvePermissions(groups) {
     logger.warn(`[LDAP] resolvePermissions: configured mappings: ${cfg.group_mappings.map(m => m.group_dn).join('; ')}`);
     return null;
   }
-  return { role, permissions: merged };
+  return { role, permissions: merged, allowed_ports: mergedPorts };
 }
 
 /**
