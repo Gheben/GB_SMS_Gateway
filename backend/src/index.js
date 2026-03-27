@@ -68,8 +68,15 @@ app.use(express.urlencoded({ extended: false })); // necessario per SAML callbac
 // Swagger UI — served from local node_modules (no CDN, no CSP issues)
 const swaggerDistPath = path.join(__dirname, '../node_modules/swagger-ui-dist');
 
-// Expose the OpenAPI spec as JSON (public, no auth)
-app.get('/api/docs.json', (req, res) => res.json(openApiSpec));
+// Expose the OpenAPI spec as JSON — only for admin/superadmin or users with api permission
+app.get('/api/docs.json', requireAuth, (req, res) => {
+  const role = req.user.role;
+  const perms = req.user.permissions || {};
+  if (role !== 'admin' && role !== 'superadmin' && !perms.api) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  res.json(openApiSpec);
+});
 
 // Override CSP for /docs — Helmet's default blocks inline scripts required by swagger-ui
 app.use('/docs', (req, res, next) => {
@@ -341,6 +348,32 @@ app.get(['/docs', '/docs/'], (req, res) => {
   <div id="swagger-ui"></div>
   <script src="/docs/swagger-ui-bundle.js"></script>
   <script>
+    // Authorization guard — runs synchronously before Swagger UI initializes
+    (function guardDocs() {
+      var token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token') || '';
+      if (!token) { window.location.replace('/'); return; }
+      var payload = null;
+      try {
+        var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        payload = JSON.parse(atob(b64));
+      } catch(e) { window.location.replace('/'); return; }
+      var role  = payload.role || '';
+      var perms = payload.permissions || {};
+      var allowed = role === 'admin' || role === 'superadmin' || perms.api === true;
+      if (!allowed) {
+        document.body.innerHTML = [
+          '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0f1117;font-family:system-ui,sans-serif;">',
+          '  <div style="text-align:center;color:#f1f5f9;max-width:420px;padding:40px;">',
+          '    <div style="font-size:64px;margin-bottom:16px;">&#x1F512;</div>',
+          '    <h1 style="margin:0 0 12px;font-size:28px;font-weight:700;color:#f87171;">Access Denied</h1>',
+          '    <p style="color:#94a3b8;margin:0 0 28px;line-height:1.6;">You do not have permission to access the API documentation. Contact your administrator if you need access.</p>',
+          '    <a href="/" style="display:inline-block;padding:10px 28px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Back to App</a>',
+          '  </div>',
+          '</div>'
+        ].join('');
+      }
+    })();
+
     // Read JWT from localStorage (same key used by the React app)
     function getStoredToken() {
       return localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token') || '';
