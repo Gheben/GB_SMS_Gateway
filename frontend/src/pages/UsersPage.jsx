@@ -37,7 +37,13 @@ function SourceBadge({ source }) {
 
 function PermissionsEditor({ value, onChange, disabled }) {
   function toggle(key) {
-    onChange({ ...value, [key]: !value[key] })
+    const newVal = { ...value, [key]: !value[key] }
+    if (key === 'send' && newVal.send) {
+      newVal.dashboard = true
+      newVal.sent = true
+      newVal.report = true
+    }
+    onChange(newVal)
   }
   return (
     <div className="grid grid-cols-2 gap-2 mt-2">

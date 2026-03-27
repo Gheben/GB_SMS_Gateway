@@ -68,7 +68,7 @@ router.post('/send', [
   }
 
   try {
-    const localId = messageService.saveOutbound({ deviceId: device_id, port, recipient, content: message });
+    const localId = messageService.saveOutbound({ deviceId: device_id, port, recipient, content: message, sentByUserId: req.user.id });
     const gsmId = connector.sendSMS(port, recipient, message);
     messageService.setGsmId(localId, gsmId);
     logger.info(`SMS send request: localId=${localId} gsmId=${gsmId} device=${device_id}`);

@@ -20,13 +20,13 @@ class MessageService {
     return id;
   }
 
-  saveOutbound({ deviceId, port, recipient, content }) {
+  saveOutbound({ deviceId, port, recipient, content, sentByUserId = null }) {
     const db = getDb();
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO messages (id, device_id, direction, port, recipient, content, status)
-      VALUES (?, ?, 'outbound', ?, ?, ?, 'pending')
-    `).run(id, deviceId || null, port, recipient, content);
+      INSERT INTO messages (id, device_id, direction, port, recipient, content, status, sent_by_user_id)
+      VALUES (?, ?, 'outbound', ?, ?, ?, 'pending', ?)
+    `).run(id, deviceId || null, port, recipient, content, sentByUserId);
     return id;
   }
 
@@ -114,14 +114,18 @@ class MessageService {
     if (!isAdmin) {
       const visibleRuleIds = this._getVisibleRuleIds({ userRole, userGroups, userId });
       if (visibleRuleIds !== null) {
+        const conditions = [];
         if (visibleRuleIds.length > 0) {
           const placeholders = visibleRuleIds.map(() => '?').join(',');
-          query += ` AND (EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))` +
-                   ` OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${placeholders})))`;
+          conditions.push(`EXISTS (SELECT 1 FROM dispatches dp3 WHERE dp3.message_id = m.id AND dp3.rule_id IN (${placeholders}))`);
+          conditions.push(`EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${placeholders}))`);
           params.push(...visibleRuleIds, ...visibleRuleIds);
-        } else {
-          query += ` AND 1=0`;
         }
+        if (userId) {
+          conditions.push(`(m.sent_by_user_id = ? AND m.direction = 'outbound')`);
+          params.push(userId);
+        }
+        query += conditions.length > 0 ? ` AND (${conditions.join(' OR ')})` : ` AND 1=0`;
       }
     }
 
@@ -169,20 +173,36 @@ class MessageService {
       };
     }
 
-    if (visibleRuleIds.length === 0) {
+    // Utente: messaggi da regole visibili + propri messaggi inviati direttamente
+    const ph = visibleRuleIds.length > 0 ? visibleRuleIds.map(() => '?').join(',') : null;
+    const ruleVis = ph
+      ? `(EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph})) OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${ph})))`
+      : null;
+    const ownSent = userId ? `m.sent_by_user_id = ?` : null;
+    const outFilter = [ruleVis, ownSent].filter(Boolean).join(' OR ');
+    const inFilter  = ruleVis;
+    const rp = [...visibleRuleIds, ...visibleRuleIds]; // double for 2 EXISTS placeholders
+    const up = userId ? [userId] : [];
+
+    if (!outFilter && !inFilter) {
       return { total_inbound: 0, total_outbound: 0, sent_today: 0, received_today: 0, failed: 0 };
     }
-
-    // Utente: solo messaggi instradati da regole visibili
-    const ph = visibleRuleIds.map(() => '?').join(',');
-    const visFilter = `(EXISTS (SELECT 1 FROM dispatches dp WHERE dp.message_id = m.id AND dp.rule_id IN (${ph}))` +
-                      ` OR EXISTS (SELECT 1 FROM message_rule_matches mrm WHERE mrm.message_id = m.id AND mrm.rule_id IN (${ph})))`;
     return {
-      total_inbound:  db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
-      total_outbound: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
-      sent_today:     db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds, ...visibleRuleIds).c,
-      received_today: db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound'  AND date(created_at)=? AND ${visFilter}`).get(today, ...visibleRuleIds, ...visibleRuleIds).c,
-      failed:         db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE status='failed'       AND ${visFilter}`).get(...visibleRuleIds, ...visibleRuleIds).c,
+      total_inbound:  inFilter
+        ? db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound' AND (${inFilter})`).get(...rp).c
+        : 0,
+      total_outbound: outFilter
+        ? db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND (${outFilter})`).get(...rp, ...up).c
+        : 0,
+      sent_today:     outFilter
+        ? db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND date(created_at)=? AND (${outFilter})`).get(today, ...rp, ...up).c
+        : 0,
+      received_today: inFilter
+        ? db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='inbound' AND date(created_at)=? AND (${inFilter})`).get(today, ...rp).c
+        : 0,
+      failed:         outFilter
+        ? db.prepare(`SELECT COUNT(*) as c FROM messages m WHERE direction='outbound' AND status='failed' AND (${outFilter})`).get(...rp, ...up).c
+        : 0,
     };
   }
 }
