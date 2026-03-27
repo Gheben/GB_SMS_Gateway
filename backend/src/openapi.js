@@ -103,6 +103,11 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           stop_on_match:      { type: 'boolean' },
           conditions:         { type: 'array', items: { type: 'object' } },
           targets:            { type: 'array', items: { type: 'object' } },
+          sms_targets:        { type: 'array', items: { type: 'string' }, description: 'Phone numbers (E.164) for SMS forwarding' },
+          allowed_groups:       { type: 'array', items: { type: 'string' }, description: 'LDAP group DNs allowed to see matched messages' },
+          allowed_local_groups: { type: 'array', items: { type: 'string', format: 'uuid' }, description: 'Local group IDs allowed to see matched messages' },
+          webhook_url:        { type: 'string', format: 'uri', nullable: true, example: 'http://myserver.internal/webhook' },
+          webhook_method:     { type: 'string', enum: ['POST', 'GET', 'PUT'], default: 'POST' },
         },
       },
     },
@@ -510,17 +515,14 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   },
                   sms_targets: {
                     type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        device_id: { type: 'string', format: 'uuid' },
-                        port:      { type: 'integer' },
-                        recipient: { type: 'string' },
-                      },
-                    },
+                    items: { type: 'string' },
+                    description: 'Phone numbers in E.164 format for SMS forwarding',
+                    example: ['+39012345678'],
                   },
                   allowed_groups:       { type: 'array', items: { type: 'string' }, description: 'LDAP group DNs that can see this rule' },
                   allowed_local_groups: { type: 'array', items: { type: 'string', format: 'uuid' }, description: 'Local group IDs that can see this rule' },
+                  webhook_url:    { type: 'string', format: 'uri', nullable: true, example: 'http://myserver.internal/hook', description: 'Optional HTTP webhook URL (host must be in the whitelist)' },
+                  webhook_method: { type: 'string', enum: ['POST', 'GET', 'PUT'], default: 'POST' },
                 },
               },
             },
@@ -592,6 +594,11 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   stop_on_match:      { type: 'boolean' },
                   conditions:         { type: 'array', items: { type: 'object' } },
                   targets:            { type: 'array', items: { type: 'object' } },
+                  sms_targets:        { type: 'array', items: { type: 'string' } },
+                  allowed_groups:       { type: 'array', items: { type: 'string' } },
+                  allowed_local_groups: { type: 'array', items: { type: 'string', format: 'uuid' } },
+                  webhook_url:    { type: 'string', format: 'uri', nullable: true },
+                  webhook_method: { type: 'string', enum: ['POST', 'GET', 'PUT'] },
                 },
               },
             },
@@ -612,6 +619,45 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
     },
 
     // ─── SETTINGS ───────────────────────────────────────────────────────────
+
+    '/settings/webhook': {
+      get: {
+        tags: ['Settings'],
+        summary: 'Get webhook allowed hosts whitelist',
+        responses: {
+          200: {
+            description: '',
+            content: {
+              'application/json': {
+                example: { allowed_hosts: 'myserver.internal\n*.company.com\n192.168.1.0/24' },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ['Settings'],
+        summary: 'Save webhook allowed hosts whitelist',
+        description: 'Newline- or comma-separated list of allowed hostnames, wildcards (`*.domain`), or CIDR ranges (`192.168.1.0/24`). An empty string blocks all webhooks.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['allowed_hosts'],
+                properties: {
+                  allowed_hosts: { type: 'string', example: 'myserver.internal\n*.company.com\n192.168.1.0/24' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Ok' } } } },
+        },
+      },
+    },
 
     '/settings/smtp': {
       get: {
