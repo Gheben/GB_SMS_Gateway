@@ -70,12 +70,12 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // Polling: refresh immediato al mount + poi ogni 60 secondi.
+  // Polling: refresh immediato al mount + poi ogni 5 minuti.
   // La dipendenza è !!user (boolean) per non resettare l'interval ad ogni poll.
   useEffect(() => {
     if (!user) return
     refreshUser()                                    // subito al mount / login
-    const id = setInterval(refreshUser, 60_000)
+    const id = setInterval(refreshUser, 5 * 60_000) // ogni 5 minuti
     return () => clearInterval(id)
   }, [!!user]) // eslint-disable-line react-hooks/exhaustive-deps
 
