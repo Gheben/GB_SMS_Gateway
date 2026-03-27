@@ -101,8 +101,12 @@ export default function Settings() {
   const [samlResult, setSamlResult] = useState(null)
 
   useEffect(() => {
-    Promise.all([settingsApi.getSmtp(), settingsApi.getTemplate(), settingsApi.getSubject(), settingsApi.getSaml()])
-      .then(([smtpData, tplData, subjData, samlData]) => {
+    Promise.all([
+      settingsApi.getSmtp(),
+      settingsApi.getTemplate(),
+      settingsApi.getSubject(),
+      isSuperAdmin ? settingsApi.getSaml() : Promise.resolve(null),
+    ]).then(([smtpData, tplData, subjData, samlData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)

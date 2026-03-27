@@ -68,7 +68,10 @@ function UserModal({ user, onClose, onSaved }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    portsApi.getAll().then(list => setAvailablePorts(list)).catch(() => {})
+    portsApi.getAll().then(list => {
+      // Only show ports that actually have a SIM installed (active or temporarily down)
+      setAvailablePorts(list.filter(p => p.status === 'READY' || p.status === 'DOWN'))
+    }).catch(() => {})
   }, [])
 
   function isPortAllowed(device_id, port_number) {
