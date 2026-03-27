@@ -28,6 +28,8 @@ function getRuleFull(db, id) {
     allowed_groups: JSON.parse(rule.allowed_groups || '[]'),
     allowed_local_groups: JSON.parse(rule.allowed_local_groups || '[]'),
     sms_targets: JSON.parse(rule.sms_targets || '[]'),
+    webhook_url: rule.webhook_url || '',
+    webhook_method: rule.webhook_method || 'POST',
   };
 }
 
@@ -75,19 +77,23 @@ router.post('/', [
   body('targets.*').optional().isEmail(),
   body('sms_targets').optional().isArray(),
   body('sms_targets.*').optional().isString().trim(),
+  body('webhook_url').optional({ checkFalsy: true }).isURL({ require_tld: false }),
+  body('webhook_method').optional().isIn(['POST', 'GET', 'PUT']),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
   const id = uuidv4();
-  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets = [], sms_targets = [], allowed_groups = [], allowed_local_groups = [] } = req.body;
+  const { name, enabled = true, priority = 0, condition_operator = 'AND', conditions, stop_on_match = false, targets = [], sms_targets = [], allowed_groups = [], allowed_local_groups = [], webhook_url = null, webhook_method = 'POST' } = req.body;
 
   db.prepare('BEGIN').run();
   db.prepare(
-    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups, allowed_local_groups, sms_targets) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO routing_rules (id, name, enabled, priority, condition_operator, stop_on_match, allowed_groups, allowed_local_groups, sms_targets, webhook_url, webhook_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(id, name, enabled ? 1 : 0, priority, condition_operator, stop_on_match ? 1 : 0,
     JSON.stringify(Array.isArray(allowed_groups) ? allowed_groups : []),
     JSON.stringify(Array.isArray(allowed_local_groups) ? allowed_local_groups : []),
-    JSON.stringify(Array.isArray(sms_targets) ? sms_targets.filter(Boolean) : []));
+    JSON.stringify(Array.isArray(sms_targets) ? sms_targets.filter(Boolean) : []),
+    webhook_url || null,
+    webhook_method || 'POST');
   insertConditions(db, id, conditions);
   const insTarget = db.prepare('INSERT INTO rule_targets (id, rule_id, email) VALUES (?, ?, ?)');
   for (const email of targets.filter(Boolean)) insTarget.run(uuidv4(), id, email.trim().toLowerCase());
@@ -112,6 +118,8 @@ router.put('/:id', [
   body('targets.*').optional().isEmail(),
   body('sms_targets').optional().isArray(),
   body('sms_targets.*').optional().isString().trim(),
+  body('webhook_url').optional({ checkFalsy: true }).isURL({ require_tld: false }),
+  body('webhook_method').optional().isIn(['POST', 'GET', 'PUT']),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
@@ -122,13 +130,15 @@ router.put('/:id', [
   db.prepare('BEGIN').run();
   db.prepare(`
     UPDATE routing_rules
-    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, allowed_local_groups=?, sms_targets=?, updated_at=datetime('now')
+    SET name=?, enabled=?, priority=?, condition_operator=?, stop_on_match=?, allowed_groups=?, allowed_local_groups=?, sms_targets=?, webhook_url=?, webhook_method=?, updated_at=datetime('now')
     WHERE id=?
   `).run(merged.name, merged.enabled ? 1 : 0, merged.priority,
          merged.condition_operator || 'AND', merged.stop_on_match ? 1 : 0,
          JSON.stringify(Array.isArray(req.body.allowed_groups) ? req.body.allowed_groups : JSON.parse(existing.allowed_groups || '[]')),
          JSON.stringify(Array.isArray(req.body.allowed_local_groups) ? req.body.allowed_local_groups : JSON.parse(existing.allowed_local_groups || '[]')),
          JSON.stringify(Array.isArray(req.body.sms_targets) ? req.body.sms_targets.filter(Boolean) : JSON.parse(existing.sms_targets || '[]')),
+         req.body.webhook_url || existing.webhook_url || null,
+         req.body.webhook_method || existing.webhook_method || 'POST',
          req.params.id);
 
   if (req.body.conditions) {

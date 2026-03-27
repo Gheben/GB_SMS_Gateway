@@ -132,5 +132,20 @@ router.post('/saml', requireSuperAdmin, [
   res.json({ ok: true });
 });
 
+// GET /api/settings/webhook
+router.get('/webhook', (req, res) => {
+  res.json({ allowed_hosts: getSetting('WEBHOOK_ALLOWED_HOSTS') || '' });
+});
+
+// POST /api/settings/webhook
+router.post('/webhook', [
+  body('allowed_hosts').isString().isLength({ max: 10000 }),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  setSettings({ WEBHOOK_ALLOWED_HOSTS: req.body.allowed_hosts });
+  res.json({ ok: true });
+});
+
 module.exports = router;
 

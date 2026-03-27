@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -100,18 +100,26 @@ export default function Settings() {
   const [samlSaving, setSamlSaving] = useState(false)
   const [samlResult, setSamlResult] = useState(null)
 
+  // Webhook whitelist
+  const [webhookHosts, setWebhookHosts]     = useState('')
+  const [webhookDirty, setWebhookDirty]     = useState(false)
+  const [webhookSaving, setWebhookSaving]   = useState(false)
+  const [webhookResult, setWebhookResult]   = useState(null)
+
   useEffect(() => {
     Promise.all([
       settingsApi.getSmtp(),
       settingsApi.getTemplate(),
       settingsApi.getSubject(),
       isSuperAdmin ? settingsApi.getSaml() : Promise.resolve(null),
-    ]).then(([smtpData, tplData, subjData, samlData]) => {
+      settingsApi.getWebhook(),
+    ]).then(([smtpData, tplData, subjData, samlData, webhookData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)
         setSubject(subjData.subject || DEFAULT_SUBJECT)
         if (samlData) setSaml(s => ({ ...s, ...samlData }))
+        if (webhookData) setWebhookHosts(webhookData.allowed_hosts || '')
         setLoading(false)
       }).catch(() => setLoading(false))
   }, [])
@@ -192,6 +200,19 @@ export default function Settings() {
     }
   }
 
+  async function handleSaveWebhook() {
+    setWebhookSaving(true); setWebhookResult(null)
+    try {
+      await settingsApi.saveWebhook({ allowed_hosts: webhookHosts })
+      setWebhookDirty(false)
+      setWebhookResult({ success: true, message: 'Webhook whitelist saved.' })
+    } catch {
+      setWebhookResult({ success: false, message: 'Error saving webhook whitelist.' })
+    } finally {
+      setWebhookSaving(false)
+    }
+  }
+
   if (loading) return (
     <div className="flex justify-center items-center py-8 text-gray-400 gap-2">
       <Loader2 size={18} className="animate-spin" /> Loading...
@@ -208,6 +229,7 @@ export default function Settings() {
           { key: 'smtp',     label: 'SMTP & Email Test',   icon: <Mail size={14} />,    superadminOnly: false },
           { key: 'template', label: 'Email Template',       icon: <FileCode size={14} />, superadminOnly: false },
           { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} />,  superadminOnly: true  },
+          { key: 'webhook',  label: 'Webhook',              icon: <Globe size={14} />,   superadminOnly: false },
         ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
             key={t.key}
@@ -565,6 +587,56 @@ export default function Settings() {
               }`}>
                 {samlResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                 {samlResult.message}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* ── Webhook ── */}
+      {tab === 'webhook' && (
+        <div className="space-y-4">
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+            <div>
+              <h3 className="text-base font-semibold text-gray-700">Webhook Allowed Hosts</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Define which hosts routing rules are allowed to send webhook requests to.
+                One entry per line (or comma-separated). Supported formats:
+              </p>
+              <ul className="text-xs text-gray-500 list-disc list-inside mt-2 space-y-0.5">
+                <li><code className="bg-gray-100 px-1 rounded">myserver.internal</code> — exact hostname</li>
+                <li><code className="bg-gray-100 px-1 rounded">*.company.com</code> — wildcard subdomain</li>
+                <li><code className="bg-gray-100 px-1 rounded">192.168.1.0/24</code> — CIDR range</li>
+              </ul>
+              <p className="text-xs text-amber-600 mt-2">
+                An empty whitelist blocks <strong>all</strong> webhook requests.
+              </p>
+            </div>
+
+            <div>
+              <label className="label">Allowed hosts</label>
+              <textarea
+                className="input font-mono text-xs"
+                rows={8}
+                placeholder={"myserver.internal\n*.company.com\n192.168.1.0/24"}
+                value={webhookHosts}
+                onChange={e => { setWebhookHosts(e.target.value); setWebhookDirty(true); setWebhookResult(null) }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button type="button" onClick={handleSaveWebhook} disabled={webhookSaving || !webhookDirty}
+                className="btn-primary flex items-center gap-2">
+                <Save size={15} />{webhookSaving ? 'Saving...' : 'Save whitelist'}
+              </button>
+            </div>
+
+            {webhookResult && (
+              <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                webhookResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {webhookResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                {webhookResult.message}
               </div>
             )}
           </section>

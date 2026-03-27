@@ -1,5 +1,14 @@
 const nodemailer = require('nodemailer');
 const { getDb, getSetting } = require('../db/database');
+
+// ── CIDR / hostname helpers for webhook whitelist ──────────────────────────
+function _isIp(str) { return /^\d{1,3}(\.\d{1,3}){3}$/.test(str); }
+function _ipToInt(ip) { return ip.split('.').reduce((acc, b) => ((acc << 8) | parseInt(b, 10)) >>> 0, 0); }
+function _isInCidr(ip, cidr) {
+  const [range, bits] = cidr.split('/');
+  const mask = bits ? (~0 << (32 - parseInt(bits, 10))) >>> 0 : 0xFFFFFFFF;
+  return (_ipToInt(ip) & mask) === (_ipToInt(range) & mask);
+}
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { decrypt } = require('../utils/encryption');
@@ -73,7 +82,7 @@ class RoutingEngine {
       }
 
       const emails = rule.emails ? rule.emails.split(',').filter(Boolean) : [];
-      if (emails.length === 0 && !rule.sms_targets) {
+      if (emails.length === 0 && !rule.sms_targets && !rule.webhook_url) {
         logger.warn(`Rule "${rule.name}" matched but has no targets.`);
       }
 
@@ -86,6 +95,9 @@ class RoutingEngine {
       for (const phone of smsTargets) {
         await this._dispatchSms(sms, rule, phone);
       }
+
+      // Webhook forwarding
+      await this._dispatchWebhook(sms, rule);
 
       if (rule.stop_on_match) {
         logger.info(`Rule "${rule.name}" matched with stop_on_match — halting chain.`);
@@ -205,6 +217,56 @@ class RoutingEngine {
       logger.info(`SMS forwarded → ${phone} via port ${sms.port} (rule: ${rule.name})`);
     } catch (err) {
       logger.error(`SMS forward failed → ${phone}: ${err.message}`);
+    }
+  }
+
+  _isWebhookAllowed(url) {
+    const allowedHostsRaw = getSetting('WEBHOOK_ALLOWED_HOSTS') || '';
+    if (!allowedHostsRaw.trim()) return false; // empty whitelist = deny all
+    let hostname;
+    try { hostname = new URL(url).hostname; } catch { return false; }
+    const entries = allowedHostsRaw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    for (const entry of entries) {
+      if (entry.includes('/')) {
+        // CIDR range
+        if (_isIp(hostname) && _isInCidr(hostname, entry)) return true;
+      } else if (entry.startsWith('*.')) {
+        // Wildcard subdomain
+        if (hostname.endsWith(entry.slice(1))) return true;
+      } else {
+        // Exact hostname
+        if (hostname === entry) return true;
+      }
+    }
+    return false;
+  }
+
+  async _dispatchWebhook(sms, rule) {
+    if (!rule.webhook_url) return;
+    if (!this._isWebhookAllowed(rule.webhook_url)) {
+      logger.warn(`Webhook blocked (not in whitelist): ${rule.webhook_url} (rule: ${rule.name})`);
+      return;
+    }
+    const method = (rule.webhook_method || 'POST').toUpperCase();
+    const payload = {
+      sender:      sms.sender,
+      content:     sms.content,
+      device_id:   sms.deviceId,
+      port:        sms.port,
+      received_at: sms.recvtime,
+      rule_id:     rule.id,
+      rule_name:   rule.name,
+    };
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    const url = method === 'GET'
+      ? `${rule.webhook_url}?${new URLSearchParams(payload)}`
+      : rule.webhook_url;
+    if (method !== 'GET') options.body = JSON.stringify(payload);
+    try {
+      const resp = await fetch(url, options);
+      logger.info(`Webhook → ${rule.webhook_url} → HTTP ${resp.status} (rule: ${rule.name})`);
+    } catch (err) {
+      logger.error(`Webhook failed → ${rule.webhook_url}: ${err.message} (rule: ${rule.name})`);
     }
   }
 }

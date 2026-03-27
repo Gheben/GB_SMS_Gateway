@@ -110,6 +110,8 @@ export const settingsApi = {
   saveSubject:   (subject) => api.post('/settings/email-subject', { subject }).then(r => r.data),
   getSaml:       () => api.get('/settings/saml').then(r => r.data),
   saveSaml:      (data) => api.post('/settings/saml', data).then(r => r.data),
+  getWebhook:    () => api.get('/settings/webhook').then(r => r.data),
+  saveWebhook:   (data) => api.post('/settings/webhook', data).then(r => r.data),
 }
 
 export const reportApi = {

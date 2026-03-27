@@ -196,6 +196,8 @@ function initSchema() {
   // Migrations for new columns
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_local_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN sms_targets TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_url TEXT`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_method TEXT NOT NULL DEFAULT 'POST'`); } catch (_) { /* already exists */ }
 }
 
 /** Legge una singola impostazione dal DB, con fallback a process.env o default */

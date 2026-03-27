@@ -24,6 +24,8 @@ const EMPTY_RULE = {
   sms_targets_str: '',
   allowed_groups: [],
   allowed_local_groups: [],
+  webhook_url: '',
+  webhook_method: 'POST',
 }
 
 function ConditionRow({ cond, total, devices, onChange, onRemove }) {
@@ -78,6 +80,8 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       sms_targets_str: Array.isArray(rule.sms_targets) ? rule.sms_targets.join(', ') : '',
       allowed_groups: Array.isArray(rule.allowed_groups) ? rule.allowed_groups : [],
       allowed_local_groups: Array.isArray(rule.allowed_local_groups) ? rule.allowed_local_groups : [],
+      webhook_url: rule.webhook_url || '',
+      webhook_method: rule.webhook_method || 'POST',
     }
   })
   const [saving, setSaving] = useState(false)
@@ -136,6 +140,8 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       sms_targets: form.sms_targets_str.split(',').map(s => s.trim()).filter(Boolean),
       allowed_groups: form.allowed_groups,
       allowed_local_groups: form.allowed_local_groups,
+      webhook_url: form.webhook_url || undefined,
+      webhook_method: form.webhook_method || 'POST',
     }
     try {
       if (rule?.id) await rulesApi.update(rule.id, payload)
@@ -229,6 +235,29 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
               onChange={e => setForm(p => ({ ...p, sms_targets_str: e.target.value }))}
             />
             <p className="text-xs text-gray-400 mt-1">The SMS will be sent using the same SIM that received the message.</p>
+          </div>
+
+          {/* Webhook */}
+          <div>
+            <label className="label">Webhook <span className="text-gray-400 font-normal">(optional)</span></label>
+            <div className="flex gap-2">
+              <select
+                className="input w-24 flex-shrink-0"
+                value={form.webhook_method}
+                onChange={e => setForm(p => ({ ...p, webhook_method: e.target.value }))}
+              >
+                <option>POST</option>
+                <option>GET</option>
+                <option>PUT</option>
+              </select>
+              <input
+                className="input flex-1"
+                placeholder="http://myserver.internal/webhook"
+                value={form.webhook_url}
+                onChange={e => setForm(p => ({ ...p, webhook_url: e.target.value }))}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">The destination hostname must be in the whitelist in Settings → Webhook.</p>
           </div>
 
           <div className="flex gap-4">
