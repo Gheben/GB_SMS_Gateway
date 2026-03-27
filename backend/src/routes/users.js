@@ -28,7 +28,10 @@ router.get('/permissions', (req, res) => {
 // POST /api/users — crea utente
 router.post('/', [
   body('username').isString().trim().isLength({ min: 3, max: 50 }),
-  body('password').isString().isLength({ min: 6 }),
+  body('password').isString().isLength({ min: 8 })
+    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain at least one number')
+    .matches(/[^A-Za-z0-9]/).withMessage('Password must contain at least one special character'),
   body('role').optional().isIn(['admin', 'user']),
   body('permissions').optional().isObject(),
 ], (req, res) => {
@@ -55,7 +58,10 @@ router.post('/', [
 // PUT /api/users/:id — modifica utente (password, role, permissions)
 router.put('/:id', [
   param('id').isUUID(),
-  body('password').optional().isString().isLength({ min: 6 }),
+  body('password').optional().isString().isLength({ min: 8 })
+    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain at least one number')
+    .matches(/[^A-Za-z0-9]/).withMessage('Password must contain at least one special character'),
   body('role').optional().isIn(['admin', 'user']),
   body('permissions').optional().isObject(),
   body('allowed_ports').optional().isArray(),

@@ -86,6 +86,12 @@ function UserModal({ user, onClose, onSaved }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (isNew || password.length > 0) {
+      if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+        setError('Password must be at least 8 characters and include an uppercase letter, a number, and a special character.')
+        return
+      }
+    }
     setSaving(true)
     try {
       if (isNew) {
@@ -125,9 +131,27 @@ function UserModal({ user, onClose, onSaved }) {
               {isNew ? 'Password' : 'New password (leave blank to keep current)'}
             </label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required={isNew} minLength={6}
+              required={isNew} minLength={isNew ? 8 : 0}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="••••••••" />
+            {(isNew || password.length > 0) && (() => {
+              const rules = [
+                { ok: password.length >= 8,            label: 'At least 8 characters' },
+                { ok: /[A-Z]/.test(password),           label: 'One uppercase letter' },
+                { ok: /[0-9]/.test(password),           label: 'One number' },
+                { ok: /[^A-Za-z0-9]/.test(password),   label: 'One special character' },
+              ]
+              return (
+                <ul className="mt-2 space-y-1">
+                  {rules.map(r => (
+                    <li key={r.label} className={`flex items-center gap-1.5 text-xs ${r.ok ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span>{r.ok ? '✓' : '○'}</span>
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+              )
+            })()}
           </div>
 
           <div>
@@ -157,6 +181,21 @@ function UserModal({ user, onClose, onSaved }) {
               {availablePorts.length === 0 ? (
                 <p className="text-xs text-gray-400 italic">No SIM ports detected.</p>
               ) : (
+                <div className="flex justify-end mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setAllowedPorts(
+                      allowedPorts.length === availablePorts.length
+                        ? []
+                        : availablePorts.map(p => ({ device_id: p.device_id, port_number: p.port_number }))
+                    )}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {allowedPorts.length === availablePorts.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              )}
+              {availablePorts.length > 0 && (
                 <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
                   {availablePorts.map(p => {
                     const label = [

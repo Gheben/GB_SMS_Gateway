@@ -839,9 +839,10 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 required: ['username', 'password', 'role'],
                 properties: {
                   username:    { type: 'string', minLength: 3, maxLength: 50, example: 'john' },
-                  password:    { type: 'string', minLength: 6, example: 'P@ss1234' },
+                  password:    { type: 'string', minLength: 8, pattern: '^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$', description: 'Min 8 chars, must include uppercase, number and special character', example: 'P@ss1234' },
                   role:        { type: 'string', enum: ['admin', 'user'] },
                   permissions: { type: 'object', example: { inbox: true, sent: true } },
+                  allowed_ports: { type: 'array', items: { type: 'object', properties: { device_id: { type: 'integer' }, port_number: { type: 'integer' } } }, description: 'Restrict user to specific device/port combinations. Empty = all ports allowed.' },
                 },
               },
             },
@@ -864,10 +865,10 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
               schema: {
                 type: 'object',
                 properties: {
-                  password:  { type: 'string' },
+                  password:  { type: 'string', minLength: 8, pattern: '^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$', description: 'Min 8 chars, must include uppercase, number and special character' },
                   role:      { type: 'string', enum: ['admin', 'user'] },
                   permissions: { type: 'object' },
-                  allowed_ports: { type: 'array', items: { type: 'integer' } },
+                  allowed_ports: { type: 'array', items: { type: 'object', properties: { device_id: { type: 'integer' }, port_number: { type: 'integer' } } }, description: 'Restrict user to specific device/port combinations. Empty = all ports allowed.' },
                 },
               },
             },

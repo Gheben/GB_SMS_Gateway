@@ -15,8 +15,12 @@ export default function SendSMS() {
   useEffect(() => {
     devicesApi.getAll().then(list => {
       const connected = list.filter(d => d.connected)
-      setDevices(connected)
-      if (connected.length > 0) setForm(f => ({ ...f, device_id: String(connected[0].id) }))
+      const allowedPorts = user?.allowed_ports || []
+      const filtered = (isAdmin || allowedPorts.length === 0)
+        ? connected
+        : connected.filter(d => allowedPorts.some(ap => String(ap.device_id) === String(d.id)))
+      setDevices(filtered)
+      if (filtered.length > 0) setForm(f => ({ ...f, device_id: String(filtered[0].id) }))
     }).catch(() => {})
   }, [])
 
