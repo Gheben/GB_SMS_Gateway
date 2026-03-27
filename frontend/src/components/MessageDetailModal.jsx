@@ -97,40 +97,60 @@ export default function MessageDetailModal({ msg, onClose }) {
           </div>
 
           {/* Inoltri */}
-          {msg.dispatches && msg.dispatches.length > 0 ? (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Email forwards ({msg.dispatches.length})
-              </p>
-              <div className="space-y-2">
-                {msg.dispatches.map((d) => {
-                  const s = STATUS_DISPATCH[d.status] || { label: d.status, cls: 'text-gray-700 bg-gray-50 border-gray-200' }
-                  return (
-                    <div key={d.id} className={`rounded-lg border px-4 py-3 text-sm ${s.cls}`}>
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="text-sm">
-                          <span className="font-semibold">{d.rule_name || 'Rule removed'}</span>
-                          <span className="mx-2 opacity-50">→</span>
-                          <span className="font-mono">{d.email}</span>
+          {(() => {
+            const dispatches = msg.dispatches || []
+            const emailDispatches   = dispatches.filter(d => (d.action_type || 'email') === 'email')
+            const smsDispatches     = dispatches.filter(d => d.action_type === 'sms')
+            const webhookDispatches = dispatches.filter(d => d.action_type === 'webhook')
+
+            function DispatchList({ items, label, targetLabel }) {
+              if (items.length === 0) return null
+              return (
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    {label} ({items.length})
+                  </p>
+                  <div className="space-y-2">
+                    {items.map((d) => {
+                      const s = STATUS_DISPATCH[d.status] || { label: d.status, cls: 'text-gray-700 bg-gray-50 border-gray-200' }
+                      return (
+                        <div key={d.id} className={`rounded-lg border px-4 py-3 text-sm ${s.cls}`}>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="text-sm">
+                              <span className="font-semibold">{d.rule_name || 'Rule removed'}</span>
+                              <span className="mx-2 opacity-50">→</span>
+                              <span className="font-mono break-all">{d.email}</span>
+                            </div>
+                            <span className="text-xs font-bold uppercase tracking-wide">{s.label}</span>
+                          </div>
+                          {d.sent_at && (
+                            <p className="mt-1 text-xs opacity-60">Sent: {fmt(d.sent_at)}</p>
+                          )}
+                          {d.error && (
+                            <div className="mt-2 font-mono text-xs bg-red-100 text-red-800 border border-red-200 rounded px-3 py-2 break-all">
+                              <span className="font-bold">Error: </span>{d.error}
+                            </div>
+                          )}
                         </div>
-                        <span className="text-xs font-bold uppercase tracking-wide">{s.label}</span>
-                      </div>
-                      {d.sent_at && (
-                        <p className="mt-1 text-xs opacity-60">Sent: {fmt(d.sent_at)}</p>
-                      )}
-                      {d.error && (
-                        <div className="mt-2 font-mono text-xs bg-red-100 text-red-800 border border-red-200 rounded px-3 py-2 break-all">
-                          <span className="font-bold">Error: </span>{d.error}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+
+            if (dispatches.length === 0) {
+              return <p className="text-sm text-gray-400 italic">No rule actions triggered for this message.</p>
+            }
+
+            return (
+              <div className="space-y-4">
+                <DispatchList items={emailDispatches}   label="Email forwards" />
+                <DispatchList items={smsDispatches}     label="SMS forwards" />
+                <DispatchList items={webhookDispatches} label="Webhook calls" />
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 italic">No email forwards for this message.</p>
-          )}
+            )
+          })()}
         </div>
       </div>
     </div>

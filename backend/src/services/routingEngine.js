@@ -205,17 +205,28 @@ class RoutingEngine {
   }
 
   async _dispatchSms(sms, rule, phone) {
+    const db = getDb();
+    const dispatchId = uuidv4();
+    db.prepare(`
+      INSERT INTO dispatches (id, message_id, rule_id, email, status, action_type)
+      VALUES (?, ?, ?, ?, 'pending', 'sms')
+    `).run(dispatchId, sms.messageId, rule.id, phone);
+
     try {
       // Lazy require to avoid circular dependency with deviceManager
       const deviceManager = require('./deviceManager');
       const connector = deviceManager.get(sms.deviceId);
       if (!connector || !connector.connected) {
+        const errMsg = `Device ${sms.deviceId} not connected`;
+        db.prepare(`UPDATE dispatches SET status='failed', error=? WHERE id=?`).run(errMsg, dispatchId);
         logger.warn(`SMS forward skipped: device ${sms.deviceId} not connected (rule: ${rule.name})`);
         return;
       }
       connector.sendSMS(sms.port, phone, sms.content);
+      db.prepare(`UPDATE dispatches SET status='sent', sent_at=datetime('now') WHERE id=?`).run(dispatchId);
       logger.info(`SMS forwarded → ${phone} via port ${sms.port} (rule: ${rule.name})`);
     } catch (err) {
+      db.prepare(`UPDATE dispatches SET status='failed', error=? WHERE id=?`).run(err.message, dispatchId);
       logger.error(`SMS forward failed → ${phone}: ${err.message}`);
     }
   }
@@ -243,10 +254,23 @@ class RoutingEngine {
 
   async _dispatchWebhook(sms, rule) {
     if (!rule.webhook_url) return;
+    const db = getDb();
+    const dispatchId = uuidv4();
+
     if (!this._isWebhookAllowed(rule.webhook_url)) {
+      db.prepare(`
+        INSERT INTO dispatches (id, message_id, rule_id, email, status, action_type, error)
+        VALUES (?, ?, ?, ?, 'failed', 'webhook', 'URL not in allowed hosts whitelist')
+      `).run(dispatchId, sms.messageId, rule.id, rule.webhook_url);
       logger.warn(`Webhook blocked (not in whitelist): ${rule.webhook_url} (rule: ${rule.name})`);
       return;
     }
+
+    db.prepare(`
+      INSERT INTO dispatches (id, message_id, rule_id, email, status, action_type)
+      VALUES (?, ?, ?, ?, 'pending', 'webhook')
+    `).run(dispatchId, sms.messageId, rule.id, rule.webhook_url);
+
     const method = (rule.webhook_method || 'POST').toUpperCase();
     const payload = {
       sender:      sms.sender,
@@ -264,8 +288,10 @@ class RoutingEngine {
     if (method !== 'GET') options.body = JSON.stringify(payload);
     try {
       const resp = await fetch(url, options);
+      db.prepare(`UPDATE dispatches SET status='sent', sent_at=datetime('now') WHERE id=?`).run(dispatchId);
       logger.info(`Webhook → ${rule.webhook_url} → HTTP ${resp.status} (rule: ${rule.name})`);
     } catch (err) {
+      db.prepare(`UPDATE dispatches SET status='failed', error=? WHERE id=?`).run(err.message, dispatchId);
       logger.error(`Webhook failed → ${rule.webhook_url}: ${err.message} (rule: ${rule.name})`);
     }
   }
