@@ -70,12 +70,14 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // Polling ogni 60 secondi per aggiornare permessi senza re-login
+  // Polling: refresh immediato al mount + poi ogni 60 secondi.
+  // La dipendenza è !!user (boolean) per non resettare l'interval ad ogni poll.
   useEffect(() => {
     if (!user) return
+    refreshUser()                                    // subito al mount / login
     const id = setInterval(refreshUser, 60_000)
     return () => clearInterval(id)
-  }, [user, refreshUser])
+  }, [!!user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = useCallback(() => {
     localStorage.removeItem('jwt_token')
