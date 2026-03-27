@@ -94,16 +94,22 @@ export default function SendSMS() {
         {/* Dispositivo */}
         <div>
           <label className="label">Device</label>
-          <select
-            value={form.device_id}
-            onChange={(e) => setForm(f => ({ ...f, device_id: e.target.value }))}
-            className="input"
-          >
-            <option value="">— select —</option>
-            {devices.map(d => (
-              <option key={d.id} value={d.id}>{d.name} ({d.host})</option>
-            ))}
-          </select>
+          {devices.length === 1 ? (
+            <p className="input bg-gray-50 text-gray-700 cursor-default select-none">
+              {devices[0].name} ({devices[0].host})
+            </p>
+          ) : (
+            <select
+              value={form.device_id}
+              onChange={(e) => setForm(f => ({ ...f, device_id: e.target.value }))}
+              className="input"
+            >
+              <option value="">— select —</option>
+              {devices.map(d => (
+                <option key={d.id} value={d.id}>{d.name} ({d.host})</option>
+              ))}
+            </select>
+          )}
           {errors.device_id && <p className="text-red-500 text-xs mt-1">{errors.device_id}</p>}
         </div>
 
@@ -114,7 +120,18 @@ export default function SendSMS() {
             <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
               No SIM ports detected for this device.
             </p>
-          ) : (
+          ) : ports.length === 1 ? (() => {
+            const p = ports[0]
+            const label = [
+              `Port ${p.port_number}`,
+              p.operator ? `— ${p.operator}` : '',
+              p.sim_number ? `(${p.sim_number})` : '',
+              p.status === 'READY' ? '✓' : '(not ready)',
+            ].filter(Boolean).join(' ')
+            return (
+              <p className="input bg-gray-50 text-gray-700 cursor-default select-none">{label}</p>
+            )
+          })() : (
             <select
               value={form.port}
               onChange={(e) => setForm(f => ({ ...f, port: e.target.value }))}
