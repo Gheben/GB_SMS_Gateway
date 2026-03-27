@@ -46,6 +46,29 @@ export function AuthProvider({ children }) {
     return u
   }, [])
 
+  /** Aggiorna il token in background e sincronizza i permessi nella UI */
+  const refreshUser = useCallback(async () => {
+    try {
+      const { token } = await authApi.refreshToken()
+      localStorage.setItem('jwt_token', token)
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      setUser(prev => prev ? {
+        ...prev,
+        role: payload.role,
+        permissions: payload.permissions || {},
+        allowed_ports: payload.allowed_ports || [],
+        displayName: payload.displayName || prev.displayName,
+      } : prev)
+    } catch { /* ignora errori silenziosi — se 401 l'interceptor axios gestirà il logout */ }
+  }, [])
+
+  // Polling ogni 60 secondi per aggiornare permessi senza re-login
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(refreshUser, 60_000)
+    return () => clearInterval(id)
+  }, [user, refreshUser])
+
   const logout = useCallback(() => {
     localStorage.removeItem('jwt_token')
     localStorage.removeItem('jwt_user')

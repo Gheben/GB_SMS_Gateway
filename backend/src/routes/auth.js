@@ -125,6 +125,23 @@ router.get('/me', requireAuth, (req, res) => {
   });
 });
 
+/**
+ * GET /api/auth/refresh-token — emette un nuovo JWT con role/permissions aggiornati dal DB.
+ * Usato dal frontend per aggiornare la UI senza re-login.
+ */
+router.get('/refresh-token', requireAuth, (req, res) => {
+  const db = getDb();
+  const dbUser = db.prepare(
+    'SELECT id, username, display_name, role, permissions, allowed_ports, source FROM users WHERE id = ?'
+  ).get(req.user.id);
+  if (!dbUser) return res.status(404).json({ error: 'Utente non trovato' });
+  const { signJwt } = require('../services/authService');
+  const permissions = JSON.parse(dbUser.permissions || '{}');
+  const allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
+  const token = signJwt({ ...dbUser, permissions, allowed_ports });
+  res.json({ token });
+});
+
 // ── SAML 2.0 routes ─────────────────────────────────────────────────────────
 
 // GET /api/auth/saml/status — public, returns whether SAML is actively configured

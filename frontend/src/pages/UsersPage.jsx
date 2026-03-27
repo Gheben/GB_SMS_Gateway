@@ -40,6 +40,7 @@ function PermissionsEditor({ value, onChange, disabled }) {
     const newVal = { ...value, [key]: !value[key] }
     if (key === 'send' && newVal.send) {
       newVal.dashboard = true
+      newVal.inbox = true
       newVal.sent = true
       newVal.report = true
     }

@@ -12,20 +12,21 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Non autenticato' });
   try {
     const payload = verifyToken(token);
-    const isAdmin = payload.role === 'superadmin' || payload.role === 'admin';
-    let groups = [];
-    if (!isAdmin) {
-      // Carica i gruppi LDAP dal DB per il filtro messaggi, senza appesantire il JWT
-      try {
-        const dbUser = getDb().prepare('SELECT ldap_groups FROM users WHERE id = ?').get(payload.sub);
-        if (dbUser?.ldap_groups) groups = JSON.parse(dbUser.ldap_groups);
-      } catch (_) { /* ignora errori DB opzionali */ }
-    }
+    // Legge sempre role, permissions e allowed_ports dal DB per applicare
+    // immediatamente qualsiasi modifica senza richiedere il re-login.
+    const dbUser = getDb().prepare(
+      'SELECT role, permissions, allowed_ports, ldap_groups FROM users WHERE id = ?'
+    ).get(payload.sub);
+    if (!dbUser) return res.status(401).json({ error: 'Utente non trovato' });
+    const isAdmin = dbUser.role === 'superadmin' || dbUser.role === 'admin';
+    const groups = !isAdmin && dbUser.ldap_groups ? JSON.parse(dbUser.ldap_groups) : [];
     req.user = {
       id: payload.sub,
       username: payload.username,
-      role: payload.role,
-      permissions: payload.permissions || {},
+      displayName: payload.displayName,
+      role: dbUser.role,
+      permissions: JSON.parse(dbUser.permissions || '{}'),
+      allowed_ports: JSON.parse(dbUser.allowed_ports || '[]'),
       groups,
     };
     next();

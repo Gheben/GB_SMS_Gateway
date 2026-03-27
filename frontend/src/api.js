@@ -29,9 +29,10 @@ api.interceptors.response.use(
 )
 
 export const authApi = {
-  login:   (username, password) => api.post('/auth/login', { username, password }).then(r => r.data),
-  sso:     () => api.get('/auth/sso').then(r => r.data),
-  getPerms: () => api.get('/users/permissions').then(r => r.data),
+  login:        (username, password) => api.post('/auth/login', { username, password }).then(r => r.data),
+  sso:          () => api.get('/auth/sso').then(r => r.data),
+  getPerms:     () => api.get('/users/permissions').then(r => r.data),
+  refreshToken: () => api.get('/auth/refresh-token').then(r => r.data),
 }
 
 export const usersApi = {
