@@ -121,6 +121,7 @@ router.post('/saml', requireSuperAdmin, [
   body('sp_base_url').optional({ checkFalsy: true }).isString().trim(),
   body('sp_entity_id').optional({ checkFalsy: true }).isString().trim(),
   body('idp_sso_url').optional({ checkFalsy: true }).isString().trim(),
+  body('idp_slo_url').optional({ checkFalsy: true }).isString().trim(),
   body('idp_cert').optional({ checkFalsy: true }).isString(),
   body('username_attribute').optional({ checkFalsy: true }).isString().trim(),
   body('display_name_attribute').optional({ checkFalsy: true }).isString().trim(),

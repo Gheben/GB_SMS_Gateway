@@ -33,6 +33,7 @@ export const authApi = {
   sso:          () => api.get('/auth/sso').then(r => r.data),
   getPerms:     () => api.get('/users/permissions').then(r => r.data),
   refreshToken: () => api.get('/auth/refresh-token').then(r => r.data),
+  samlLogout:   () => api.post('/auth/saml/logout').then(r => r.data),
 }
 
 export const usersApi = {

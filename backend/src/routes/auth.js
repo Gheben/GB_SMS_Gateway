@@ -301,13 +301,58 @@ router.post('/saml/callback', async (req, res) => {
 
     const permissions  = JSON.parse(dbUser.permissions  || '{}');
     const allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
-    const token = authService.signJwt({ ...dbUser, permissions, allowed_ports });
+    const token = authService.signJwt({ ...dbUser, permissions, allowed_ports }, {
+      saml_name_id:        profile.nameID        || '',
+      saml_name_id_format: profile.nameIDFormat  || '',
+      saml_session_index:  profile.sessionIndex  || '',
+    });
     auditService.log(dbUser.id, dbUser.username, 'auth:saml_login', 'user', dbUser.id, null, req.ip);
 
     res.redirect(`/saml-callback?token=${encodeURIComponent(token)}`);
   } catch (err) {
     logger.error(`[SAML] callback error: ${err.message}\n${err.stack}`);
     res.redirect('/login?error=saml_failed');
+  }
+});
+
+// POST /api/auth/saml/logout — SP-initiated SLO
+// Il frontend invia il JWT nel header, noi generiamo l'URL del LogoutRequest e lo restituiamo.
+// Se idp_slo_url non è configurato, risponde { logoutUrl: null } → logout locale.
+router.post('/saml/logout', requireAuth, async (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    if (!cfg?.enabled || !cfg?.idp_slo_url) {
+      return res.json({ logoutUrl: null });
+    }
+    const { saml_name_id, saml_name_id_format, saml_session_index } = req.user;
+    const logoutUrl = await samlService.getLogoutUrlAsync(
+      cfg,
+      saml_name_id,
+      saml_name_id_format,
+      saml_session_index
+    );
+    auditService.log(req.user.sub, req.user.username, 'auth:saml_logout', 'user', req.user.sub, null, req.ip);
+    res.json({ logoutUrl: logoutUrl || null });
+  } catch (err) {
+    logger.error(`[SAML] SLO error: ${err.message}`);
+    res.json({ logoutUrl: null });
+  }
+});
+
+// POST /api/auth/saml/slo — IdP-initiated SLO
+// L'IdP invia un LogoutRequest su questo endpoint (HTTP-POST binding).
+// Noi completiamo il logout e reindirizziamo a /login.
+router.post('/saml/slo', async (req, res) => {
+  try {
+    const cfg = samlService.getSamlConfig();
+    if (!cfg?.enabled) return res.redirect('/login');
+    // Per NetScaler /cgi/tmlogout il SLO è semplice: basta redirezionare a /login.
+    // node-saml può anche validare il LogoutRequest in ingresso se necessario.
+    logger.info('[SAML] IdP-initiated SLO received');
+    res.redirect('/login?saml_logout=1');
+  } catch (err) {
+    logger.error(`[SAML] IdP SLO error: ${err.message}`);
+    res.redirect('/login');
   }
 });
 

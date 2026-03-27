@@ -31,7 +31,7 @@ function verifyPassword(plain, hash) {
   return bcrypt.compareSync(plain, hash);
 }
 
-function signToken(user) {
+function signToken(user, extra = {}) {
   const payload = {
     sub: user.id,
     username: user.username,
@@ -39,6 +39,7 @@ function signToken(user) {
     role: user.role,
     permissions: user.permissions,
     allowed_ports: user.allowed_ports || [],
+    ...extra,
   };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }

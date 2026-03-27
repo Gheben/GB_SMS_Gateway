@@ -35,7 +35,7 @@ function createSamlInstance(cfg) {
   const callbackUrl = `${cfg.sp_base_url}/api/auth/saml/callback`;
   const issuer = cfg.sp_entity_id || `${cfg.sp_base_url}/api/auth/saml/metadata`;
 
-  return new SAML({
+  const options = {
     callbackUrl,
     entryPoint:               cfg.idp_sso_url,
     issuer,
@@ -45,7 +45,34 @@ function createSamlInstance(cfg) {
     disableRequestedAuthnContext: true,
     acceptedClockSkewMs:      5000,
     identifierFormat:         null,
-  });
+  };
+
+  if (cfg.idp_slo_url) {
+    options.logoutUrl         = cfg.idp_slo_url;
+    options.logoutCallbackUrl = `${cfg.sp_base_url}/api/auth/saml/slo`;
+  }
+
+  return new SAML(options);
+}
+
+/**
+ * Genera l'URL di logout SAML (SP-initiated SLO).
+ * Richiede nameID e sessionIndex memorizzati nel JWT al momento del login.
+ */
+async function getLogoutUrlAsync(cfg, nameID, nameIDFormat, sessionIndex) {
+  const saml = createSamlInstance(cfg);
+  const user = {
+    nameID:       nameID       || '',
+    nameIDFormat: nameIDFormat || 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+    sessionIndex: sessionIndex || undefined,
+  };
+  try {
+    const { context: url } = await saml.getLogoutUrlAsync(user, '', {});
+    return url;
+  } catch {
+    // Fallback: redirect diretto all'URL SLO dell'IdP (compatibile con NetScaler /cgi/tmlogout)
+    return cfg.idp_slo_url;
+  }
 }
 
 function getMetadataXml(cfg) {
@@ -53,4 +80,4 @@ function getMetadataXml(cfg) {
   return saml.generateServiceProviderMetadata(null, null);
 }
 
-module.exports = { getSamlConfig, saveSamlConfig, createSamlInstance, getMetadataXml };
+module.exports = { getSamlConfig, saveSamlConfig, createSamlInstance, getMetadataXml, getLogoutUrlAsync };

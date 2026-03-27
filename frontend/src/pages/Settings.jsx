@@ -94,7 +94,7 @@ export default function Settings() {
   // SAML
   const [saml, setSaml] = useState({
     enabled: false, sp_base_url: window.location.origin, sp_entity_id: '',
-    idp_sso_url: '', idp_cert: '', username_attribute: '', display_name_attribute: 'displayName', default_role: 'user',
+    idp_sso_url: '', idp_slo_url: '', idp_cert: '', username_attribute: '', display_name_attribute: 'displayName', default_role: 'user',
   })
   const [samlDirty, setSamlDirty]   = useState(false)
   const [samlSaving, setSamlSaving] = useState(false)
@@ -495,6 +495,12 @@ export default function Settings() {
                   </a>
                 </div>
                 <div>
+                  <span className="text-xs text-blue-600 font-medium">SLO URL (Single Logout):</span>
+                  <code className="block text-xs bg-white border border-blue-200 rounded px-2 py-1 mt-0.5 break-all">
+                    {saml.sp_base_url}/api/auth/saml/slo
+                  </code>
+                </div>
+                <div>
                   <span className="text-xs text-blue-600 font-medium">Binding:</span>
                   <span className="text-xs text-blue-800 ml-1">HTTP-POST</span>
                 </div>
@@ -536,9 +542,16 @@ export default function Settings() {
             {/* IdP Config */}
             <div>
               <label className="label">IdP SSO URL <span className="text-gray-400 font-normal">(Identity Provider login URL)</span></label>
-              <input className="input" placeholder="https://netscaler.company.com/saml/login"
+              <input className="input" placeholder="https://nfactor.azienda.it/saml/login"
                 value={saml.idp_sso_url}
                 onChange={e => { setSaml(s => ({ ...s, idp_sso_url: e.target.value })); setSamlDirty(true) }} />
+            </div>
+            <div>
+              <label className="label">IdP SLO URL <span className="text-gray-400 font-normal">(Single Logout — optional)</span></label>
+              <input className="input" placeholder="https://nfactor.azienda.it/cgi/tmlogout"
+                value={saml.idp_slo_url}
+                onChange={e => { setSaml(s => ({ ...s, idp_slo_url: e.target.value })); setSamlDirty(true) }} />
+              <p className="text-xs text-gray-400 mt-1">If configured, logging out from this app will also terminate the session on the Identity Provider (NetScaler).</p>
             </div>
             <div>
               <label className="label">Certificato IdP (X.509 PEM)</label>

@@ -79,11 +79,20 @@ export function AuthProvider({ children }) {
     return () => clearInterval(id)
   }, [!!user]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const isSaml = user?.source === 'saml';
+    let samlRedirect = null;
+    if (isSaml) {
+      try {
+        const { logoutUrl } = await authApi.samlLogout()
+        samlRedirect = logoutUrl || null
+      } catch { /* fallback: logout locale */ }
+    }
     localStorage.removeItem('jwt_token')
     localStorage.removeItem('jwt_user')
     setUser(null)
-  }, [])
+    if (samlRedirect) { window.location.href = samlRedirect }
+  }, [user])
 
   /** Controlla se l'utente ha il permesso per una chiave specifica */
   const can = useCallback((key) => {
