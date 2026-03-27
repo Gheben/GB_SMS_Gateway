@@ -61,7 +61,17 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         {/* Navigation */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
           {links.map((l, i) => {
-            if (l.divider) return <div key={i} className="border-t border-gray-700 my-2" />
+            if (l.divider) {
+              // Show divider only if there is at least one visible item after it
+              const hasVisibleAfter = links.slice(i + 1).some(next => {
+                if (next.divider) return false
+                if (next.perm && !can(next.perm)) return false
+                if (next.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false
+                if (next.superadminOnly && user?.role !== 'superadmin') return false
+                return true
+              })
+              return hasVisibleAfter ? <div key={i} className="border-t border-gray-700 my-2" /> : null
+            }
             if (l.perm && !can(l.perm)) return null
             if (l.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return null
             if (l.superadminOnly && user?.role !== 'superadmin') return null
