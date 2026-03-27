@@ -32,28 +32,59 @@ router.get('/', [
   res.json(ports);
 });
 
-// PUT /api/ports/:device_id/:port_number/info — salva sim_number e/o carrier della porta
+// GET /api/ports/stats?month=YYYY-MM — admin/superadmin only
+router.get('/stats', (req, res) => {
+  if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  const month = (req.query.month || new Date().toISOString().slice(0, 7)).slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return res.status(400).json({ error: 'Invalid month format (expected YYYY-MM)' });
+  }
+  const db = getDb();
+  const ports = db.prepare(`
+    SELECT p.device_id, p.port_number, p.balanced, p.sim_number, p.operator,
+           d.name as device_name,
+           COALESCE(s.sent_count, 0) as sent_count
+    FROM ports p
+    JOIN devices d ON d.id = p.device_id
+    LEFT JOIN port_monthly_stats s
+      ON s.device_id = p.device_id
+      AND s.port_number = p.port_number
+      AND s.year_month = ?
+    ORDER BY d.name, p.port_number
+  `).all(month);
+  res.json({ month, ports });
+});
+
+// PUT /api/ports/:device_id/:port_number/info — salva sim_number, carrier e/o balanced
 router.put('/:device_id/:port_number/info', [
   param('device_id').isUUID(),
   param('port_number').isInt({ min: 1 }),
   body('sim_number').optional().isString().trim(),
   body('operator').optional().isString().trim(),
+  body('balanced').optional().isBoolean(),
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   const db = getDb();
-  const { sim_number, operator } = req.body;
+  const { sim_number, operator, balanced } = req.body;
   db.prepare(`
-    INSERT INTO ports (device_id, port_number, sim_number, operator, updated_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    INSERT INTO ports (device_id, port_number, sim_number, operator, balanced, updated_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(device_id, port_number) DO UPDATE SET
-      sim_number = COALESCE(excluded.sim_number, sim_number),
-      operator   = COALESCE(excluded.operator, operator),
+      sim_number = CASE WHEN excluded.sim_number IS NOT NULL THEN excluded.sim_number ELSE sim_number END,
+      operator   = CASE WHEN excluded.operator   IS NOT NULL THEN excluded.operator   ELSE operator   END,
+      balanced   = CASE WHEN excluded.balanced   IS NOT NULL THEN excluded.balanced   ELSE balanced   END,
       updated_at = excluded.updated_at
-  `).run(req.params.device_id, parseInt(req.params.port_number, 10),
+  `).run(
+    req.params.device_id,
+    parseInt(req.params.port_number, 10),
     sim_number !== undefined ? (sim_number || null) : null,
-    operator   !== undefined ? (operator   || null) : null);
+    operator   !== undefined ? (operator   || null) : null,
+    balanced   !== undefined ? (balanced ? 1 : 0)   : null,
+  );
   res.json({ ok: true });
 });
 

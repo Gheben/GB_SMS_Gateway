@@ -199,6 +199,19 @@ function initSchema() {
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_url TEXT`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_method TEXT NOT NULL DEFAULT 'POST'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE dispatches ADD COLUMN action_type TEXT NOT NULL DEFAULT 'email'`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE ports ADD COLUMN balanced INTEGER NOT NULL DEFAULT 0`); } catch (_) { /* already exists */ }
+
+  // Tabella contatori mensili per porta SIM (per il load balancer)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS port_monthly_stats (
+      device_id   TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+      port_number INTEGER NOT NULL,
+      year_month  TEXT NOT NULL,
+      sent_count  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (device_id, port_number, year_month)
+    );
+    CREATE INDEX IF NOT EXISTS idx_pms_month ON port_monthly_stats(year_month);
+  `);
 }
 
 /** Legge una singola impostazione dal DB, con fallback a process.env o default */

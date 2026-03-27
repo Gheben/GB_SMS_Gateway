@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { messagesApi, devicesApi, portsApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Send, CheckCircle, AlertCircle } from 'lucide-react'
+import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react'
 
 export default function SendSMS() {
   const { user, isAdmin } = useAuth()
@@ -11,6 +11,8 @@ export default function SendSMS() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [errors, setErrors] = useState({})
+  const [balancedMode, setBalancedMode] = useState(false)
+  const [hasBalancedPorts, setHasBalancedPorts] = useState(false)
 
   useEffect(() => {
     devicesApi.getAll().then(list => {
@@ -22,6 +24,8 @@ export default function SendSMS() {
       setDevices(filtered)
       if (filtered.length > 0) setForm(f => ({ ...f, device_id: String(filtered[0].id) }))
     }).catch(() => {})
+    // Check if any balanced ports exist
+    portsApi.getAll().then(list => setHasBalancedPorts(list.some(p => p.balanced))).catch(() => {})
   }, [])
 
   // Load ports from DB when the selected device changes (for annotations)
@@ -44,9 +48,11 @@ export default function SendSMS() {
 
   function validate() {
     const e = {}
-    if (!form.device_id) e.device_id = 'Select a device'
-    if (!form.port || isNaN(form.port) || form.port < 1 || form.port > 16)
-      e.port = 'Select a valid port (1–16)'
+    if (!balancedMode) {
+      if (!form.device_id) e.device_id = 'Select a device'
+      if (!form.port || isNaN(form.port) || form.port < 1 || form.port > 16)
+        e.port = 'Select a valid port (1–16)'
+    }
     if (!form.recipient || !/^\+?[\d\s\-]{6,20}$/.test(form.recipient))
       e.recipient = 'Invalid phone number'
     if (!form.message || form.message.trim().length === 0)
@@ -64,12 +70,10 @@ export default function SendSMS() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await messagesApi.send({
-        device_id: form.device_id,
-        port: parseInt(form.port, 10),
-        recipient: form.recipient.trim(),
-        message: form.message.trim(),
-      })
+      const payload = balancedMode
+        ? { port: 'auto', recipient: form.recipient.trim(), message: form.message.trim() }
+        : { device_id: form.device_id, port: parseInt(form.port, 10), recipient: form.recipient.trim(), message: form.message.trim() }
+      const res = await messagesApi.send(payload)
       setResult({ success: true, message: `SMS sent. ID: ${res.id}` })
       setForm(f => ({ ...f, message: '' }))
     } catch (err) {
@@ -84,16 +88,37 @@ export default function SendSMS() {
     <div className="max-w-xl space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Send SMS</h2>
 
-      {devices.length === 0 && (
+      {devices.length === 0 && !balancedMode && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-lg">
           No connected devices. Set up devices in the <strong>Devices</strong> section.
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        {/* Balanced mode banner */}
+        {hasBalancedPorts && (
+          <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Balanced mode</p>
+              <p className="text-xs text-blue-600">Automatically picks the next available SIM using round-robin load balancing.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBalancedMode(m => !m)}
+              className="flex-shrink-0 focus:outline-none"
+              aria-label="Toggle balanced mode"
+            >
+              {balancedMode
+                ? <ToggleRight size={32} className="text-blue-600" />
+                : <ToggleLeft  size={32} className="text-blue-400" />}
+            </button>
+          </div>
+        )}
+
         {/* Dispositivo */}
-        <div>
-          <label className="label">Device</label>
+        {!balancedMode && (
+          <div>
+            <label className="label">Device</label>
           {devices.length === 1 ? (
             <p className="input bg-gray-50 text-gray-700 cursor-default select-none">
               {devices[0].name} ({devices[0].host})
@@ -110,12 +135,14 @@ export default function SendSMS() {
               ))}
             </select>
           )}
-          {errors.device_id && <p className="text-red-500 text-xs mt-1">{errors.device_id}</p>}
-        </div>
+            {errors.device_id && <p className="text-red-500 text-xs mt-1">{errors.device_id}</p>}
+          </div>
+        )}
 
         {/* Porta SIM */}
-        <div>
-          <label className="label">SIM Port</label>
+        {!balancedMode && (
+          <div>
+            <label className="label">SIM Port</label>
           {ports.length === 0 ? (
             <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
               No SIM ports detected for this device.
@@ -148,8 +175,9 @@ export default function SendSMS() {
               })}
             </select>
           )}
-          {errors.port && <p className="text-red-500 text-xs mt-1">{errors.port}</p>}
-        </div>
+            {errors.port && <p className="text-red-500 text-xs mt-1">{errors.port}</p>}
+          </div>
+        )}
 
         {/* Numero destinatario */}
         <div>
@@ -182,7 +210,7 @@ export default function SendSMS() {
 
         <button
           type="submit"
-          disabled={loading || devices.length === 0}
+          disabled={loading || (!balancedMode && devices.length === 0)}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           <Send size={16} />

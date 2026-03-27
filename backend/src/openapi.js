@@ -289,10 +289,16 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['device_id', 'port', 'recipient', 'message'],
+                required: ['port', 'recipient', 'message'],
                 properties: {
-                  device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device' },
-                  port:      { type: 'integer', minimum: 1, maximum: 16, example: 1, description: 'SIM port number (1–16)' },
+                  device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device. Required when port is not "auto".' },
+                  port:      {
+                    description: 'SIM port number (1–16) or "auto" to use round-robin balanced SIM selection.',
+                    oneOf: [
+                      { type: 'integer', minimum: 1, maximum: 16, example: 1 },
+                      { type: 'string', enum: ['auto'] },
+                    ],
+                  },
                   recipient: { type: 'string', example: '+39012345678' },
                   message:   { type: 'string', minLength: 1, maxLength: 1024, example: 'Hello from API!' },
                 },
@@ -309,7 +315,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
               },
             },
           },
-          400: { description: 'Validation error' },
+          400: { description: 'Validation error or missing device_id' },
+          503: { description: 'No balanced SIM available or device not connected' },
         },
       },
     },
@@ -430,7 +437,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             description: '',
             content: {
               'application/json': {
-                example: [{ device_id: 'uuid', port_number: 1, sim_number: '+39012345678', operator: 'TIM', status: 'online' }],
+                example: [{ device_id: 'uuid', port_number: 1, balanced: 0, sim_number: '+39012345678', operator: 'TIM', status: 'READY' }],
               },
             },
           },
@@ -438,10 +445,34 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       },
     },
 
+    '/ports/stats': {
+      get: {
+        tags: ['Ports'],
+        summary: 'Monthly SMS usage per SIM port — admin/superadmin only',
+        parameters: [
+          { name: 'month', in: 'query', schema: { type: 'string', example: '2025-06' }, description: 'Month in YYYY-MM format (defaults to current month)' },
+        ],
+        responses: {
+          200: {
+            description: '',
+            content: {
+              'application/json': {
+                example: {
+                  month: '2025-06',
+                  ports: [{ device_id: 'uuid', port_number: 1, balanced: 1, sim_number: '+39012345678', operator: 'TIM', device_name: 'GSM-01', sent_count: 42 }],
+                },
+              },
+            },
+          },
+          403: { description: 'Admin access required' },
+        },
+      },
+    },
+
     '/ports/{device_id}/{port_number}/info': {
       put: {
         tags: ['Ports'],
-        summary: 'Update SIM number and operator for a port',
+        summary: 'Update SIM number, operator and/or balanced flag for a port',
         parameters: [
           { name: 'device_id',   in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'port_number', in: 'path', required: true, schema: { type: 'integer' } },
@@ -454,6 +485,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 properties: {
                   sim_number: { type: 'string', example: '+39012345678' },
                   operator:   { type: 'string', example: 'TIM' },
+                  balanced:   { type: 'boolean', description: 'Include this port in the round-robin balanced SIM pool' },
                 },
               },
             },

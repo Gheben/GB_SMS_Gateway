@@ -77,11 +77,12 @@ export const messagesApi = {
 }
 
 export const portsApi = {
-  getAll:       (params) => api.get('/ports', { params }).then(r => r.data),
-  setSimNumber: (deviceId, portNumber, simNumber) =>
+  getAll:          (params) => api.get('/ports', { params }).then(r => r.data),
+  setSimNumber:    (deviceId, portNumber, simNumber) =>
     api.put(`/ports/${deviceId}/${portNumber}/sim`, { sim_number: simNumber }).then(r => r.data),
-  setPortInfo:  (deviceId, portNumber, data) =>
+  setPortInfo:     (deviceId, portNumber, data) =>
     api.put(`/ports/${deviceId}/${portNumber}/info`, data).then(r => r.data),
+  getMonthlyStats: (month) => api.get('/ports/stats', { params: { month } }).then(r => r.data),
 }
 
 export const devicesApi = {
