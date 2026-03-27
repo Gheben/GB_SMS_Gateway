@@ -44,6 +44,10 @@ function PermissionsEditor({ value, onChange, disabled }) {
       newVal.sent = true
       newVal.report = true
     }
+    if (key === 'inbox' && newVal.inbox) {
+      newVal.dashboard = true
+      newVal.report = true
+    }
     onChange(newVal)
   }
   return (

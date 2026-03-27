@@ -59,7 +59,15 @@ export function AuthProvider({ children }) {
         allowed_ports: payload.allowed_ports || [],
         displayName: payload.displayName || prev.displayName,
       } : prev)
-    } catch { /* ignora errori silenziosi — se 401 l'interceptor axios gestirà il logout */ }
+    } catch (err) {
+      // Se il token è scaduto, facciamo un logout pulito senza hard-redirect
+      if (err.response?.status === 401) {
+        localStorage.removeItem('jwt_token')
+        localStorage.removeItem('jwt_user')
+        setUser(null)
+      }
+      // Tutti gli altri errori (rete, 500, ecc.) vengono ignorati silenziosamente
+    }
   }, [])
 
   // Polling ogni 60 secondi per aggiornare permessi senza re-login
