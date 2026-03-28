@@ -85,6 +85,7 @@ export default function Contacts() {
   const [ldapPage, setLdapPage] = useState(1)
   const LDAP_PAGE_SIZE = 25
   const pollRef = useRef(null)
+  const pollErrorCount = useRef(0)
 
   // Global LDAP enabled flag (from superadmin LDAP config)
   const [globalLdapEnabled, setGlobalLdapEnabled] = useState(false)
@@ -203,10 +204,15 @@ export default function Contacts() {
           }
         }
       } catch {
-        stopPolling()
-        setSyncing(false)
-        setSyncProgress(null)
-        setLdapError('Lost contact with server during sync.')
+        // Transient network hiccup (e.g. Docker proxy timeout during heavy sync).
+        // Retry up to 3 times before giving up.
+        pollErrorCount.current = pollErrorCount.current + 1
+        if (pollErrorCount.current >= 3) {
+          stopPolling()
+          setSyncing(false)
+          setSyncProgress(null)
+          setLdapError('Lost contact with server during sync.')
+        }
       }
     }, 3000)
   }
