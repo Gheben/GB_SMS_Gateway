@@ -103,10 +103,14 @@ export default function SendSMS() {
     setLoading(true)
     setResult(null)
 
+    // Snapshot state before any async operation to avoid stale closure issues
+    const snapshotRecipients = recipients
+    const snapshotManual     = manualInput
+
     // Build final list — normalize phone numbers (strip spaces/dashes/parens) for backend compatibility
     const normalize = p => p.replace(/[\s\-\(\)]+/g, '')
-    const manual = normalize(manualInput.trim())
-    const allRecipients = recipients.map(r => ({ ...r, phone: normalize(r.phone) }))
+    const manual = normalize(snapshotManual.trim())
+    const allRecipients = snapshotRecipients.map(r => ({ ...r, phone: normalize(r.phone) }))
     if (manual && !allRecipients.some(r => r.phone === manual)) {
       allRecipients.push({ phone: manual, name: null })
     }
@@ -376,9 +380,12 @@ export default function SendSMS() {
             </button>
           </div>
           {errors.recipient && <p className="text-red-500 text-xs mt-1">{errors.recipient}</p>}
-          {recipients.length > 1 && (
-            <p className="text-xs text-gray-400 mt-1">{recipients.length} recipient{recipients.length !== 1 ? 's' : ''} — one SMS will be sent per recipient</p>
-          )}
+          {(() => {
+            const total = recipients.length + (manualInput.trim() ? 1 : 0)
+            return total > 1 ? (
+              <p className="text-xs text-gray-400 mt-1">{total} recipient{total !== 1 ? 's' : ''} — one SMS will be sent per recipient</p>
+            ) : null
+          })()}
         </div>
 
         {/* Testo */}
@@ -420,8 +427,8 @@ export default function SendSMS() {
             {result.okCount === 0
               ? 'Send failed'
               : result.failCount === 0
-                ? result.details.length === 1 ? `SMS sent. ID: ${result.details[0].id}` : `All ${result.okCount} SMS sent successfully.`
-                : `${result.okCount} sent, ${result.failCount} failed.`
+                ? result.details.length === 1 ? `SMS sent. ID: ${result.details[0].id}` : `All ${result.details.length} SMS sent successfully.`
+                : `${result.okCount} of ${result.details.length} sent, ${result.failCount} failed.`
             }
           </div>
           {result.details.length > 1 && (

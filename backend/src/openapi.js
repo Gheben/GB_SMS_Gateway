@@ -1238,7 +1238,9 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         summary: 'List local contacts (admin)',
         description: 'Returns all locally managed contacts. **Admin** or **superadmin** only.',
         responses: {
-          200: { description: 'Local contacts list', content: { 'application/json': { example: [] } } },
+          200: { description: 'Local contacts list', content: { 'application/json': { example: [
+            { id: 'uuid-1', display_name: 'Mario Rossi', phone: '+39012345678', email: 'mario@example.com', notes: 'CEO', source: 'local' },
+          ] } } },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
         },
@@ -1375,7 +1377,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           },
         },
         responses: {
-          200: { description: 'Settings saved', content: { 'application/json': { example: { ok: true } } } },
+          200: { description: 'Settings saved', content: { 'application/json': { example: { enabled: true, base_dn: 'OU=Users,DC=example,DC=com', filter: '(&(objectClass=user)(mobile=*))' } } } },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
         },
