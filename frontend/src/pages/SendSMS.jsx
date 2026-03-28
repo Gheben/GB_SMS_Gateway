@@ -36,7 +36,7 @@ export default function SendSMS() {
         )
       })
       setAllBalancedPorts(balanced)
-      setHasBalancedPorts(balanced.length > 0)
+      setHasBalancedPorts(balanced.length >= 2)
     }).catch(() => {})
   }, [])
 
