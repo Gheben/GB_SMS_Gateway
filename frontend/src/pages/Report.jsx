@@ -170,10 +170,10 @@ export default function Report() {
               {data.dispatchByRule.length === 0 ? (
                 <p className="text-sm text-gray-400 py-8 text-center">No data</p>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie data={data.dispatchByRule} dataKey="dispatches" nameKey="rule"
-                      cx="50%" cy="45%" outerRadius={70}
+                      cx="50%" cy="40%" outerRadius={60}
                       labelLine={false}
                     >
                       {data.dispatchByRule.map((_, i) => (
@@ -181,7 +181,7 @@ export default function Report() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(v) => [v, 'forwards']} />
-                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11, maxHeight: 80, overflowY: 'auto' }} />
                   </PieChart>
                 </ResponsiveContainer>
               )}
@@ -209,7 +209,7 @@ export default function Report() {
           {/* Tabella Dispatch Log */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-700">Email forwarding log</h3>
+              <h3 className="text-sm font-semibold text-gray-700">SMS forwarding log</h3>
               <input
                 className="input text-sm py-1.5 w-64"
                 placeholder="Search sender, email, rule..."
@@ -231,7 +231,7 @@ export default function Report() {
                         <th className="pb-2 pr-4 font-medium">Text</th>
                         <th className="pb-2 pr-4 font-medium">Device</th>
                         <th className="pb-2 pr-4 font-medium">Rule</th>
-                        <th className="pb-2 pr-4 font-medium">To email</th>
+                        <th className="pb-2 pr-4 font-medium">To</th>
                         <th className="pb-2 pr-4 font-medium">Status</th>
                         <th className="pb-2 font-medium">Sent at</th>
                       </tr>
