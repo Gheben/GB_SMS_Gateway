@@ -6,6 +6,11 @@ body {
   @apply bg-gray-50 text-gray-900;
 }
 
+/* Remove focus outline on SVG chart elements (Recharts) */
+svg:focus, svg *:focus {
+  outline: none;
+}
+
 @layer components {
   .input {
     @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
