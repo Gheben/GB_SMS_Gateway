@@ -71,11 +71,11 @@ export default function SendSMS() {
       if (!form.port || isNaN(form.port) || form.port < 1 || form.port > 16)
         e.port = 'Select a valid port (1–16)'
     }
-    const manual = manualInput.trim()
+    const manual = manualInput.trim().replace(/[\s\-\(\)]+/g, '')
     const totalRecipients = recipients.length + (manual ? 1 : 0)
     if (totalRecipients === 0)
       e.recipient = 'Add at least one recipient'
-    else if (manual && !/^\+?[\d\s\-]{6,20}$/.test(manual))
+    else if (manual && !/^\+?[\d]{6,20}$/.test(manual))
       e.recipient = 'Invalid phone number in the input field'
     if (!form.message || form.message.trim().length === 0)
       e.message = 'Message cannot be empty'
@@ -103,9 +103,10 @@ export default function SendSMS() {
     setLoading(true)
     setResult(null)
 
-    // Build final list (include manual input if valid and not duplicate)
-    const manual = manualInput.trim()
-    const allRecipients = [...recipients]
+    // Build final list — normalize phone numbers (strip spaces/dashes/parens) for backend compatibility
+    const normalize = p => p.replace(/[\s\-\(\)]+/g, '')
+    const manual = normalize(manualInput.trim())
+    const allRecipients = recipients.map(r => ({ ...r, phone: normalize(r.phone) }))
     if (manual && !allRecipients.some(r => r.phone === manual)) {
       allRecipients.push({ phone: manual, name: null })
     }
@@ -342,8 +343,8 @@ export default function SendSMS() {
               onKeyDown={e => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  const phone = manualInput.trim()
-                  if (!phone || !/^\+?[\d\s\-]{6,20}$/.test(phone)) {
+                  const phone = manualInput.trim().replace(/[\s\-\(\)]+/g, '')
+                  if (!phone || !/^\+?[\d]{6,20}$/.test(phone)) {
                     setErrors(ev => ({...ev, recipient: 'Invalid phone number'}))
                     return
                   }
@@ -359,8 +360,8 @@ export default function SendSMS() {
               type="button"
               title="Add number"
               onClick={() => {
-                const phone = manualInput.trim()
-                if (!phone || !/^\+?[\d\s\-]{6,20}$/.test(phone)) {
+                const phone = manualInput.trim().replace(/[\s\-\(\)]+/g, '')
+                if (!phone || !/^\+?[\d]{6,20}$/.test(phone)) {
                   setErrors(ev => ({...ev, recipient: 'Invalid phone number'}))
                   return
                 }
