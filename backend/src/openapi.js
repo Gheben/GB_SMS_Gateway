@@ -285,10 +285,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         summary: 'Send an SMS',
         description:
           'Send an outbound SMS via a specific SIM port or via the **balanced auto-routing pool**.\n\n' +
-          '## Manual send (`port` = integer)\n' +
-          'Specify `device_id` (UUID of the Yeastar device) and `port` (1–16). The monthly limit of the selected port is enforced server-side: if reached, returns **HTTP 429**.\n\n' +
-          '## Balanced auto-routing (`port` = `"auto"`)\n' +
-          'Omit `device_id`. The system picks the best available SIM automatically:\n\n' +
+          '**Manual send** (`port` = integer) — Specify `device_id` (UUID of the Yeastar device) and `port` (1–16). The monthly limit of the selected port is enforced server-side: if reached, returns **HTTP 429**.\n\n' +
+          '**Balanced auto-routing** (`port` = `"auto"`) — Omit `device_id`. The system picks the best available SIM automatically:\n\n' +
           '| Step | Rule |\n' +
           '|------|------|\n' +
           '| Eligible pool | Ports with `balanced = true` on connected, enabled devices |\n' +
