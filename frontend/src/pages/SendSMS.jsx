@@ -13,6 +13,7 @@ export default function SendSMS() {
   const [errors, setErrors] = useState({})
   const [balancedMode, setBalancedMode] = useState(false)
   const [hasBalancedPorts, setHasBalancedPorts] = useState(false)
+  const [allBalancedPorts, setAllBalancedPorts] = useState([])
 
   useEffect(() => {
     devicesApi.getAll().then(list => {
@@ -24,8 +25,12 @@ export default function SendSMS() {
       setDevices(filtered)
       if (filtered.length > 0) setForm(f => ({ ...f, device_id: String(filtered[0].id) }))
     }).catch(() => {})
-    // Check if any balanced ports exist
-    portsApi.getAll().then(list => setHasBalancedPorts(list.some(p => p.balanced))).catch(() => {})
+    // Check if any balanced ports exist (and store them for limit checks)
+    portsApi.getAll().then(list => {
+      const balanced = list.filter(p => p.balanced)
+      setAllBalancedPorts(balanced)
+      setHasBalancedPorts(balanced.length > 0)
+    }).catch(() => {})
   }, [])
 
   // Load ports from DB when the selected device changes (for annotations)
@@ -62,6 +67,17 @@ export default function SendSMS() {
     return e
   }
 
+  // Derived limit state
+  const selectedPort = !balancedMode
+    ? ports.find(p => String(p.port_number) === String(form.port)) || null
+    : null
+  const selectedPortLimitReached = selectedPort != null
+    && selectedPort.monthly_limit > 0
+    && selectedPort.sent_count >= selectedPort.monthly_limit
+  const allBalancedExhausted = balancedMode
+    && allBalancedPorts.length > 0
+    && allBalancedPorts.every(p => p.monthly_limit > 0 && p.sent_count >= p.monthly_limit)
+
   async function handleSubmit(e) {
     e.preventDefault()
     const errs = validate()
@@ -97,22 +113,30 @@ export default function SendSMS() {
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         {/* Balanced mode banner */}
         {hasBalancedPorts && (
-          <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-blue-800">Balanced mode</p>
-              <p className="text-xs text-blue-600">Automatically picks the next available SIM using round-robin load balancing.</p>
+          <>
+            <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-blue-800">Balanced mode</p>
+                <p className="text-xs text-blue-600">Automatically picks the SIM with the lowest usage ratio (least-used this month). SIMs at their monthly limit are excluded.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBalancedMode(m => !m)}
+                className="flex-shrink-0 focus:outline-none"
+                aria-label="Toggle balanced mode"
+              >
+                {balancedMode
+                  ? <ToggleRight size={32} className="text-blue-600" />
+                  : <ToggleLeft  size={32} className="text-blue-400" />}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setBalancedMode(m => !m)}
-              className="flex-shrink-0 focus:outline-none"
-              aria-label="Toggle balanced mode"
-            >
-              {balancedMode
-                ? <ToggleRight size={32} className="text-blue-600" />
-                : <ToggleLeft  size={32} className="text-blue-400" />}
-            </button>
-          </div>
+            {balancedMode && allBalancedExhausted && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                <span>All balanced SIMs have reached their monthly limit. Auto-routing is unavailable until next month.</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Dispositivo */}
@@ -149,11 +173,13 @@ export default function SendSMS() {
             </p>
           ) : ports.length === 1 ? (() => {
             const p = ports[0]
+            const atLimit = p.monthly_limit > 0 && p.sent_count >= p.monthly_limit
             const label = [
               `Port ${p.port_number}`,
-              p.operator ? `— ${p.operator}` : '',
+              p.operator ? `\u2014 ${p.operator}` : '',
               p.sim_number ? `(${p.sim_number})` : '',
-              p.status === 'READY' ? '✓' : '(not ready)',
+              p.status === 'READY' ? '\u2713' : '(not ready)',
+              atLimit ? '\u26a0 limit reached' : '',
             ].filter(Boolean).join(' ')
             return (
               <p className="input bg-gray-50 text-gray-700 cursor-default select-none">{label}</p>
@@ -165,17 +191,28 @@ export default function SendSMS() {
               className="input"
             >
               {ports.map(p => {
+                const atLimit = p.monthly_limit > 0 && p.sent_count >= p.monthly_limit
                 const label = [
                   `Port ${p.port_number}`,
-                  p.operator ? `— ${p.operator}` : '',
+                  p.operator ? `\u2014 ${p.operator}` : '',
                   p.sim_number ? `(${p.sim_number})` : '',
-                  p.status === 'READY' ? '✓' : '(not ready)',
+                  p.status === 'READY' ? '\u2713' : '(not ready)',
+                  atLimit ? '\u26a0 limit reached' : '',
                 ].filter(Boolean).join(' ')
                 return <option key={p.port_number} value={p.port_number}>{label}</option>
               })}
             </select>
           )}
             {errors.port && <p className="text-red-500 text-xs mt-1">{errors.port}</p>}
+            {selectedPortLimitReached && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2 mt-1">
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                <span>
+                  This SIM has reached its monthly limit ({selectedPort.sent_count}/{selectedPort.monthly_limit}).
+                  Choose another port or wait until next month.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -210,7 +247,7 @@ export default function SendSMS() {
 
         <button
           type="submit"
-          disabled={loading || (!balancedMode && devices.length === 0)}
+          disabled={loading || (!balancedMode && devices.length === 0) || selectedPortLimitReached || allBalancedExhausted}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           <Send size={16} />

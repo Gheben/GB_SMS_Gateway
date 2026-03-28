@@ -13,21 +13,31 @@ router.get('/', [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   const db = getDb();
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   let ports;
   if (req.query.device_id) {
     const conn = deviceManager.get(req.query.device_id);
     if (conn && conn.connected) conn.requestPortStatus();
     ports = db.prepare(`
-      SELECT p.*, d.name as device_name FROM ports p
+      SELECT p.*, d.name as device_name,
+             COALESCE(s.sent_count, 0) as sent_count
+      FROM ports p
       JOIN devices d ON d.id=p.device_id
+      LEFT JOIN port_monthly_stats s
+        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
       WHERE p.device_id=? ORDER BY p.port_number
-    `).all(req.query.device_id);
+    `).all(ym, req.query.device_id);
   } else {
     ports = db.prepare(`
-      SELECT p.*, d.name as device_name FROM ports p
+      SELECT p.*, d.name as device_name,
+             COALESCE(s.sent_count, 0) as sent_count
+      FROM ports p
       JOIN devices d ON d.id=p.device_id
+      LEFT JOIN port_monthly_stats s
+        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
       ORDER BY d.name, p.port_number
-    `).all();
+    `).all(ym);
   }
   res.json(ports);
 });
