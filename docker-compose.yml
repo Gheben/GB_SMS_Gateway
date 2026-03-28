@@ -41,6 +41,7 @@ services:
       - PORT=4673
       - DB_PATH=/app/data/smsgateway.db
       - LOG_FILE=/app/logs/app.log
+      - TZ=${TZ:-Europe/Rome}
       # ENCRYPTION_SECRET — MUST match the value used when LDAP/SMTP settings were saved.
       # Set it in .env (recommended) or directly here.
       # If different from the environment where settings were configured,
