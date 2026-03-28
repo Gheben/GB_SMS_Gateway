@@ -1318,11 +1318,11 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
     '/phonebook/ldap': {
       get: {
         tags: ['Phonebook'],
-        summary: 'Sync LDAP contacts to DB (admin)',
-        description: 'Forces a full LDAP phonebook sync using **paged LDAP search** (handles > 1000 contacts). Deletes existing LDAP contacts and re-imports from Active Directory using the **mobile** attribute (phone) and **mail** attribute (email). **Admin** or **superadmin** only.',
+        summary: 'List LDAP contacts from DB (admin)',
+        description: 'Returns LDAP contacts already stored in the local database **without** triggering a new LDAP query. Also returns the current sync job state. Use `POST /api/phonebook/ldap/sync` to start a new sync. **Admin** or **superadmin** only.',
         responses: {
           200: {
-            description: 'Sync result',
+            description: 'LDAP contacts from DB + current sync status',
             content: {
               'application/json': {
                 example: {
@@ -1330,13 +1330,63 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   contacts: [
                     { id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Anna Bianchi', phone: '+39087654321', email: 'anna.bianchi@example.com', source: 'ldap' },
                   ],
+                  syncStatus: { status: 'done', synced: 1250, error: null, startedAt: '2026-03-28T08:00:00.000Z', finishedAt: '2026-03-28T08:01:32.000Z' },
                 },
               },
             },
           },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
-          502: { description: 'LDAP sync error (server unreachable or credentials invalid)' },
+        },
+      },
+    },
+
+    '/phonebook/ldap/sync': {
+      post: {
+        tags: ['Phonebook'],
+        summary: 'Start background LDAP sync (admin)',
+        description: 'Starts an asynchronous LDAP phonebook sync in the background and **returns immediately**. The sync runs in the background using paged LDAP search (supports 2000+ contacts). Poll `GET /api/phonebook/ldap/status` every few seconds to follow progress. If a sync is already running the response will have `status: "already_running"`. **Admin** or **superadmin** only.',
+        responses: {
+          200: {
+            description: 'Sync started (or already running)',
+            content: {
+              'application/json': {
+                example: { status: 'started', synced: 0, error: null, startedAt: '2026-03-28T08:00:00.000Z', finishedAt: null },
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+
+    '/phonebook/ldap/status': {
+      get: {
+        tags: ['Phonebook'],
+        summary: 'Get current LDAP sync job status (admin)',
+        description: 'Returns the in-memory state of the LDAP sync background job. Poll this endpoint every few seconds after calling `POST /api/phonebook/ldap/sync`. State resets to `idle` on server restart. **Admin** or **superadmin** only.',
+        responses: {
+          200: {
+            description: 'Sync job state',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status:      { type: 'string', enum: ['idle', 'running', 'done', 'error'], description: 'Current job status' },
+                    synced:      { type: 'integer', description: 'Number of contacts imported in the last completed sync' },
+                    error:       { type: 'string', nullable: true, description: 'Error message if status is "error"' },
+                    startedAt:   { type: 'string', format: 'date-time', nullable: true },
+                    finishedAt:  { type: 'string', format: 'date-time', nullable: true },
+                  },
+                },
+                example: { status: 'running', synced: 0, error: null, startedAt: '2026-03-28T08:00:00.000Z', finishedAt: null },
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
         },
       },
     },

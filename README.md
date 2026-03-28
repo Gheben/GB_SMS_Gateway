@@ -175,6 +175,9 @@ FRONTEND_PORT=4674
 # ─── SSO via proxy (optional) ─────────────────────────────────────
 # SSO_ENABLED=true
 # SSO_HEADER=X-Remote-User
+
+# ─── LDAP Phonebook auto-sync (optional) ────────────────────────────
+# LDAP_SYNC_INTERVAL_HOURS=6     # Repeat phonebook sync every N hours (default: 6)
 ```
 
 > SMTP and LDAP are configured directly from the web interface → **Settings** and **User management**.
@@ -393,8 +396,11 @@ The Phonebook allows storing contact names associated with phone numbers. Names 
 **LDAP sync:**
 1. Go to **Phonebook → LDAP** tab
 2. Configure the LDAP settings (uses the global LDAP connection) and optional search filter
-3. Click **Sync now** — existing LDAP contacts are replaced with the current AD data
-4. Automatic sync also occurs on the first `GET /api/phonebook` call if LDAP is configured but the contacts table has no LDAP entries yet
+3. Click **Sync now** — the sync runs **in the background** (non-blocking). A progress banner shows elapsed time; on completion the contact list reloads automatically. The UI polls `GET /api/phonebook/ldap/status` every 3 seconds.
+4. Automatic sync also occurs 60 seconds after server startup (if LDAP is enabled) and then **periodically every 6 hours** (configurable via `LDAP_SYNC_INTERVAL_HOURS` env var)
+5. A fire-and-forget sync is also triggered on the first `GET /api/phonebook` call if the contacts table has no LDAP entries yet
+
+> The sync uses paged LDAP search (page size 500, 30s per-page timeout) and supports AD directories with thousands of users. All contacts are written in a single SQLite transaction for consistency.
 
 ---
 
@@ -557,12 +563,14 @@ GB-SMS-Gateway/
 - `GET /api/health` — Backend status and connected devices
 
 ### Phonebook
-- `GET /api/phonebook` — List all contacts (local + LDAP). Requires `phonebook` permission or admin/superadmin. Auto-syncs LDAP contacts on first call if configured.
+- `GET /api/phonebook` — List all contacts (local + LDAP). Requires `phonebook` permission or admin/superadmin. Triggers a background auto-sync if no LDAP contacts exist yet.
 - `GET /api/phonebook/local` — List local contacts only *(admin/superadmin)*
 - `POST /api/phonebook/local` — Create a local contact *(admin/superadmin)*
 - `PUT /api/phonebook/local/:id` — Update a local contact *(admin/superadmin)*
 - `DELETE /api/phonebook/local/:id` — Delete a local contact *(admin/superadmin)*
-- `GET /api/phonebook/ldap` — Force full LDAP sync (deletes existing LDAP contacts and re-imports using `mobile` attribute) *(admin/superadmin)*
+- `GET /api/phonebook/ldap` — List LDAP contacts already in the DB (no new LDAP query); also returns `syncStatus` *(admin/superadmin)*
+- `POST /api/phonebook/ldap/sync` — **Start a background LDAP sync** and return immediately. Poll `/ldap/status` for progress. Returns `{ status: 'started' | 'already_running', ... }` *(admin/superadmin)*
+- `GET /api/phonebook/ldap/status` — Get current sync job state: `{ status, synced, error, startedAt, finishedAt }` *(admin/superadmin)*
 - `GET /api/phonebook/settings` — Get phonebook LDAP settings *(admin/superadmin)*
 - `PUT /api/phonebook/settings` — Save phonebook LDAP settings *(admin/superadmin)*
 
