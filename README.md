@@ -250,29 +250,38 @@ Displays:
 
 ### 3. Send SMS
 1. Go to **Send SMS**
-2. Select the device and SIM port — **or** enable **Balanced mode** (shown automatically when at least one SIM is in the balanced pool)
+2. Select the device and SIM port — **or** enable **Balanced mode** (shown automatically when the user has access to **2 or more** balanced SIMs)
 3. Enter the recipient number and message text
 4. Click **Send**
 
-**Balanced mode** selects the SIM with the lowest usage ratio automatically. SIMs that have reached their monthly limit are excluded.
+The Send SMS form shows a warning and disables the **Send** button if the selected SIM has reached its monthly limit. The backend enforces the limit as well, returning HTTP 429 if a request bypasses the UI.
 
-### 4. SIM Load Balancing
+**Balanced mode** selects the SIM with the lowest usage ratio automatically. SIMs that have reached their monthly limit are excluded from auto-routing.
 
-Configure from **Devices → SIM Ports** panel (expand any device card):
+### 4. SIM Port Management & Load Balancing
+
+Configure from the **SIM Mapping** page (sidebar → **SIM Mapping**):
 
 | Setting | Description |
 |---------|-------------|
-| **Balanced** toggle | Adds/removes the SIM from the auto-routing pool |
+| **Carrier** | Operator label (e.g. Wind, TIM) — editable |
+| **SIM Number** | Phone number of the SIM — editable |
 | **Limit/mo** | Max outbound SMS per month for this SIM (`0` = no limit) |
+| **Balanced** toggle | Adds/removes the SIM from the auto-routing pool |
 
-**How the algorithm works:**
-- `port="auto"` picks the SIM with the **lowest `sent / limit` ratio** (e.g. 50/200 = 25% beats 40/100 = 40%)
+**Monthly limit enforcement:**
+- The limit is enforced **both** for `port="auto"` (balanced routing) and for **manual port selection** — if the limit is reached the backend returns **HTTP 429** and the send is blocked.
+- The Send SMS form shows the limit status in real time and disables the Send button proactively.
+- Limits reset on the 1st of each month (keyed by `YYYY-MM` in local time, respecting the `TZ` env variable).
+
+**Balanced auto-routing algorithm (`port="auto"`):**
+- Picks the SIM with the **lowest `sent / limit` ratio** (e.g. 50/200 = 25% beats 40/100 = 40%)
 - SIMs without a limit are sorted by raw sent count and treated as always eligible
 - SIMs that have reached their monthly limit are **automatically excluded** until the next month
 - Ties are broken by stable port order to avoid oscillation
-- If only **one SIM** is in the balanced pool it will handle all `auto` sends alone — if it also has a monthly limit and reaches it, subsequent `auto` requests return **503** until the next month
-- **`allowed_ports` enforcement**: for non-admin users, `port="auto"` only selects from balanced SIMs in their permission list; if none are eligible, returns **503**
-- Monthly stats reset to 0 on the 1st of each month (buckets are keyed by `YYYY-MM` in local time per the `TZ` setting)
+- If only **one SIM** is in the balanced pool it will handle all `auto` sends alone — if it also has a monthly limit and reaches it, subsequent `auto` requests return **HTTP 503** until the next month
+- **`allowed_ports` enforcement**: for non-admin users, `port="auto"` only selects from balanced SIMs in their permission list; if none are eligible, returns **HTTP 503**
+- The **Balanced mode** toggle in the Send SMS form appears only when the user has access to **2 or more** balanced SIMs (to avoid a false sense of redundancy)
 
 ### 5. Yeastar Device Management
 1. Go to **Devices**
@@ -283,14 +292,15 @@ Configure from **Devices → SIM Ports** panel (expand any device card):
    - **Username / Password**: AMI credentials (configured in TG1600 → System → AMI)
 4. The backend maintains a persistent connection with automatic reconnection
 
-### 5. SIM Ports
-View the status of each device SIM port:
-- Status (registered, unregistered, absent)
-- Carrier
-- IMEI
+### 6. SIM Ports
+Go to **SIM Mapping** to view and edit all SIM ports across all devices:
+- Status (READY, DOWN, NO_SIM)
+- Carrier / operator label (editable)
 - Assigned SIM number (editable)
+- Monthly send count vs. limit (progress bar)
+- Balanced toggle (in/out of auto-routing pool)
 
-### 6. Forwarding Rules
+### 7. Forwarding Rules
 
 Rules determine how incoming SMS are routed:
 
@@ -301,8 +311,24 @@ Rules determine how incoming SMS are routed:
    - **Conditions**: sender, content, device, port — with operators `=`, `contains`, `regex`
    - **Operator**: `ALL` (AND) or `AT LEAST ONE` (OR)
    - **Email recipients**: for automatic forwarding with HTML template
+   - **SMS forwarding**: forward the message as an SMS to one or more phone numbers (via the same device port that received it)
+   - **Webhook**: POST/GET the SMS payload to an HTTP endpoint (host must be in the allowed-hosts whitelist configured in **Settings → Webhook**)
    - **Stop at match**: if active, subsequent rules are not evaluated
    - **Visibility groups**: LDAP/AD DN — only users in those groups will see the messages
+
+**Webhook payload** (JSON body for POST/PUT, query string for GET):
+```json
+{
+  "sender":      "+39012345678",
+  "content":     "Hello world",
+  "device_id":   "uuid",
+  "port":        3,
+  "received_at": "2026-03-28T10:00:00.000Z",
+  "rule_id":     "uuid",
+  "rule_name":   "My Rule"
+}
+```
+> ⚠️ Webhooks are blocked unless the target hostname is explicitly added to **Settings → Webhook → Allowed Hosts** (supports exact hostname, `*.domain` wildcard, or CIDR range).
 
 > | Situation | Visibility |
 > |-----------|------------|
@@ -310,20 +336,20 @@ Rules determine how incoming SMS are routed:
 > | User + AD Group | Messages of rules where their group is included |
 > | Rule without groups | Visible to all authenticated users |
 
-### 7. SMTP Settings
+### 8. SMTP Settings
 Go to **Settings**:
 - Configure host, port, TLS, SMTP username/password
 - Test the configuration with **Send test email**
 - Customize the HTML email template for forwarded messages
 
-### 8. Reports
+### 9. Reports
 Go to **Reports** to view:
 - SMS per day (chart)
 - SMS per device
 - Forwards per rule
 - Detailed email forwarding log
 
-### 9. User Management
+### 10. User Management
 Available roles:
 - **superadmin**: full access + audit log
 - **admin**: user management and configuration
@@ -331,10 +357,10 @@ Available roles:
 
 Granular permissions: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`
 
-### 10. Audit Log (superadmin only)
+### 11. Audit Log (superadmin only)
 Go to **Audit log** to see all operations performed: logins, user changes, SMS sends, rule changes, etc.
 
-### 11. API Reference (Swagger UI)
+### 12. API Reference (Swagger UI)
 The full interactive REST API documentation is available at `/docs` (opens in a new tab from the sidebar **API Docs** link, visible to `admin` and `superadmin` roles).
 
 **Features:**
@@ -462,7 +488,7 @@ GB-SMS-Gateway/
 - `GET /api/messages` — List messages (filters: direction, device_id, search, pagination)
 - `GET /api/messages/stats` — Statistics (received_today, sent_today, total_inbound, failed)
 - `GET /api/messages/:id` — Message detail
-- `POST /api/messages/send` — Send SMS (`port` = integer **or** `"auto"` for balanced routing)
+- `POST /api/messages/send` — Send SMS (`port` = integer **or** `"auto"` for balanced routing; returns **HTTP 429** if the monthly limit of the selected port has been reached)
 
 ### Devices
 - `GET /api/devices` — List devices with connection status
@@ -471,13 +497,13 @@ GB-SMS-Gateway/
 - `DELETE /api/devices/:id` — Delete device
 
 ### SIM Ports
-- `GET /api/ports?device_id=` — Device SIM port status (includes `balanced`, `monthly_limit` fields)
+- `GET /api/ports?device_id=` — Device SIM port status (includes `balanced`, `monthly_limit`, `sent_count` for current month)
 - `GET /api/ports/stats?month=YYYY-MM` — Monthly send stats for all SIMs with limits *(admin/superadmin)*
 - `PUT /api/ports/:device_id/:port_number/info` — Update SIM number, carrier, `balanced` flag, `monthly_limit`
 
 ### Forwarding Rules
-- `GET /api/rules` — List rules with conditions and recipients
-- `POST /api/rules` — Create rule (conditions, email targets, visibility groups)
+- `GET /api/rules` — List rules with conditions, email targets, SMS targets, and webhook config
+- `POST /api/rules` — Create rule (conditions, email targets, SMS targets, webhook URL/method, visibility groups)
 - `PUT /api/rules/:id` — Update rule
 - `DELETE /api/rules/:id` — Delete rule
 
@@ -487,6 +513,7 @@ GB-SMS-Gateway/
 - `GET/POST /api/settings/email-template` — HTML email template
 - `GET/POST /api/settings/email-subject` — Custom email subject
 - `GET/POST /api/settings/saml` — SAML 2.0 configuration *(superadmin only)*
+- `GET/POST /api/settings/webhook` — Webhook allowed-hosts whitelist (hostname, `*.domain`, CIDR)
 
 ### Users and groups
 - `GET/POST /api/users` — List / create users

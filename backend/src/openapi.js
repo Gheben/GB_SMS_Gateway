@@ -317,6 +317,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             },
           },
           400: { description: 'Validation error or missing device_id' },
+          429: { description: 'Monthly send limit reached for the selected SIM port' },
           503: { description: 'No balanced SIM available or device not connected' },
         },
       },

@@ -150,6 +150,20 @@ router.post('/send', [
   } else {
     port = parseInt(port, 10);
     if (!device_id) return res.status(400).json({ error: 'device_id is required when port is not "auto"' });
+
+    // Enforce monthly_limit for manually selected ports too
+    const db = getDb();
+    const ym = localYearMonth();
+    const portRow = db.prepare(`
+      SELECT p.monthly_limit, COALESCE(s.sent_count, 0) AS sent_count
+      FROM ports p
+      LEFT JOIN port_monthly_stats s
+        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
+      WHERE p.device_id = ? AND p.port_number = ?
+    `).get(ym, device_id, port);
+    if (portRow && portRow.monthly_limit > 0 && portRow.sent_count >= portRow.monthly_limit) {
+      return res.status(429).json({ error: `Monthly limit reached for port ${port} (${portRow.sent_count}/${portRow.monthly_limit}). Wait until next month or choose another port.` });
+    }
   }
 
   const connector = deviceManager.get(device_id);
