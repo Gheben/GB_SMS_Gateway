@@ -73,23 +73,29 @@ router.put('/:device_id/:port_number/info', [
 
   const db = getDb();
   const { sim_number, operator, balanced, monthly_limit } = req.body;
+  const device_id   = req.params.device_id;
+  const port_number = parseInt(req.params.port_number, 10);
+
+  // Ensure the row exists (INSERT OR IGNORE keeps existing data intact)
   db.prepare(`
-    INSERT INTO ports (device_id, port_number, sim_number, operator, balanced, monthly_limit, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(device_id, port_number) DO UPDATE SET
-      sim_number    = CASE WHEN excluded.sim_number    IS NOT NULL THEN excluded.sim_number    ELSE sim_number    END,
-      operator      = CASE WHEN excluded.operator      IS NOT NULL THEN excluded.operator      ELSE operator      END,
-      balanced      = CASE WHEN excluded.balanced      IS NOT NULL THEN excluded.balanced      ELSE balanced      END,
-      monthly_limit = CASE WHEN excluded.monthly_limit IS NOT NULL THEN excluded.monthly_limit ELSE monthly_limit END,
-      updated_at    = excluded.updated_at
-  `).run(
-    req.params.device_id,
-    parseInt(req.params.port_number, 10),
-    sim_number     !== undefined ? (sim_number || null)        : null,
-    operator       !== undefined ? (operator   || null)        : null,
-    balanced       !== undefined ? (balanced ? 1 : 0)          : null,
-    monthly_limit  !== undefined ? parseInt(monthly_limit, 10) : null,
-  );
+    INSERT OR IGNORE INTO ports (device_id, port_number, balanced, updated_at)
+    VALUES (?, ?, 0, datetime('now'))
+  `).run(device_id, port_number);
+
+  // Build UPDATE only for the fields actually provided in the request body
+  const setClauses = [];
+  const params     = [];
+  if (sim_number    !== undefined) { setClauses.push('sim_number = ?');    params.push(sim_number    || null); }
+  if (operator      !== undefined) { setClauses.push('operator = ?');      params.push(operator      || null); }
+  if (balanced      !== undefined) { setClauses.push('balanced = ?');      params.push(balanced ? 1 : 0); }
+  if (monthly_limit !== undefined) { setClauses.push('monthly_limit = ?'); params.push(parseInt(monthly_limit, 10)); }
+
+  if (setClauses.length > 0) {
+    setClauses.push('updated_at = datetime(\'now\')');
+    params.push(device_id, port_number);
+    db.prepare(`UPDATE ports SET ${setClauses.join(', ')} WHERE device_id = ? AND port_number = ?`).run(...params);
+  }
+
   res.json({ ok: true });
 });
 
