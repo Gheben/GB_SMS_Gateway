@@ -1204,6 +1204,169 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         },
       },
     },
+
+    // ─── PHONEBOOK ──────────────────────────────────────────────────────────
+
+    '/phonebook': {
+      get: {
+        tags: ['Phonebook'],
+        summary: 'Get all contacts (local + LDAP)',
+        description: 'Returns all phonebook contacts (local and LDAP). Requires **phonebook** permission (or admin/superadmin). LDAP contacts are auto-synced on first access when the phonebook_ldap setting is enabled and no LDAP contacts exist yet.',
+        responses: {
+          200: {
+            description: 'List of contacts',
+            content: {
+              'application/json': {
+                example: [
+                  { id: 'uuid-1', display_name: 'Mario Rossi', phone: '+39012345678', email: 'mario@example.com', notes: '', source: 'local' },
+                  { id: 'ldap-abc', display_name: 'Anna Bianchi', phone: '+39087654321', email: 'anna@example.com', notes: null, source: 'ldap' },
+                ],
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden – phonebook permission required' },
+        },
+      },
+    },
+
+    '/phonebook/local': {
+      get: {
+        tags: ['Phonebook'],
+        summary: 'List local contacts (admin)',
+        description: 'Returns all locally managed contacts. **Admin** or **superadmin** only.',
+        responses: {
+          200: { description: 'Local contacts list', content: { 'application/json': { example: [] } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+      post: {
+        tags: ['Phonebook'],
+        summary: 'Create a local contact (admin)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['display_name', 'phone'],
+                properties: {
+                  display_name: { type: 'string', example: 'Mario Rossi' },
+                  phone:        { type: 'string', example: '+39012345678' },
+                  email:        { type: 'string', example: 'mario@example.com' },
+                  notes:        { type: 'string', example: 'CEO' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Contact created', content: { 'application/json': { example: { id: 'uuid', display_name: 'Mario Rossi', phone: '+39012345678', source: 'local' } } } },
+          400: { description: 'Validation error' },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+
+    '/phonebook/local/{id}': {
+      put: {
+        tags: ['Phonebook'],
+        summary: 'Update a local contact (admin)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Contact ID' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  display_name: { type: 'string' },
+                  phone:        { type: 'string' },
+                  email:        { type: 'string' },
+                  notes:        { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Updated contact', content: { 'application/json': { example: { id: 'uuid', display_name: 'Mario Rossi', phone: '+39012345678' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Contact not found' },
+        },
+      },
+      delete: {
+        tags: ['Phonebook'],
+        summary: 'Delete a local contact (admin)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Contact ID' }],
+        responses: {
+          200: { description: 'OK', content: { 'application/json': { example: { ok: true } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Contact not found' },
+        },
+      },
+    },
+
+    '/phonebook/ldap': {
+      get: {
+        tags: ['Phonebook'],
+        summary: 'Sync LDAP contacts to DB (admin)',
+        description: 'Forces a full LDAP phonebook sync. Deletes existing LDAP contacts and re-imports from Active Directory using only the **mobile** attribute. **Admin** or **superadmin** only.',
+        responses: {
+          200: { description: 'Sync result', content: { 'application/json': { example: { ok: true, synced: 42 } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          500: { description: 'LDAP sync error' },
+        },
+      },
+    },
+
+    '/phonebook/settings': {
+      get: {
+        tags: ['Phonebook'],
+        summary: 'Get phonebook LDAP settings (admin)',
+        responses: {
+          200: {
+            description: 'Phonebook LDAP settings',
+            content: {
+              'application/json': {
+                example: { enabled: true, base_dn: 'OU=Users,DC=example,DC=com', filter: '(objectClass=person)' },
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+      put: {
+        tags: ['Phonebook'],
+        summary: 'Save phonebook LDAP settings (admin)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  enabled: { type: 'boolean' },
+                  base_dn: { type: 'string', example: 'OU=Users,DC=example,DC=com' },
+                  filter:  { type: 'string', example: '(objectClass=person)' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Settings saved', content: { 'application/json': { example: { ok: true } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
   },
 };
 

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen, Notebook } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const links = [
@@ -15,6 +15,7 @@ const links = [
   { to: '/settings',label: 'Settings',     icon: Settings,        perm: 'settings' },
   { divider: true },
   { to: '/users',   label: 'Users/Groups', icon: Users,           perm: 'users' },
+  { to: '/contacts',label: 'Phonebook',    icon: Notebook,        perm: 'users' },
   { to: '/audit',   label: 'Audit Log',    icon: ClipboardList,   superadminOnly: true },
   { divider: true },
   { href: '/docs/',  label: 'API Docs',     icon: BookOpen,        perm: 'api' },

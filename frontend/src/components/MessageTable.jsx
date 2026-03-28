@@ -41,8 +41,10 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                   {msg.direction === 'inbound' ? 'Received' : 'Sent'}
                 </span>
               </td>
-              <td className="px-4 py-3 font-mono text-gray-700">
-                {msg.direction === 'inbound' ? msg.sender : msg.recipient}
+              <td className="px-4 py-3 font-mono text-gray-700" title={msg.direction === 'inbound' ? msg.sender : msg.recipient}>
+                {msg.direction === 'inbound'
+                  ? (msg.sender_name || msg.sender)
+                  : (msg.recipient_name || msg.recipient)}
               </td>
               <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
                 {msg.port_sim_number

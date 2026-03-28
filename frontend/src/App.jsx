@@ -14,6 +14,7 @@ import Report from './pages/Report'
 import LoginPage from './pages/LoginPage'
 import UsersPage from './pages/UsersPage'
 import AuditLog from './pages/AuditLog'
+import Contacts from './pages/Contacts'
 import SamlCallback from './pages/SamlCallback'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useWebSocket } from './hooks/useWebSocket'
@@ -122,6 +123,7 @@ function AppShell() {
             <Route path="/settings" element={<ProtectedRoute permKey="settings"><Settings /></ProtectedRoute>} />
             <Route path="/report" element={<ProtectedRoute permKey="report"><Report /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute permKey="users"><UsersPage /></ProtectedRoute>} />
+            <Route path="/contacts" element={<ProtectedRoute permKey="users"><Contacts /></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

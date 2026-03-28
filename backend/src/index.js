@@ -24,7 +24,8 @@ const reportRouter   = require('./routes/report');
 const authRouter     = require('./routes/auth');
 const usersRouter    = require('./routes/users');
 const auditRouter    = require('./routes/audit');
-const groupsRouter   = require('./routes/localGroups');
+const groupsRouter      = require('./routes/localGroups');
+const phonebookRouter   = require('./routes/phonebook');
 const { requireAuth } = require('./middleware/authMiddleware');
 const { seedSuperAdmin } = require('./services/authService');
 const openApiSpec = require('./openapi');
@@ -476,8 +477,9 @@ app.use('/api/rules',    rulesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/report',   reportRouter);
 app.use('/api/users',    usersRouter);
-app.use('/api/audit',    auditRouter);
-app.use('/api/groups',   groupsRouter);
+app.use('/api/audit',     auditRouter);
+app.use('/api/groups',    groupsRouter);
+app.use('/api/phonebook', phonebookRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

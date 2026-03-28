@@ -69,7 +69,9 @@ export default function MessageDetailModal({ msg, onClose }) {
             <Field label="SIM Port" value={msg.port ? `Port ${msg.port}` : null} />
             <Field
               label={msg.direction === 'inbound' ? 'Sender' : 'Recipient'}
-              value={contact}
+              value={msg.direction === 'inbound'
+                ? (msg.sender_name ? `${msg.sender_name} (${msg.sender})` : contact)
+                : (msg.recipient_name ? `${msg.recipient_name} (${msg.recipient})` : contact)}
               mono
             />
             {msg.direction === 'inbound' && (msg.port_sim_number || msg.recipient) && (

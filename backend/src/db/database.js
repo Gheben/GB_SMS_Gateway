@@ -198,6 +198,22 @@ function initSchema() {
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_local_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN sms_targets TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_url TEXT`); } catch (_) { /* already exists */ }
+
+  // Phonebook (local contacts + LDAP-synced contacts)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id           TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      phone        TEXT NOT NULL,
+      email        TEXT,
+      notes        TEXT,
+      source       TEXT NOT NULL DEFAULT 'local',
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_contacts_phone  ON contacts(phone);
+    CREATE INDEX IF NOT EXISTS idx_contacts_source ON contacts(source);
+  `);
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN webhook_method TEXT NOT NULL DEFAULT 'POST'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE dispatches ADD COLUMN action_type TEXT NOT NULL DEFAULT 'email'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE ports ADD COLUMN balanced INTEGER NOT NULL DEFAULT 0`); } catch (_) { /* already exists */ }

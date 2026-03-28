@@ -120,6 +120,17 @@ export const reportApi = {
   get: (days = 30) => api.get('/report', { params: { days } }).then(r => r.data),
 }
 
+export const phonebookApi = {
+  getAll:      ()          => api.get('/phonebook').then(r => r.data),
+  getLocal:    ()          => api.get('/phonebook/local').then(r => r.data),
+  createLocal: (data)      => api.post('/phonebook/local', data).then(r => r.data),
+  updateLocal: (id, data)  => api.put(`/phonebook/local/${id}`, data).then(r => r.data),
+  deleteLocal: (id)        => api.delete(`/phonebook/local/${id}`).then(r => r.data),
+  syncLdap:    ()          => api.get('/phonebook/ldap').then(r => r.data),
+  getSettings: ()          => api.get('/phonebook/settings').then(r => r.data),
+  saveSettings:(data)      => api.put('/phonebook/settings', data).then(r => r.data),
+}
+
 export const healthApi = {
   get: () => api.get('/health').then(r => r.data),
 }

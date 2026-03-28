@@ -379,4 +379,59 @@ async function lookupUser(username) {
   }
 }
 
-module.exports = { getLdapSettings, saveLdapSettings, testConnection, authenticate, lookupUser, resolvePermissions };
+/**
+ * Fetches contacts from Active Directory for the phonebook.
+ * Uses the main LDAP service account credentials.
+ * Returns only entries that have the `mobile` attribute set.
+ * Deduplicates by sAMAccountName.
+ */
+async function searchPhonebook() {
+  if (!ldap) throw new Error('ldapjs is not installed');
+  const cfg = getLdapSettings();
+  if (!cfg?.enabled) throw new Error('LDAP is not enabled');
+  if (!cfg.host && !cfg.ldap_server) throw new Error('LDAP server is not configured');
+
+  // Phonebook-specific overrides stored in settings table
+  const db = getDb();
+  const pbRow = db.prepare("SELECT value FROM settings WHERE key='phonebook_ldap'").get();
+  const pbCfg = pbRow ? JSON.parse(pbRow.value) : {};
+
+  const baseDn = pbCfg.base_dn || _baseDn(cfg);
+  const filter = pbCfg.filter  || '(&(objectClass=user)(mobile=*))';
+
+  const client = makeClient(cfg);
+  const bindDn  = _serviceBindPrincipal(cfg);
+  const bindPwd = _servicePassword(cfg);
+
+  try {
+    await ldapBind(client, bindDn, bindPwd);
+    const entries = await ldapSearch(client, baseDn, {
+      scope:      'sub',
+      filter,
+      attributes: ['displayName', 'cn', 'mobile', 'sAMAccountName'],
+      sizeLimit:  1000,
+    });
+
+    // Deduplicate by sAMAccountName (a user may appear in multiple groups/OU)
+    const seen = new Set();
+    const contacts = [];
+    for (const e of entries) {
+      const sam = e.samaccountname || e.sAMAccountName || e.dn;
+      if (seen.has(sam)) continue;
+      seen.add(sam);
+      const mobile = e.mobile;
+      if (!mobile) continue;
+      contacts.push({
+        display_name: e.displayname || e.displayName || e.cn || sam,
+        phone:        Array.isArray(mobile) ? mobile[0] : mobile,
+        source:       'ldap',
+      });
+    }
+    logger.info(`[Phonebook] LDAP sync: ${contacts.length} contact(s) with mobile number`);
+    return contacts;
+  } finally {
+    await ldapUnbind(client);
+  }
+}
+
+module.exports = { getLdapSettings, saveLdapSettings, testConnection, authenticate, lookupUser, resolvePermissions, searchPhonebook };

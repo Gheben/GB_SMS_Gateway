@@ -1,0 +1,358 @@
+import { useEffect, useState } from 'react'
+import { phonebookApi } from '../api'
+import {
+  Plus, Pencil, Trash2, X, RefreshCw, Save, Loader2,
+  BookOpen, Globe, CheckCircle, AlertCircle
+} from 'lucide-react'
+
+const EMPTY_FORM = { display_name: '', phone: '', email: '', notes: '' }
+
+function ContactModal({ contact, onSave, onClose, saving }) {
+  const [form, setForm] = useState(contact || EMPTY_FORM)
+  const [errors, setErrors] = useState({})
+
+  function validate() {
+    const e = {}
+    if (!form.display_name.trim()) e.display_name = 'Name is required'
+    if (!form.phone.trim()) e.phone = 'Phone is required'
+    return e
+  }
+
+  function handleSubmit(ev) {
+    ev.preventDefault()
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    onSave(form)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-base font-semibold text-gray-800">{contact ? 'Edit contact' : 'New contact'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-200"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="label">Name *</label>
+            <input className="input" value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} />
+            {errors.display_name && <p className="text-red-500 text-xs mt-1">{errors.display_name}</p>}
+          </div>
+          <div>
+            <label className="label">Phone *</label>
+            <input className="input font-mono" placeholder="+39012345678" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+          </div>
+          <div>
+            <label className="label">Email</label>
+            <input className="input" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Notes</label>
+            <input className="input" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function Contacts() {
+  const [tab, setTab] = useState('local')
+
+  // Local contacts
+  const [localContacts, setLocalContacts] = useState([])
+  const [loadingLocal, setLoadingLocal] = useState(false)
+  const [modalContact, setModalContact] = useState(null) // null=closed, {}=new, {id,...}=edit
+  const [saving, setSaving] = useState(false)
+  const [localError, setLocalError] = useState(null)
+
+  // LDAP contacts
+  const [ldapContacts, setLdapContacts] = useState([])
+  const [loadingLdap, setLoadingLdap] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [ldapError, setLdapError] = useState(null)
+  const [syncMsg, setSyncMsg] = useState(null)
+
+  // LDAP settings
+  const [ldapSettings, setLdapSettings] = useState({ enabled: false, base_dn: '', filter: '' })
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsMsg, setSettingsMsg] = useState(null)
+
+  // Load local contacts
+  function fetchLocal() {
+    setLoadingLocal(true)
+    setLocalError(null)
+    phonebookApi.getLocal()
+      .then(setLocalContacts)
+      .catch(e => setLocalError(e.response?.data?.error || 'Error loading contacts'))
+      .finally(() => setLoadingLocal(false))
+  }
+
+  // Load LDAP contacts and settings
+  function fetchLdap() {
+    setLoadingLdap(true)
+    setLdapError(null)
+    Promise.all([
+      phonebookApi.getAll().then(all => all.filter(c => c.source === 'ldap')),
+      phonebookApi.getSettings(),
+    ])
+      .then(([contacts, settings]) => {
+        setLdapContacts(contacts)
+        setLdapSettings({ enabled: !!settings.enabled, base_dn: settings.base_dn || '', filter: settings.filter || '' })
+      })
+      .catch(e => setLdapError(e.response?.data?.error || 'Error loading LDAP data'))
+      .finally(() => setLoadingLdap(false))
+  }
+
+  useEffect(() => { fetchLocal() }, [])
+  useEffect(() => { if (tab === 'ldap') fetchLdap() }, [tab])
+
+  async function handleSaveContact(form) {
+    setSaving(true)
+    try {
+      if (modalContact?.id) {
+        const updated = await phonebookApi.updateLocal(modalContact.id, form)
+        setLocalContacts(c => c.map(x => x.id === updated.id ? updated : x))
+      } else {
+        const created = await phonebookApi.createLocal(form)
+        setLocalContacts(c => [...c, created])
+      }
+      setModalContact(null)
+    } catch (e) {
+      setLocalError(e.response?.data?.error || 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this contact?')) return
+    try {
+      await phonebookApi.deleteLocal(id)
+      setLocalContacts(c => c.filter(x => x.id !== id))
+    } catch (e) {
+      setLocalError(e.response?.data?.error || 'Delete failed')
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncMsg(null)
+    setLdapError(null)
+    try {
+      const res = await phonebookApi.syncLdap()
+      setSyncMsg(`Sync complete: ${res.synced} contacts imported.`)
+      // Refresh list
+      const all = await phonebookApi.getAll()
+      setLdapContacts(all.filter(c => c.source === 'ldap'))
+    } catch (e) {
+      setLdapError(e.response?.data?.error || 'LDAP sync failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleSaveSettings(e) {
+    e.preventDefault()
+    setSavingSettings(true)
+    setSettingsMsg(null)
+    try {
+      await phonebookApi.saveSettings(ldapSettings)
+      setSettingsMsg('Settings saved.')
+    } catch (err) {
+      setSettingsMsg('Error saving settings: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  return (
+    <div className="max-w-4xl space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800">Phonebook</h2>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setTab('local')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'local' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-2"><BookOpen size={15} /> Local contacts</span>
+        </button>
+        <button
+          onClick={() => setTab('ldap')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'ldap' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-2"><Globe size={15} /> LDAP / Active Directory</span>
+        </button>
+      </div>
+
+      {/* ── LOCAL TAB ── */}
+      {tab === 'local' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">{localContacts.length} contact{localContacts.length !== 1 ? 's' : ''}</p>
+            <button onClick={() => setModalContact({})} className="btn-primary flex items-center gap-2 text-sm">
+              <Plus size={15} /> Add contact
+            </button>
+          </div>
+
+          {localError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-lg">
+              <AlertCircle size={15} /> {localError}
+            </div>
+          )}
+
+          {loadingLocal ? (
+            <div className="flex justify-center py-12 text-gray-400 gap-2"><Loader2 size={18} className="animate-spin" /> Loading...</div>
+          ) : localContacts.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">No local contacts yet. Click <strong>Add contact</strong> to create one.</div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="hidden md:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {localContacts.map(c => (
+                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-800">{c.display_name}</td>
+                      <td className="px-4 py-3 font-mono text-gray-700">{c.phone}</td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-gray-500">{c.email || '—'}</td>
+                      <td className="hidden md:table-cell px-4 py-3 text-gray-500 max-w-xs truncate">{c.notes || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2 justify-end">
+                          <button onClick={() => setModalContact(c)} className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"><Pencil size={14} /></button>
+                          <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LDAP TAB ── */}
+      {tab === 'ldap' && (
+        <div className="space-y-6">
+          {/* Settings section */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">LDAP settings</h3>
+            <form onSubmit={handleSaveSettings} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="ldap_enabled"
+                  checked={ldapSettings.enabled}
+                  onChange={e => setLdapSettings(s => ({ ...s, enabled: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <label htmlFor="ldap_enabled" className="text-sm font-medium text-gray-700">Enable LDAP phonebook</label>
+              </div>
+              {ldapSettings.enabled && (
+                <>
+                  <div>
+                    <label className="label">Base DN <span className="text-gray-400 font-normal text-xs">(leave empty to use global LDAP base DN)</span></label>
+                    <input className="input font-mono text-sm" placeholder="OU=Users,DC=example,DC=com" value={ldapSettings.base_dn} onChange={e => setLdapSettings(s => ({ ...s, base_dn: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="label">Filter <span className="text-gray-400 font-normal text-xs">(leave empty for default)</span></label>
+                    <input className="input font-mono text-sm" placeholder="(objectClass=person)" value={ldapSettings.filter} onChange={e => setLdapSettings(s => ({ ...s, filter: e.target.value }))} />
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-3">
+                <button type="submit" disabled={savingSettings} className="btn-primary flex items-center gap-2 text-sm">
+                  {savingSettings ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save settings
+                </button>
+                {settingsMsg && <p className={`text-xs ${settingsMsg.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}>{settingsMsg}</p>}
+              </div>
+            </form>
+          </div>
+
+          {/* Contacts list */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">{ldapContacts.length} LDAP contact{ldapContacts.length !== 1 ? 's' : ''} in DB</p>
+              <button
+                onClick={handleSync}
+                disabled={syncing || !ldapSettings.enabled}
+                className="btn-secondary flex items-center gap-2 text-sm"
+                title={!ldapSettings.enabled ? 'Enable LDAP phonebook first' : 'Sync contacts from Active Directory'}
+              >
+                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                {syncing ? 'Syncing…' : 'Refresh LDAP'}
+              </button>
+            </div>
+
+            {syncMsg && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm p-3 rounded-lg">
+                <CheckCircle size={15} /> {syncMsg}
+              </div>
+            )}
+            {ldapError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-lg">
+                <AlertCircle size={15} /> {ldapError}
+              </div>
+            )}
+
+            {loadingLdap ? (
+              <div className="flex justify-center py-12 text-gray-400 gap-2"><Loader2 size={18} className="animate-spin" /> Loading...</div>
+            ) : ldapContacts.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                {ldapSettings.enabled ? 'No LDAP contacts in DB. Click Refresh LDAP to sync.' : 'LDAP phonebook is disabled.'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Phone (mobile)</th>
+                      <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {ldapContacts.map(c => (
+                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-800">{c.display_name}</td>
+                        <td className="px-4 py-3 font-mono text-gray-700">{c.phone}</td>
+                        <td className="hidden sm:table-cell px-4 py-3 text-gray-500">{c.email || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Contact edit/create modal */}
+      {modalContact !== null && (
+        <ContactModal
+          contact={modalContact?.id ? modalContact : null}
+          onSave={handleSaveContact}
+          onClose={() => setModalContact(null)}
+          saving={saving}
+        />
+      )}
+    </div>
+  )
+}

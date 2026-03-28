@@ -93,7 +93,9 @@ class MessageService {
   getAll({ direction, deviceId, page = 1, limit = 50, search, userRole, userGroups, userId } = {}) {
     const db = getDb();
     const offset = (page - 1) * limit;
-    let query = `SELECT m.*, d.name as device_name, p.sim_number as port_sim_number FROM messages m LEFT JOIN devices d ON d.id = m.device_id LEFT JOIN ports p ON p.device_id = m.device_id AND p.port_number = m.port WHERE 1=1`;
+    let query = `SELECT m.*, d.name as device_name, p.sim_number as port_sim_number,
+       c_s.display_name as sender_name, c_r.display_name as recipient_name
+FROM messages m LEFT JOIN devices d ON d.id = m.device_id LEFT JOIN ports p ON p.device_id = m.device_id AND p.port_number = m.port LEFT JOIN contacts c_s ON c_s.phone = m.sender LEFT JOIN contacts c_r ON c_r.phone = m.recipient WHERE 1=1`;
     const params = [];
 
     if (direction) {
@@ -140,10 +142,13 @@ class MessageService {
   getById(id) {
     const db = getDb();
     const msg = db.prepare(`
-      SELECT m.*, d.name as device_name, p.sim_number as port_sim_number
+      SELECT m.*, d.name as device_name, p.sim_number as port_sim_number,
+             c_s.display_name as sender_name, c_r.display_name as recipient_name
       FROM messages m
       LEFT JOIN devices d ON d.id = m.device_id
       LEFT JOIN ports p ON p.device_id = m.device_id AND p.port_number = m.port
+      LEFT JOIN contacts c_s ON c_s.phone = m.sender
+      LEFT JOIN contacts c_r ON c_r.phone = m.recipient
       WHERE m.id = ?
     `).get(id);
     if (!msg) return null;

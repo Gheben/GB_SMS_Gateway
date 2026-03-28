@@ -18,6 +18,7 @@ const ALL_PERMS = [
   { key: 'settings',  label: 'Settings' },
   { key: 'users',     label: 'User management' },
   { key: 'api',       label: 'API Access' },
+  { key: 'phonebook', label: 'Phonebook access' },
 ]
 
 function RoleBadge({ role }) {

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { messagesApi, devicesApi, portsApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight, BookOpen } from 'lucide-react'
+import ContactPickerModal from '../components/ContactPickerModal'
 
 export default function SendSMS() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, can } = useAuth()
   const [devices, setDevices] = useState([])
   const [ports, setPorts] = useState([])
   const [form, setForm] = useState({ device_id: '', port: '', recipient: '', message: '' })
@@ -14,6 +15,8 @@ export default function SendSMS() {
   const [balancedMode, setBalancedMode] = useState(false)
   const [hasBalancedPorts, setHasBalancedPorts] = useState(false)
   const [allBalancedPorts, setAllBalancedPorts] = useState([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [recipientName, setRecipientName] = useState(null)
 
   useEffect(() => {
     devicesApi.getAll().then(list => {
@@ -225,14 +228,28 @@ export default function SendSMS() {
 
         {/* Numero destinatario */}
         <div>
-          <label className="label">Recipient number</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="label mb-0">Recipient number</label>
+            {(isAdmin || can('phonebook')) && (
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors"
+              >
+                <BookOpen size={13} /> From phonebook
+              </button>
+            )}
+          </div>
           <input
             type="text"
             placeholder="+1 555 123 4567"
             value={form.recipient}
-            onChange={(e) => setForm(f => ({ ...f, recipient: e.target.value }))}
+            onChange={(e) => { setForm(f => ({ ...f, recipient: e.target.value })); setRecipientName(null) }}
             className="input"
           />
+          {recipientName && (
+            <p className="text-xs text-blue-600 mt-1">{recipientName}</p>
+          )}
           {errors.recipient && <p className="text-red-500 text-xs mt-1">{errors.recipient}</p>}
         </div>
 
@@ -267,6 +284,17 @@ export default function SendSMS() {
           {result.success ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           <p className="text-sm">{result.message}</p>
         </div>
+      )}
+
+      {pickerOpen && (
+        <ContactPickerModal
+          onSelect={contact => {
+            setForm(f => ({ ...f, recipient: contact.phone }))
+            setRecipientName(contact.display_name)
+            setPickerOpen(false)
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
       )}
     </div>
   )
