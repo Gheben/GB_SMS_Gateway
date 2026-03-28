@@ -108,14 +108,15 @@ function EditableLimitCell({ initialValue, onSave }) {
   )
 }
 
-function SimRow({ port, onSaved }) {
+function SimRow({ port, onPortUpdate }) {
   const [toggling, setToggling] = useState(false)
 
   async function toggleBalanced() {
     setToggling(true)
     try {
-      await portsApi.setPortInfo(port.device_id, port.port_number, { balanced: !port.balanced })
-      await onSaved()
+      const newBalanced = port.balanced ? 0 : 1
+      await portsApi.setPortInfo(port.device_id, port.port_number, { balanced: newBalanced === 1 })
+      onPortUpdate(port.device_id, port.port_number, { balanced: newBalanced })
     } catch {}
     setToggling(false)
   }
@@ -129,7 +130,10 @@ function SimRow({ port, onSaved }) {
         <EditableCell
           initialValue={port.operator}
           placeholder="e.g. TIM"
-          onSave={operator => portsApi.setPortInfo(port.device_id, port.port_number, { operator }).then(onSaved)}
+          onSave={async operator => {
+            await portsApi.setPortInfo(port.device_id, port.port_number, { operator })
+            onPortUpdate(port.device_id, port.port_number, { operator: operator || null })
+          }}
         />
       </td>
       <td className="px-3 py-2">
@@ -137,13 +141,19 @@ function SimRow({ port, onSaved }) {
           initialValue={port.sim_number}
           placeholder="+39..."
           mono
-          onSave={sim_number => portsApi.setPortInfo(port.device_id, port.port_number, { sim_number }).then(onSaved)}
+          onSave={async sim_number => {
+            await portsApi.setPortInfo(port.device_id, port.port_number, { sim_number })
+            onPortUpdate(port.device_id, port.port_number, { sim_number: sim_number || null })
+          }}
         />
       </td>
       <td className="px-3 py-2">
         <EditableLimitCell
           initialValue={port.monthly_limit}
-          onSave={monthly_limit => portsApi.setPortInfo(port.device_id, port.port_number, { monthly_limit }).then(onSaved)}
+          onSave={async monthly_limit => {
+            await portsApi.setPortInfo(port.device_id, port.port_number, { monthly_limit })
+            onPortUpdate(port.device_id, port.port_number, { monthly_limit })
+          }}
         />
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
@@ -186,11 +196,18 @@ export default function SimMapping() {
     } catch {}
   }, [])
 
+  // Update a single port in state without a network reload
+  const handlePortUpdate = useCallback((deviceId, portNumber, updates) => {
+    setPorts(prev => prev.map(p =>
+      p.device_id === deviceId && p.port_number === portNumber ? { ...p, ...updates } : p
+    ))
+  }, [])
+
   useEffect(() => { load() }, [load])
 
   useWebSocket(useCallback((msg) => {
-    if (msg.type === 'port:info' || msg.type === 'device:connected') load()
-  }, [load]))
+    if (msg.type === 'port:info' || msg.type === 'device:connected') silentReload()
+  }, [silentReload]))
 
   return (
     <div className="space-y-6">
@@ -231,7 +248,7 @@ export default function SimMapping() {
                 <SimRow
                   key={`${port.device_id}-${port.port_number}`}
                   port={port}
-                  onSaved={silentReload}
+                  onPortUpdate={handlePortUpdate}
                 />
               ))}
             </tbody>
