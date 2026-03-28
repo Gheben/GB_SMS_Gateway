@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { messagesApi, devicesApi, portsApi } from '../api'
+import { messagesApi, devicesApi, portsApi, phonebookApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight, BookOpen, Plus, X as XIcon } from 'lucide-react'
 import ContactPickerModal from '../components/ContactPickerModal'
+import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
 
 export default function SendSMS() {
   const { user, isAdmin, can } = useAuth()
@@ -19,6 +20,7 @@ export default function SendSMS() {
   const [recipients, setRecipients] = useState([])   // [{phone, name}]
   const [manualInput, setManualInput] = useState('')
   const [chipsExpanded, setChipsExpanded] = useState(false)
+  const [phonebookContacts, setPhonebookContacts] = useState([])
   const CHIPS_PREVIEW = 3
 
   useEffect(() => {
@@ -31,6 +33,9 @@ export default function SendSMS() {
       setDevices(filtered)
       if (filtered.length > 0) setForm(f => ({ ...f, device_id: String(filtered[0].id) }))
     }).catch(() => {})
+    if (isAdmin || can('phonebook')) {
+      phonebookApi.getAll().then(c => setPhonebookContacts(c || [])).catch(() => {})
+    }
     // Check if any balanced ports exist within the user's allowed scope
     portsApi.getAll().then(list => {
       const allowedPorts = user?.allowed_ports || []
@@ -339,11 +344,19 @@ export default function SendSMS() {
 
           {/* Manual entry */}
           <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="+1 555 123 4567"
+            <PhonebookAutocomplete
+              mode="phone"
+              contacts={phonebookContacts}
               value={manualInput}
-              onChange={(e) => { setManualInput(e.target.value); if (errors.recipient) setErrors(ev => ({...ev, recipient: null})) }}
+              onChange={v => { setManualInput(v); if (errors.recipient) setErrors(ev => ({...ev, recipient: null})) }}
+              onAdd={contact => {
+                const phone = contact.phone.replace(/[\s\-\(\)]+/g, '')
+                if (!recipients.some(r => r.phone === phone)) {
+                  setRecipients(rs => [...rs, { phone, name: contact.display_name }])
+                }
+                setManualInput('')
+                if (errors.recipient) setErrors(ev => ({...ev, recipient: null}))
+              }}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -358,6 +371,7 @@ export default function SendSMS() {
                   setManualInput('')
                 }
               }}
+              placeholder="+1 555 123 4567 or contact name"
               className="input flex-1"
             />
             <button

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { rulesApi, devicesApi, ldapApi, localGroupsApi } from '../api'
+import { rulesApi, devicesApi, ldapApi, localGroupsApi, phonebookApi } from '../api'
+import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
 import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play } from 'lucide-react'
 
 const MATCH_TYPES = [
@@ -21,7 +22,7 @@ const EMPTY_RULE = {
   conditions: [emptyCondition()],
   stop_on_match: false,
   targets: [''],
-  sms_targets_str: '',
+  sms_targets: [''],
   allowed_groups: [],
   allowed_local_groups: [],
   webhook_url: '',
@@ -77,7 +78,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
         : [emptyCondition()],
       stop_on_match: !!rule.stop_on_match,
       targets: rule.targets?.map(t => t.email) || [''],
-      sms_targets_str: Array.isArray(rule.sms_targets) ? rule.sms_targets.join(', ') : '',
+      sms_targets: Array.isArray(rule.sms_targets) && rule.sms_targets.length > 0 ? rule.sms_targets : [''],
       allowed_groups: Array.isArray(rule.allowed_groups) ? rule.allowed_groups : [],
       allowed_local_groups: Array.isArray(rule.allowed_local_groups) ? rule.allowed_local_groups : [],
       webhook_url: rule.webhook_url || '',
@@ -86,6 +87,11 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [phonebookContacts, setPhonebookContacts] = useState([])
+
+  useEffect(() => {
+    phonebookApi.getAll().then(c => setPhonebookContacts(c || [])).catch(() => {})
+  }, [])
 
   function toggleGroup(dn, checked) {
     setForm(p => ({
@@ -121,6 +127,13 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
   function removeTarget(i) {
     setForm(p => ({ ...p, targets: p.targets.length > 1 ? p.targets.filter((_, n) => n !== i) : p.targets }))
   }
+  function setSmsTarget(i, val) {
+    setForm(p => { const t = [...p.sms_targets]; t[i] = val; return { ...p, sms_targets: t } })
+  }
+  function addSmsTarget() { setForm(p => ({ ...p, sms_targets: [...p.sms_targets, ''] })) }
+  function removeSmsTarget(i) {
+    setForm(p => ({ ...p, sms_targets: p.sms_targets.length > 1 ? p.sms_targets.filter((_, n) => n !== i) : p.sms_targets }))
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -137,7 +150,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       })),
       stop_on_match: form.stop_on_match,
       targets: form.targets.filter(Boolean),
-      sms_targets: form.sms_targets_str.split(',').map(s => s.trim()).filter(Boolean),
+      sms_targets: form.sms_targets.filter(Boolean),
       allowed_groups: form.allowed_groups,
       allowed_local_groups: form.allowed_local_groups,
       webhook_url: form.webhook_url || undefined,
@@ -215,8 +228,14 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
             <label className="label">Email recipients <span className="text-gray-400 font-normal">(optional)</span></label>
             {form.targets.map((t, i) => (
               <div key={i} className="flex gap-2 mb-1">
-                <input className="input flex-1" type="email" placeholder="user@company.com" value={t}
-                  onChange={e => setTarget(i, e.target.value)} />
+                <PhonebookAutocomplete
+                  mode="email"
+                  contacts={phonebookContacts}
+                  value={t}
+                  onChange={v => setTarget(i, v)}
+                  placeholder="user@company.com"
+                  className="input flex-1"
+                />
                 {form.targets.length > 1 && (
                   <button type="button" onClick={() => removeTarget(i)} className="text-red-400 px-2">✕</button>
                 )}
@@ -227,13 +246,23 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
 
           {/* Inoltro SMS */}
           <div>
-            <label className="label">SMS forwarding <span className="text-gray-400 font-normal">(optional — numbers with country code, comma-separated)</span></label>
-            <input
-              className="input"
-              placeholder="E.g.: +15551234567, +15559876543"
-              value={form.sms_targets_str}
-              onChange={e => setForm(p => ({ ...p, sms_targets_str: e.target.value }))}
-            />
+            <label className="label">SMS forwarding <span className="text-gray-400 font-normal">(optional)</span></label>
+            {form.sms_targets.map((s, i) => (
+              <div key={i} className="flex gap-2 mb-1">
+                <PhonebookAutocomplete
+                  mode="phone"
+                  contacts={phonebookContacts}
+                  value={s}
+                  onChange={v => setSmsTarget(i, v)}
+                  placeholder="+15551234567"
+                  className="input flex-1"
+                />
+                {form.sms_targets.length > 1 && (
+                  <button type="button" onClick={() => removeSmsTarget(i)} className="text-red-400 px-2">✕</button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={addSmsTarget} className="text-blue-600 text-sm hover:underline">+ Add number</button>
             <p className="text-xs text-gray-400 mt-1">The SMS will be sent using the same SIM that received the message.</p>
           </div>
 
