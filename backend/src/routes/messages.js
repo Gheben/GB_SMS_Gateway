@@ -27,25 +27,28 @@ function pickBalancedPort(allowedPorts = []) {
   const db = getDb();
   const ym = localYearMonth();
 
-  // Fetch balanced+enabled ports with their monthly sent count and limit
-  // Ports that have reached their monthly_limit are excluded.
-  // Ordering: ratio = sent_count / monthly_limit (if limit set), else raw sent_count.
-  // This way a SIM with limit=200@50sent (25%) is preferred over limit=100@40sent (40%).
+  // Count sent this month directly from messages table — includes ALL historical sends,
+  // not just those tracked since port_monthly_stats was introduced.
+  // Uses datetime(created_at, 'localtime') to respect the TZ env variable (Linux/Docker).
   const ports = db.prepare(`
+    WITH monthly_counts AS (
+      SELECT device_id, port, COUNT(*) AS cnt
+      FROM messages
+      WHERE direction = 'outbound'
+        AND strftime('%Y-%m', datetime(created_at, 'localtime')) = ?
+      GROUP BY device_id, port
+    )
     SELECT p.device_id, p.port_number, p.monthly_limit,
-           COALESCE(s.sent_count, 0) AS sent_count
+           COALESCE(mc.cnt, 0) AS sent_count
     FROM ports p
     JOIN devices d ON d.id = p.device_id
-    LEFT JOIN port_monthly_stats s
-      ON s.device_id = p.device_id
-      AND s.port_number = p.port_number
-      AND s.year_month = ?
+    LEFT JOIN monthly_counts mc ON mc.device_id = p.device_id AND mc.port = p.port_number
     WHERE p.balanced = 1 AND d.enabled = 1
-      AND (p.monthly_limit = 0 OR COALESCE(s.sent_count, 0) < p.monthly_limit)
+      AND (p.monthly_limit = 0 OR COALESCE(mc.cnt, 0) < p.monthly_limit)
     ORDER BY
       CASE WHEN p.monthly_limit > 0
-           THEN CAST(COALESCE(s.sent_count, 0) AS REAL) / p.monthly_limit
-           ELSE CAST(COALESCE(s.sent_count, 0) AS REAL)
+           THEN CAST(COALESCE(mc.cnt, 0) AS REAL) / p.monthly_limit
+           ELSE CAST(COALESCE(mc.cnt, 0) AS REAL)
       END ASC,
       p.device_id, p.port_number
   `).all(ym).filter(p => {
@@ -151,14 +154,19 @@ router.post('/send', [
     port = parseInt(port, 10);
     if (!device_id) return res.status(400).json({ error: 'device_id is required when port is not "auto"' });
 
-    // Enforce monthly_limit for manually selected ports too
+    // Enforce monthly_limit for manually selected ports — count directly from messages
+    // so that historical sends (before port_monthly_stats was introduced) are included.
     const db = getDb();
     const ym = localYearMonth();
     const portRow = db.prepare(`
-      SELECT p.monthly_limit, COALESCE(s.sent_count, 0) AS sent_count
+      SELECT p.monthly_limit,
+             COALESCE((
+               SELECT COUNT(*) FROM messages m
+               WHERE m.device_id = p.device_id AND m.port = p.port_number
+                 AND m.direction = 'outbound'
+                 AND strftime('%Y-%m', datetime(m.created_at, 'localtime')) = ?
+             ), 0) AS sent_count
       FROM ports p
-      LEFT JOIN port_monthly_stats s
-        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
       WHERE p.device_id = ? AND p.port_number = ?
     `).get(ym, device_id, port);
     if (portRow && portRow.monthly_limit > 0 && portRow.sent_count >= portRow.monthly_limit) {

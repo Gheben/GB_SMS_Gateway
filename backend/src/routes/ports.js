@@ -21,21 +21,27 @@ router.get('/', [
     if (conn && conn.connected) conn.requestPortStatus();
     ports = db.prepare(`
       SELECT p.*, d.name as device_name,
-             COALESCE(s.sent_count, 0) as sent_count
+             COALESCE((
+               SELECT COUNT(*) FROM messages m
+               WHERE m.device_id = p.device_id AND m.port = p.port_number
+                 AND m.direction = 'outbound'
+                 AND strftime('%Y-%m', datetime(m.created_at, 'localtime')) = ?
+             ), 0) AS sent_count
       FROM ports p
       JOIN devices d ON d.id=p.device_id
-      LEFT JOIN port_monthly_stats s
-        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
       WHERE p.device_id=? ORDER BY p.port_number
     `).all(ym, req.query.device_id);
   } else {
     ports = db.prepare(`
       SELECT p.*, d.name as device_name,
-             COALESCE(s.sent_count, 0) as sent_count
+             COALESCE((
+               SELECT COUNT(*) FROM messages m
+               WHERE m.device_id = p.device_id AND m.port = p.port_number
+                 AND m.direction = 'outbound'
+                 AND strftime('%Y-%m', datetime(m.created_at, 'localtime')) = ?
+             ), 0) AS sent_count
       FROM ports p
       JOIN devices d ON d.id=p.device_id
-      LEFT JOIN port_monthly_stats s
-        ON s.device_id = p.device_id AND s.port_number = p.port_number AND s.year_month = ?
       ORDER BY d.name, p.port_number
     `).all(ym);
   }
@@ -57,13 +63,14 @@ router.get('/stats', (req, res) => {
   const ports = db.prepare(`
     SELECT p.device_id, p.port_number, p.balanced, p.monthly_limit, p.sim_number, p.operator, p.status,
            d.name as device_name,
-           COALESCE(s.sent_count, 0) as sent_count
+           COALESCE((
+             SELECT COUNT(*) FROM messages m
+             WHERE m.device_id = p.device_id AND m.port = p.port_number
+               AND m.direction = 'outbound'
+               AND strftime('%Y-%m', datetime(m.created_at, 'localtime')) = ?
+           ), 0) AS sent_count
     FROM ports p
     JOIN devices d ON d.id = p.device_id
-    LEFT JOIN port_monthly_stats s
-      ON s.device_id = p.device_id
-      AND s.port_number = p.port_number
-      AND s.year_month = ?
     ORDER BY d.name, p.port_number
   `).all(month);
   res.json({ month, ports });
