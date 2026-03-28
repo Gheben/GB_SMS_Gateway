@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { messagesApi, devicesApi, portsApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight, BookOpen } from 'lucide-react'
+import { Send, CheckCircle, AlertCircle, ToggleLeft, ToggleRight, BookOpen, Plus, X as XIcon } from 'lucide-react'
 import ContactPickerModal from '../components/ContactPickerModal'
 
 export default function SendSMS() {
@@ -16,7 +16,8 @@ export default function SendSMS() {
   const [hasBalancedPorts, setHasBalancedPorts] = useState(false)
   const [allBalancedPorts, setAllBalancedPorts] = useState([])
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [recipientName, setRecipientName] = useState(null)
+  const [recipients, setRecipients] = useState([])   // [{phone, name}]
+  const [manualInput, setManualInput] = useState('')
 
   useEffect(() => {
     devicesApi.getAll().then(list => {
@@ -68,8 +69,12 @@ export default function SendSMS() {
       if (!form.port || isNaN(form.port) || form.port < 1 || form.port > 16)
         e.port = 'Select a valid port (1–16)'
     }
-    if (!form.recipient || !/^\+?[\d\s\-]{6,20}$/.test(form.recipient))
-      e.recipient = 'Invalid phone number'
+    const manual = manualInput.trim()
+    const totalRecipients = recipients.length + (manual ? 1 : 0)
+    if (totalRecipients === 0)
+      e.recipient = 'Add at least one recipient'
+    else if (manual && !/^\+?[\d\s\-]{6,20}$/.test(manual))
+      e.recipient = 'Invalid phone number in the input field'
     if (!form.message || form.message.trim().length === 0)
       e.message = 'Message cannot be empty'
     if (form.message.length > 1024)
@@ -95,18 +100,36 @@ export default function SendSMS() {
     setErrors({})
     setLoading(true)
     setResult(null)
-    try {
-      const payload = balancedMode
-        ? { port: 'auto', recipient: form.recipient.trim(), message: form.message.trim() }
-        : { device_id: form.device_id, port: parseInt(form.port, 10), recipient: form.recipient.trim(), message: form.message.trim() }
-      const res = await messagesApi.send(payload)
-      setResult({ success: true, message: `SMS sent. ID: ${res.id}` })
+
+    // Build final list (include manual input if valid and not duplicate)
+    const manual = manualInput.trim()
+    const allRecipients = [...recipients]
+    if (manual && !allRecipients.some(r => r.phone === manual)) {
+      allRecipients.push({ phone: manual, name: null })
+    }
+
+    const results = []
+    for (const r of allRecipients) {
+      try {
+        const payload = balancedMode
+          ? { port: 'auto', recipient: r.phone, message: form.message.trim() }
+          : { device_id: form.device_id, port: parseInt(form.port, 10), recipient: r.phone, message: form.message.trim() }
+        const res = await messagesApi.send(payload)
+        results.push({ phone: r.phone, name: r.name, ok: true, id: res.id })
+      } catch (err) {
+        const msg = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Error'
+        results.push({ phone: r.phone, name: r.name, ok: false, error: msg })
+      }
+    }
+    setLoading(false)
+
+    const okCount   = results.filter(r => r.ok).length
+    const failCount = results.filter(r => !r.ok).length
+    setResult({ okCount, failCount, details: results })
+    if (failCount === 0) {
       setForm(f => ({ ...f, message: '' }))
-    } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Error sending message'
-      setResult({ success: false, message: msg })
-    } finally {
-      setLoading(false)
+      setRecipients([])
+      setManualInput('')
     }
   }
 
@@ -228,8 +251,8 @@ export default function SendSMS() {
 
         {/* Numero destinatario */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="label mb-0">Recipient number</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="label mb-0">Recipients</label>
             {(isAdmin || can('phonebook')) && (
               <button
                 type="button"
@@ -240,17 +263,72 @@ export default function SendSMS() {
               </button>
             )}
           </div>
-          <input
-            type="text"
-            placeholder="+1 555 123 4567"
-            value={form.recipient}
-            onChange={(e) => { setForm(f => ({ ...f, recipient: e.target.value })); setRecipientName(null) }}
-            className="input"
-          />
-          {recipientName && (
-            <p className="text-xs text-blue-600 mt-1">{recipientName}</p>
+
+          {/* Chips */}
+          {recipients.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {recipients.map((r, i) => (
+                <span key={i} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono rounded-full pl-2.5 pr-1 py-0.5">
+                  {r.name ? <span className="font-sans font-medium mr-0.5">{r.name}</span> : null}
+                  {r.phone}
+                  <button
+                    type="button"
+                    onClick={() => setRecipients(rs => rs.filter((_, j) => j !== i))}
+                    className="ml-0.5 text-blue-400 hover:text-blue-700 rounded-full p-0.5 hover:bg-blue-100 transition-colors"
+                  >
+                    <XIcon size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
+
+          {/* Manual entry */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="+1 555 123 4567"
+              value={manualInput}
+              onChange={(e) => { setManualInput(e.target.value); if (errors.recipient) setErrors(ev => ({...ev, recipient: null})) }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const phone = manualInput.trim()
+                  if (!phone || !/^\+?[\d\s\-]{6,20}$/.test(phone)) {
+                    setErrors(ev => ({...ev, recipient: 'Invalid phone number'}))
+                    return
+                  }
+                  if (!recipients.some(r => r.phone === phone)) {
+                    setRecipients(rs => [...rs, { phone, name: null }])
+                  }
+                  setManualInput('')
+                }
+              }}
+              className="input flex-1"
+            />
+            <button
+              type="button"
+              title="Add number"
+              onClick={() => {
+                const phone = manualInput.trim()
+                if (!phone || !/^\+?[\d\s\-]{6,20}$/.test(phone)) {
+                  setErrors(ev => ({...ev, recipient: 'Invalid phone number'}))
+                  return
+                }
+                if (!recipients.some(r => r.phone === phone)) {
+                  setRecipients(rs => [...rs, { phone, name: null }])
+                }
+                setManualInput('')
+              }}
+              className="btn-secondary px-3 flex items-center gap-1"
+            >
+              <Plus size={15} />
+            </button>
+          </div>
           {errors.recipient && <p className="text-red-500 text-xs mt-1">{errors.recipient}</p>}
+          {recipients.length > 1 && (
+            <p className="text-xs text-gray-400 mt-1">{recipients.length} recipient{recipients.length !== 1 ? 's' : ''} — one SMS will be sent per recipient</p>
+          )}
         </div>
 
         {/* Testo */}
@@ -274,23 +352,50 @@ export default function SendSMS() {
           disabled={loading || (!balancedMode && devices.length === 0) || selectedPortLimitReached || allBalancedExhausted}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
-          <Send size={16} />
-          {loading ? 'Sending...' : 'Send SMS'}
+          {loading
+            ? <><Send size={16} /> Sending…</>
+            : <><Send size={16} /> Send SMS{(recipients.length + (manualInput.trim() ? 1 : 0)) > 1 ? ` to ${recipients.length + (manualInput.trim() ? 1 : 0)} recipients` : ''}</>
+          }
         </button>
       </form>
 
       {result && (
-        <div className={`flex items-start gap-3 p-4 rounded-lg border ${result.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-          {result.success ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          <p className="text-sm">{result.message}</p>
+        <div className={`p-4 rounded-lg border space-y-2 ${
+          result.failCount === 0 ? 'bg-green-50 border-green-200 text-green-800'
+          : result.okCount === 0  ? 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        }`}>
+          <div className="flex items-center gap-2 font-medium text-sm">
+            {result.failCount === 0 ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+            {result.okCount === 0
+              ? 'Send failed'
+              : result.failCount === 0
+                ? result.details.length === 1 ? `SMS sent. ID: ${result.details[0].id}` : `All ${result.okCount} SMS sent successfully.`
+                : `${result.okCount} sent, ${result.failCount} failed.`
+            }
+          </div>
+          {result.details.length > 1 && (
+            <ul className="text-xs space-y-0.5 pl-6 list-disc">
+              {result.details.map((d, i) => (
+                <li key={i} className={d.ok ? 'text-green-700' : 'text-red-700'}>
+                  {d.name ? `${d.name} ` : ''}{d.phone} — {d.ok ? `OK (ID: ${d.id})` : `Error: ${d.error}`}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
       {pickerOpen && (
         <ContactPickerModal
-          onSelect={contact => {
-            setForm(f => ({ ...f, recipient: contact.phone }))
-            setRecipientName(contact.display_name)
+          onSelect={contacts => {
+            setRecipients(rs => {
+              const existing = new Set(rs.map(r => r.phone))
+              const newOnes = contacts
+                .filter(c => !existing.has(c.phone))
+                .map(c => ({ phone: c.phone, name: c.display_name }))
+              return [...rs, ...newOnes]
+            })
             setPickerOpen(false)
           }}
           onClose={() => setPickerOpen(false)}

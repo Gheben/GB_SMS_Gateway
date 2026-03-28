@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { phonebookApi } from '../api'
-import { X, Search, Loader2, BookOpen } from 'lucide-react'
+import { X, Search, Loader2, BookOpen, Check } from 'lucide-react'
 
 export default function ContactPickerModal({ onSelect, onClose }) {
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set())
 
   useEffect(() => {
     phonebookApi.getAll()
@@ -21,9 +21,39 @@ export default function ContactPickerModal({ onSelect, onClose }) {
     return c.display_name.toLowerCase().includes(q) || c.phone.includes(q)
   })
 
-  function handleConfirm() {
-    if (selected) onSelect(selected)
+  const allFilteredSelected = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))
+  const someFilteredSelected = filtered.some(c => selectedIds.has(c.id))
+
+  function toggleOne(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
+
+  function toggleAll() {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(c => next.delete(c.id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(c => next.add(c.id))
+        return next
+      })
+    }
+  }
+
+  function handleConfirm() {
+    const chosen = contacts.filter(c => selectedIds.has(c.id))
+    if (chosen.length) onSelect(chosen)
+  }
+
+  const selectedCount = selectedIds.size
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -35,15 +65,15 @@ export default function ContactPickerModal({ onSelect, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <BookOpen size={16} /> Select contact
+            <BookOpen size={16} /> Select contacts
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-200">
             <X size={18} />
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
+        {/* Search + Select All */}
+        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0 space-y-2">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -55,6 +85,19 @@ export default function ContactPickerModal({ onSelect, onClose }) {
               className="input pl-9"
             />
           </div>
+          {!loading && !error && filtered.length > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600 px-1">
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
+                onChange={toggleAll}
+                className="w-4 h-4 accent-blue-600"
+              />
+              {allFilteredSelected ? 'Deselect all' : 'Select all'}
+              {query ? ` (${filtered.length} visible)` : ` (${filtered.length})`}
+            </label>
+          )}
         </div>
 
         {/* List */}
@@ -69,35 +112,47 @@ export default function ContactPickerModal({ onSelect, onClose }) {
             <div className="text-center py-12 text-gray-400 text-sm">No contacts found.</div>
           ) : (
             <ul>
-              {filtered.map(c => (
-                <li
-                  key={c.id}
-                  onClick={() => setSelected(c)}
-                  onDoubleClick={() => { setSelected(c); onSelect(c) }}
-                  className={`flex items-center justify-between px-5 py-3 cursor-pointer border-b border-gray-50 transition-colors ${selected?.id === c.id ? 'bg-blue-50 border-blue-100' : 'hover:bg-gray-50'}`}
-                >
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${selected?.id === c.id ? 'text-blue-800' : 'text-gray-800'}`}>{c.display_name}</p>
-                    <p className="text-xs font-mono text-gray-500">{c.phone}</p>
-                  </div>
-                  <span className={`ml-3 flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${c.source === 'ldap' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {c.source === 'ldap' ? 'LDAP' : 'Local'}
-                  </span>
-                </li>
-              ))}
+              {filtered.map(c => {
+                const isSelected = selectedIds.has(c.id)
+                return (
+                  <li
+                    key={c.id}
+                    onClick={() => toggleOne(c.id)}
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOne(c.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 accent-blue-600 flex-shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>{c.display_name}</p>
+                      <p className="text-xs font-mono text-gray-500">{c.phone}</p>
+                    </div>
+                    <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${c.source === 'ldap' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {c.source === 'ldap' ? 'LDAP' : 'Local'}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-gray-200 flex-shrink-0">
-          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
+        <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-200 flex-shrink-0">
+          <span className="text-xs text-gray-500 flex-1">
+            {selectedCount > 0 ? `${selectedCount} contact${selectedCount !== 1 ? 's' : ''} selected` : 'None selected'}
+          </span>
+          <button onClick={onClose} className="btn-secondary text-sm px-4">Cancel</button>
           <button
             onClick={handleConfirm}
-            disabled={!selected}
-            className="btn-primary flex-1 text-sm disabled:opacity-50"
+            disabled={selectedCount === 0}
+            className="btn-primary text-sm px-4 disabled:opacity-50 flex items-center gap-1.5"
           >
-            Select
+            <Check size={14} /> Add {selectedCount > 0 ? selectedCount : ''}
           </button>
         </div>
       </div>
