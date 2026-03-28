@@ -19,12 +19,13 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ### ✨ Key Features
 
-- 📊 **Real-time Dashboard** — Daily statistics: SMS received, sent, failed; device connection status
+- 📊 **Real-time Dashboard** — Daily statistics: SMS received, sent, failed; device connection status; SIM monthly usage with per-SIM limit progress bars
 - 📥 **SMS Inbox** — All inbound SMS with search, filter, and preview
 - 📤 **Sent SMS** — Outbound message history with delivery status
-- ✉️ **Send SMS** — Manual send form with device and SIM port selection
+- ✉️ **Send SMS** — Manual send form with device and SIM port selection, or **balanced auto-routing**
 - 📡 **Device Management** — Add/edit Yeastar devices with AMI connection monitoring
-- 🔌 **SIM Port Management** — View port status, carrier, IMEI, assigned SIM number
+- 🔌 **SIM Port Management** — View port status, carrier, IMEI, assigned SIM number; configure balanced pool and monthly send limit per SIM
+- ⚖️ **Balanced SIM Load Balancing** — `port="auto"` routes each send to the SIM with the lowest usage ratio; monthly limit per SIM enforced automatically (saturated SIMs excluded)
 - 📋 **Forwarding Rules** — Routing engine with multiple conditions (sender, text, regex), priority, stop-on-match, and email/SMS forwarding
 - 👁️ **Group Visibility** — Each rule can restrict message visibility to authorized LDAP/AD group members only
 - 📊 **Reports & Statistics** — SMS analysis by day, device, and rule with forwarding logs
@@ -249,11 +250,29 @@ Displays:
 
 ### 3. Send SMS
 1. Go to **Send SMS**
-2. Select the device and SIM port
+2. Select the device and SIM port — **or** enable **Balanced mode** (shown automatically when at least one SIM is in the balanced pool)
 3. Enter the recipient number and message text
 4. Click **Send**
 
-### 4. Yeastar Device Management
+**Balanced mode** selects the SIM with the lowest usage ratio automatically. SIMs that have reached their monthly limit are excluded.
+
+### 4. SIM Load Balancing
+
+Configure from **Devices → SIM Ports** panel (expand any device card):
+
+| Setting | Description |
+|---------|-------------|
+| **Balanced** toggle | Adds/removes the SIM from the auto-routing pool |
+| **Limit/mo** | Max outbound SMS per month for this SIM (`0` = no limit) |
+
+**How the algorithm works:**
+- `port="auto"` picks the SIM with the **lowest `sent / limit` ratio** (e.g. 50/200 = 25% beats 40/100 = 40%)
+- SIMs without a limit are sorted by raw sent count and treated as always eligible
+- SIMs that have reached their monthly limit are **automatically excluded** until the next month
+- Ties are broken by stable port order to avoid oscillation
+- Monthly stats reset to 0 on the 1st of each month (buckets are keyed by `YYYY-MM` in local time per the `TZ` setting)
+
+### 5. Yeastar Device Management
 1. Go to **Devices**
 2. Click **Add device**
 3. Configure:
@@ -441,7 +460,7 @@ GB-SMS-Gateway/
 - `GET /api/messages` — List messages (filters: direction, device_id, search, pagination)
 - `GET /api/messages/stats` — Statistics (received_today, sent_today, total_inbound, failed)
 - `GET /api/messages/:id` — Message detail
-- `POST /api/messages/send` — Send SMS (device, port, recipient, text)
+- `POST /api/messages/send` — Send SMS (`port` = integer **or** `"auto"` for balanced routing)
 
 ### Devices
 - `GET /api/devices` — List devices with connection status
@@ -450,8 +469,9 @@ GB-SMS-Gateway/
 - `DELETE /api/devices/:id` — Delete device
 
 ### SIM Ports
-- `GET /api/ports?device_id=` — Device SIM port status
-- `PUT /api/ports/:device_id/:port_number/info` — Update SIM number / carrier
+- `GET /api/ports?device_id=` — Device SIM port status (includes `balanced`, `monthly_limit` fields)
+- `GET /api/ports/stats?month=YYYY-MM` — Monthly send stats for all SIMs with limits *(admin/superadmin)*
+- `PUT /api/ports/:device_id/:port_number/info` — Update SIM number, carrier, `balanced` flag, `monthly_limit`
 
 ### Forwarding Rules
 - `GET /api/rules` — List rules with conditions and recipients
@@ -493,7 +513,8 @@ GB-SMS-Gateway/
 | Table | Contents |
 |-------|----------|
 | `devices` | Configured Yeastar gateways |
-| `ports` | SIM ports with status, carrier, IMEI, SIM number |
+| `ports` | SIM ports with status, carrier, IMEI, SIM number, `balanced` flag, `monthly_limit` |
+| `port_monthly_stats` | Monthly outbound SMS counter per SIM port (keyed by `YYYY-MM` in local time) |
 | `messages` | Inbound/outbound SMS |
 | `routing_rules` | Forwarding rules with `allowed_groups` (JSON) |
 | `rule_conditions` | Rule conditions |
