@@ -69,6 +69,27 @@ function startSyncJob() {
   return true;
 }
 
+/* ─── Periodic LDAP sync scheduler ───────────────────────────── */
+// LDAP_SYNC_INTERVAL_HOURS env var controls the interval (default: 6 hours).
+// A first sync runs 60 s after startup so the DB is populated even without a manual trigger.
+(function scheduleLdapSync() {
+  const intervalHours = parseFloat(process.env.LDAP_SYNC_INTERVAL_HOURS) || 6;
+  const intervalMs    = intervalHours * 60 * 60 * 1000;
+
+  function runIfEnabled() {
+    const cfg = getPhonebookLdapCfg();
+    if (!cfg.enabled) return;
+    logger.info(`[Phonebook] Scheduled LDAP sync triggered (every ${intervalHours}h)`);
+    startSyncJob();
+  }
+
+  // Warm-up: first sync 60 s after server start
+  setTimeout(runIfEnabled, 60_000);
+
+  // Recurring interval
+  setInterval(runIfEnabled, intervalMs);
+})();
+
 /* ─── GET /api/phonebook — all contacts (requires phonebook perm or admin) ─── */
 router.get('/', (req, res) => {
   const { role, permissions } = req.user;
