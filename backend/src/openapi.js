@@ -69,15 +69,17 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       Message: {
         type: 'object',
         properties: {
-          id:          { type: 'string', format: 'uuid' },
-          direction:   { type: 'string', enum: ['inbound', 'outbound'] },
-          sender:      { type: 'string', example: '+39012345678' },
-          recipient:   { type: 'string', example: '+39087654321' },
-          content:     { type: 'string', example: 'Hello world' },
-          status:      { type: 'string', enum: ['received', 'pending', 'sent', 'failed'] },
-          device_id:   { type: 'string', format: 'uuid' },
-          port:        { type: 'integer', example: 1 },
-          created_at:  { type: 'string', format: 'date-time' },
+          id:             { type: 'string', format: 'uuid' },
+          direction:      { type: 'string', enum: ['inbound', 'outbound'] },
+          sender:         { type: 'string', example: '+39012345678' },
+          recipient:      { type: 'string', example: '+39087654321' },
+          sender_name:    { type: 'string', nullable: true, example: 'Mario Rossi', description: 'Display name from phonebook (inbound messages)' },
+          recipient_name: { type: 'string', nullable: true, example: 'Anna Bianchi', description: 'Display name from phonebook (outbound messages)' },
+          content:        { type: 'string', example: 'Hello world' },
+          status:         { type: 'string', enum: ['received', 'pending', 'sent', 'failed'] },
+          device_id:      { type: 'string', format: 'uuid' },
+          port:           { type: 'integer', example: 1 },
+          created_at:     { type: 'string', format: 'date-time' },
         },
       },
       Device: {
@@ -1211,7 +1213,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Phonebook'],
         summary: 'Get all contacts (local + LDAP)',
-        description: 'Returns all phonebook contacts (local and LDAP). Requires **phonebook** permission (or admin/superadmin). LDAP contacts are auto-synced on first access when the phonebook_ldap setting is enabled and no LDAP contacts exist yet.',
+        description: 'Returns all phonebook contacts (local and LDAP). Requires **phonebook** permission (or admin/superadmin). This permission **only** enables the contact picker in the Send SMS UI — the Phonebook management page is accessible to admin/superadmin only regardless of this permission. LDAP contacts are auto-synced on first access when the phonebook_ldap setting is enabled and no LDAP contacts exist yet.',
         responses: {
           200: {
             description: 'List of contacts',
@@ -1317,7 +1319,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         summary: 'Sync LDAP contacts to DB (admin)',
         description: 'Forces a full LDAP phonebook sync. Deletes existing LDAP contacts and re-imports from Active Directory using only the **mobile** attribute. **Admin** or **superadmin** only.',
         responses: {
-          200: { description: 'Sync result', content: { 'application/json': { example: { ok: true, synced: 42 } } } },
+          200: { description: 'Synced contacts', content: { 'application/json': { example: [{ id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Anna Bianchi', phone: '+39087654321', source: 'ldap', created_at: '2026-01-15T10:00:00.000Z' }] } } },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
           500: { description: 'LDAP sync error' },

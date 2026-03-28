@@ -18,6 +18,8 @@ export default function SendSMS() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [recipients, setRecipients] = useState([])   // [{phone, name}]
   const [manualInput, setManualInput] = useState('')
+  const [chipsExpanded, setChipsExpanded] = useState(false)
+  const CHIPS_PREVIEW = 3
 
   useEffect(() => {
     devicesApi.getAll().then(list => {
@@ -266,20 +268,67 @@ export default function SendSMS() {
 
           {/* Chips */}
           {recipients.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {recipients.map((r, i) => (
-                <span key={i} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono rounded-full pl-2.5 pr-1 py-0.5">
-                  {r.name ? <span className="font-sans font-medium mr-0.5">{r.name}</span> : null}
-                  {r.phone}
-                  <button
-                    type="button"
-                    onClick={() => setRecipients(rs => rs.filter((_, j) => j !== i))}
-                    className="ml-0.5 text-blue-400 hover:text-blue-700 rounded-full p-0.5 hover:bg-blue-100 transition-colors"
-                  >
-                    <XIcon size={11} />
-                  </button>
-                </span>
-              ))}
+            <div className="mb-2">
+              {!chipsExpanded ? (
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {recipients.slice(0, CHIPS_PREVIEW).map((r, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono rounded-full pl-2.5 pr-1 py-0.5">
+                      {r.name ? <span className="font-sans font-medium mr-0.5">{r.name}</span> : null}
+                      {r.phone}
+                      <button
+                        type="button"
+                        onClick={() => setRecipients(rs => rs.filter((_, j) => j !== i))}
+                        className="ml-0.5 text-blue-400 hover:text-blue-700 rounded-full p-0.5 hover:bg-blue-100 transition-colors"
+                      >
+                        <XIcon size={11} />
+                      </button>
+                    </span>
+                  ))}
+                  {recipients.length > CHIPS_PREVIEW && (
+                    <button
+                      type="button"
+                      onClick={() => setChipsExpanded(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 font-medium transition-colors"
+                    >
+                      +{recipients.length - CHIPS_PREVIEW} more
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="max-h-48 overflow-y-auto p-2 flex flex-wrap gap-1.5">
+                    {recipients.map((r, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono rounded-full pl-2.5 pr-1 py-0.5">
+                        {r.name ? <span className="font-sans font-medium mr-0.5">{r.name}</span> : null}
+                        {r.phone}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRecipients(rs => {
+                              const next = rs.filter((_, j) => j !== i)
+                              if (next.length <= CHIPS_PREVIEW) setChipsExpanded(false)
+                              return next
+                            })
+                          }}
+                          className="ml-0.5 text-blue-400 hover:text-blue-700 rounded-full p-0.5 hover:bg-blue-100 transition-colors"
+                        >
+                          <XIcon size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <span className="text-xs text-gray-400">{recipients.length} recipients</span>
+                    <button
+                      type="button"
+                      onClick={() => setChipsExpanded(false)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      show less
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

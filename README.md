@@ -38,6 +38,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 - 📱 **PWA** — Installable as an app on desktop and mobile
 - 🔏 **SAML 2.0 / Enterprise SSO** — Federated login via NetScaler, ADFS, or Azure AD (SP-initiated, configurable from UI)
 - 📖 **Swagger UI / API Docs** — Interactive REST API reference at `/docs`, auto-authenticated when already logged in
+- 📒 **Phonebook** — Local contacts (admin-managed) and LDAP/AD contacts (mobile attribute); contact picker for multi-recipient SMS send; contact names shown inline in message lists and detail views
 
 ---
 
@@ -251,8 +252,13 @@ Displays:
 ### 3. Send SMS
 1. Go to **Send SMS**
 2. Select the device and SIM port — **or** enable **Balanced mode** (shown automatically when the user has access to **2 or more** balanced SIMs)
-3. Enter the recipient number and message text
-4. Click **Send**
+3. Enter recipient numbers in the input field and press **Enter** or **+** to add them as chips. You can add as many recipients as needed.
+4. Optionally click **From phonebook** (requires `phonebook` permission) to open the contact picker and select one or more contacts. Multi-select is supported with checkboxes and a **Select all** option.
+5. Type the message text and click **Send**
+
+When more than one recipient is listed, one SMS is sent per recipient. The button shows **Send to N recipients**.
+
+The recipient chips display collapses after 3 entries — click **+N more** to expand a scrollable list. This handles thousands of contacts without breaking the layout.
 
 The Send SMS form shows a warning and disables the **Send** button if the selected SIM has reached its monthly limit. The backend enforces the limit as well, returning HTTP 429 if a request bypasses the UI.
 
@@ -355,7 +361,9 @@ Available roles:
 - **admin**: user management and configuration
 - **user**: access limited to assigned permissions
 
-Granular permissions: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`
+Granular permissions: `dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`, `phonebook`
+
+> `phonebook` — enables the **From phonebook** contact picker in Send SMS only. The Phonebook management page requires admin or superadmin role.
 
 ### 11. Audit Log (superadmin only)
 Go to **Audit log** to see all operations performed: logins, user changes, SMS sends, rule changes, etc.
@@ -373,6 +381,21 @@ The full interactive REST API documentation is available at `/docs` (opens in a 
 > - Dev: `http://localhost:3000/docs`
 > - Direct backend: `http://localhost:4673/docs`
 
+### 13. Phonebook
+The Phonebook allows storing contact names associated with phone numbers. Names are shown automatically in message lists and detail views.
+
+**Access:**
+- **Phonebook management page** (sidebar → **Phonebook**): admin and superadmin only. Displays two tabs:
+  - **Local contacts** — Add, edit, and delete contacts manually
+  - **LDAP/AD contacts** — Sync contacts from Active Directory (uses only the `mobile` attribute). Requires LDAP to be configured in User Management. This tab is hidden when global LDAP is not configured.
+- **Contact picker in Send SMS**: available to any user with the `phonebook` permission (or admin/superadmin). The `phonebook` permission **only** enables the picker — it does not grant access to the management page.
+
+**LDAP sync:**
+1. Go to **Phonebook → LDAP** tab
+2. Configure the LDAP settings (uses the global LDAP connection) and optional search filter
+3. Click **Sync now** — existing LDAP contacts are replaced with the current AD data
+4. Automatic sync also occurs on the first `GET /api/phonebook` call if LDAP is configured but the contacts table has no LDAP entries yet
+
 ---
 
 ## 🗂️ Project structure
@@ -386,7 +409,7 @@ GB-SMS-Gateway/
 │   │   │   └── database.js       # Schema SQLite + migrations
 │   │   ├── middleware/
 │   │   │   └── authMiddleware.js # JWT, roles, permissions
-│   │   ├── routes/               # 10 Express routers
+   │   │   ├── routes/               # 11 Express routers
 │   │   │   ├── auth.js           # login, SSO, /me
 │   │   │   ├── messages.js       # inbox, sent, send, stats
 │   │   │   ├── devices.js        # CRUD Yeastar devices
@@ -396,7 +419,8 @@ GB-SMS-Gateway/
 │   │   │   ├── users.js          # users, LDAP, permissions
 │   │   │   ├── localGroups.js    # local groups
 │   │   │   ├── report.js         # statistics and analytics
-│   │   │   └── audit.js          # audit log
+│   │   │   ├── audit.js          # audit log
+│   │   │   └── phonebook.js      # contacts CRUD + LDAP sync
 │   │   ├── services/
 │   │   │   ├── authService.js    # JWT, bcrypt, seed superadmin
 │   │   │   ├── ldapService.js    # LDAP/AD integration
@@ -420,7 +444,7 @@ GB-SMS-Gateway/
 │   │   │   └── AuthContext.jsx   # JWT storage, SSO auto-login
 │   │   ├── hooks/
 │   │   │   └── useWebSocket.js   # WebSocket hook
-│   │   ├── pages/                # 13 pages
+│   │   ├── pages/                # 14 pages
 │   │   │   ├── LoginPage.jsx
 │   │   │   ├── SamlCallback.jsx  # receives JWT token from SAML backend
 │   │   │   ├── Dashboard.jsx
@@ -433,8 +457,9 @@ GB-SMS-Gateway/
 │   │   │   ├── Settings.jsx
 │   │   │   ├── Report.jsx
 │   │   │   ├── UsersPage.jsx
-│   │   │   └── AuditLog.jsx
-│   │   └── components/           # Sidebar, MessageTable, StatCard, ...
+│   │   │   ├── AuditLog.jsx
+│   │   │   └── Contacts.jsx      # Phonebook management (admin/superadmin)
+│   │   └── components/           # Sidebar, MessageTable, ContactPickerModal, ...
 │   ├── public/                   # PWA manifest + service worker
 │   ├── Dockerfile
 │   └── nginx.conf
@@ -531,6 +556,16 @@ GB-SMS-Gateway/
 ### Health check
 - `GET /api/health` — Backend status and connected devices
 
+### Phonebook
+- `GET /api/phonebook` — List all contacts (local + LDAP). Requires `phonebook` permission or admin/superadmin. Auto-syncs LDAP contacts on first call if configured.
+- `GET /api/phonebook/local` — List local contacts only *(admin/superadmin)*
+- `POST /api/phonebook/local` — Create a local contact *(admin/superadmin)*
+- `PUT /api/phonebook/local/:id` — Update a local contact *(admin/superadmin)*
+- `DELETE /api/phonebook/local/:id` — Delete a local contact *(admin/superadmin)*
+- `GET /api/phonebook/ldap` — Force full LDAP sync (deletes existing LDAP contacts and re-imports using `mobile` attribute) *(admin/superadmin)*
+- `GET /api/phonebook/settings` — Get phonebook LDAP settings *(admin/superadmin)*
+- `PUT /api/phonebook/settings` — Save phonebook LDAP settings *(admin/superadmin)*
+
 ### API Reference (Swagger UI)
 - `GET /docs` — Interactive Swagger UI with full OpenAPI 3.0 spec (admin/superadmin)
 - `GET /api/docs.json` — Raw OpenAPI 3.0 JSON spec
@@ -544,7 +579,8 @@ GB-SMS-Gateway/
 | `devices` | Configured Yeastar gateways |
 | `ports` | SIM ports with status, carrier, IMEI, SIM number, `balanced` flag, `monthly_limit` |
 | `port_monthly_stats` | Monthly outbound SMS counter per SIM port (keyed by `YYYY-MM` in local time) |
-| `messages` | Inbound/outbound SMS |
+| `messages` | Inbound/outbound SMS (includes `sender_name`, `recipient_name` resolved from contacts) |
+| `contacts` | Phonebook entries (`display_name`, `phone`, `source`: `local` or `ldap`) |
 | `routing_rules` | Forwarding rules with `allowed_groups` (JSON) |
 | `rule_conditions` | Rule conditions |
 | `rule_targets` | Email recipients for forwarding |
