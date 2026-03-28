@@ -41,22 +41,16 @@ router.get('/', (req, res) => {
   const db = getDb();
   const pbCfg = getPhonebookLdapCfg();
 
-  // If LDAP phonebook is enabled, auto-sync in background when there are no LDAP contacts yet
+  // If LDAP phonebook is enabled, kick off a background sync when there are no LDAP contacts yet.
+  // The response is sent IMMEDIATELY with whatever is in the DB — the sync runs in the background
+  // and the client will get the updated contacts on the next load.
   if (pbCfg.enabled) {
     const ldapCount = db.prepare("SELECT COUNT(*) as cnt FROM contacts WHERE source='ldap'").get().cnt;
     if (ldapCount === 0) {
-      // Kick off background sync — response returns from DB after it completes
-      syncLdapToDb()
-        .then(() => {
-          const all = db.prepare("SELECT id, display_name, phone, email, notes, source FROM contacts ORDER BY display_name COLLATE NOCASE").all();
-          res.json(all);
-        })
-        .catch(err => {
-          logger.warn(`[Phonebook] Background LDAP sync failed: ${err.message}`);
-          const local = db.prepare("SELECT id, display_name, phone, email, notes, source FROM contacts WHERE source='local' ORDER BY display_name COLLATE NOCASE").all();
-          res.json(local);
-        });
-      return;
+      // Fire-and-forget: do NOT await, send response right away
+      syncLdapToDb().catch(err =>
+        logger.warn(`[Phonebook] Background LDAP auto-sync failed: ${err.message}`)
+      );
     }
   }
 
@@ -115,12 +109,23 @@ router.delete('/local/:id', requireAdmin, (req, res) => {
 
 /* ─── GET /api/phonebook/ldap — force-sync LDAP contacts (admin only) ─── */
 router.get('/ldap', requireAdmin, async (req, res) => {
+  // Hard timeout: if the LDAP server hangs, return 504 after 90 seconds
+  const SYNC_TIMEOUT_MS = 90_000;
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    logger.warn('[Phonebook] LDAP sync timed out after 90s');
+    if (!res.headersSent) res.status(504).json({ error: 'LDAP sync timed out (90s). Check AD connectivity.' });
+  }, SYNC_TIMEOUT_MS);
+
   try {
     const contacts = await syncLdapToDb();
-    res.json({ synced: contacts.length, contacts });
+    clearTimeout(timer);
+    if (!timedOut) res.json({ synced: contacts.length, contacts });
   } catch (err) {
+    clearTimeout(timer);
     logger.warn(`[Phonebook] LDAP sync error: ${err.message}`);
-    res.status(502).json({ error: err.message });
+    if (!timedOut) res.status(502).json({ error: err.message });
   }
 });
 

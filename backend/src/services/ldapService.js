@@ -131,8 +131,9 @@ function ldapSearch(client, base, options) {
  * Paged LDAP search — handles AD server-side size limits by requesting results
  * in pages of `pageSize` using LDAP Paged Results Control (RFC 2696).
  * Falls back to a plain ldapSearch with large sizeLimit if control unavailable.
+ * Each page has a hard timeout of `pageTimeoutMs` (default 30s) to avoid hanging forever.
  */
-async function ldapSearchPaged(client, base, options, pageSize = 500) {
+async function ldapSearchPaged(client, base, options, pageSize = 500, pageTimeoutMs = 30000) {
   const PRC = ldap?.controls?.PagedResultsControl;
   if (!PRC) {
     logger.warn('[LDAP] PagedResultsControl not available, falling back to single search');
@@ -146,16 +147,22 @@ async function ldapSearchPaged(client, base, options, pageSize = 500) {
     const ctrl = new PRC({ value: { size: pageSize, cookie } });
     const { entries: pageEntries, nextCookie } = await new Promise((resolve, reject) => {
       const collected = [];
+      // Hard timeout per page so we never hang indefinitely if AD stops responding
+      const timer = setTimeout(() => {
+        reject(new Error(`[LDAP paged] timeout waiting for page ${page} after ${pageTimeoutMs}ms`))
+      }, pageTimeoutMs);
       client.search(base, { ...options, sizeLimit: 0 }, [ctrl], (err, res) => {
-        if (err) return reject(err);
+        if (err) { clearTimeout(timer); return reject(err); }
         res.on('searchEntry', e => collected.push(normalizeEntry(e)));
         res.on('error', err => {
+          clearTimeout(timer);
           if (err.name === 'SizeLimitExceededError' || err.code === 4) {
             return resolve({ entries: collected, nextCookie: null });
           }
           reject(err);
         });
         res.on('end', result => {
+          clearTimeout(timer);
           let nextCookie = null;
           (result?.controls || []).forEach(c => {
             if (c.type === '1.2.840.113556.1.4.319') nextCookie = c.value?.cookie;
