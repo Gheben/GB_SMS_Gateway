@@ -110,7 +110,8 @@ function EditableLimitCell({ initialValue, onSave }) {
   }
 
   async function handleSave() {
-    const num = parseInt(draft, 10)
+    // Empty input → treat as 0 (no limit)
+    const num = draft.trim() === '' ? 0 : parseInt(draft, 10)
     if (isNaN(num) || num < 0) { cancel(); return }
     setSaving(true)
     setErrMsg(null)
@@ -187,7 +188,7 @@ function SimRow({ port, onPortUpdate }) {
       <td className="px-3 py-2">
         <EditableCell
           initialValue={port.operator}
-          placeholder="e.g. TIM"
+          placeholder="e.g. Wind"
           onSave={async operator => {
             await portsApi.setPortInfo(port.device_id, port.port_number, { operator })
             onPortUpdate(port.device_id, port.port_number, { operator: operator || null })

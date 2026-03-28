@@ -472,7 +472,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
     '/ports/{device_id}/{port_number}/info': {
       put: {
         tags: ['Ports'],
-        summary: 'Update SIM number, operator, balanced flag and/or monthly limit for a port',
+        summary: 'Update SIM port metadata (sim_number, operator, balanced, monthly_limit)',
+        description: 'Only the fields present in the request body are updated. All fields are optional — send only what you want to change. If the port row does not exist yet it is created with balanced=0 as default.',
         parameters: [
           { name: 'device_id',   in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'port_number', in: 'path', required: true, schema: { type: 'integer' } },
@@ -483,10 +484,10 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
               schema: {
                 type: 'object',
                 properties: {
-                  sim_number: { type: 'string', example: '+39012345678' },
-                  operator:   { type: 'string', example: 'TIM' },
-                  balanced:      { type: 'boolean', description: 'Include this port in the balanced SIM pool (least-used-ratio routing)' },
-                  monthly_limit: { type: 'integer', minimum: 0, description: 'Max outbound SMS per month for this SIM. 0 = no limit. Ports at limit are excluded from auto-routing.' },
+                  sim_number:    { type: 'string',  example: '+39012345678', description: 'Phone number of the SIM. Pass empty string to clear.' },
+                  operator:      { type: 'string',  example: 'Wind', description: 'Carrier / operator label. Pass empty string to clear.' },
+                  balanced:      { type: 'boolean', description: 'Include this port in the balanced SIM pool (least-used-ratio routing).' },
+                  monthly_limit: { type: 'integer', minimum: 0, description: 'Max outbound SMS per month for this SIM. 0 = no limit. Ports at or above limit are excluded from auto-routing.' },
                 },
               },
             },
