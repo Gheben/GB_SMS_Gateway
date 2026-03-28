@@ -10,6 +10,9 @@ import { MessageSquare, Send, AlertCircle, TrendingUp, Server, Smartphone } from
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [recent, setRecent] = useState([])
+  const [recentTotal, setRecentTotal] = useState(0)
+  const [recentShown, setRecentShown] = useState(5)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedMessage, setSelectedMessage] = useState(null)
@@ -19,18 +22,20 @@ export default function Dashboard() {
 
   const isAdminUser = user?.role === 'superadmin' || user?.role === 'admin'
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (limit) => {
     try {
       const [s, m, d] = await Promise.all([
         messagesApi.getStats(),
-        messagesApi.getAll({ limit: 10 }),
+        messagesApi.getAll({ limit: limit ?? recentShown }),
         devicesApi.getAll(),
       ])
       setStats(s)
       setRecent(m.data)
+      setRecentTotal(m.total)
       setDevices(d)
     } catch {}
     setLoading(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -44,6 +49,18 @@ export default function Dashboard() {
     if (msg.type === 'sms:received' || msg.type === 'sms:sent') loadData()
     if (msg.type === 'devices:status') loadData()
   }, [loadData])
+
+  async function loadMore() {
+    const newLimit = recentShown + 5
+    setLoadingMore(true)
+    try {
+      const m = await messagesApi.getAll({ limit: newLimit })
+      setRecent(m.data)
+      setRecentTotal(m.total)
+      setRecentShown(newLimit)
+    } catch {}
+    setLoadingMore(false)
+  }
 
   // Reload data on WebSocket reconnect (skip very first connect which is handled by useEffect above)
   const initialConnectDone = useRef(false)
@@ -96,6 +113,17 @@ export default function Dashboard() {
       <div>
         <h3 className="text-lg font-semibold text-gray-700 mb-3">Recent messages</h3>
         <MessageTable messages={recent} loading={loading} onDoubleClick={setSelectedMessage} />
+        {recentTotal > recentShown && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+            >
+              {loadingMore ? 'Loading...' : `Load more (${recentTotal - recentShown} remaining)`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* SIM Monthly Usage — admin only */}
@@ -129,8 +157,12 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {portStats?.ports?.length > 0
-                  ? portStats.ports.map(p => (
+                {(() => {
+                  const activePorts = portStats?.ports?.filter(p =>
+                    p.status === 'READY' || p.status === 'DOWN' || p.sent_count > 0
+                  ) || []
+                  return activePorts.length > 0
+                    ? activePorts.map(p => (
                     <tr key={`${p.device_id}-${p.port_number}`} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-medium text-gray-800">{p.device_name}</td>
                       <td className="px-4 py-2 text-gray-600">{p.port_number}</td>
@@ -147,9 +179,10 @@ export default function Dashboard() {
                   ))
                   : (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No port data for {statsMonth}.</td>
+                      <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No active SIMs found for {statsMonth}.</td>
                     </tr>
                   )
+                })()
                 }
               </tbody>
             </table>

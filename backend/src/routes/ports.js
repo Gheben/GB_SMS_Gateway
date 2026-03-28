@@ -43,7 +43,7 @@ router.get('/stats', (req, res) => {
   }
   const db = getDb();
   const ports = db.prepare(`
-    SELECT p.device_id, p.port_number, p.balanced, p.sim_number, p.operator,
+    SELECT p.device_id, p.port_number, p.balanced, p.sim_number, p.operator, p.status,
            d.name as device_name,
            COALESCE(s.sent_count, 0) as sent_count
     FROM ports p
