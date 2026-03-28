@@ -97,35 +97,81 @@ function ldapBind(client, dn, password) {
   );
 }
 
+function normalizeEntry(e) {
+  const obj = {};
+  if (Array.isArray(e.attributes)) {
+    for (const attr of e.attributes) {
+      const key = (attr.type || '').toLowerCase();
+      if (!key) continue;
+      const vals = attr.values || attr.vals || [];
+      obj[key] = vals.length === 1 ? vals[0] : (vals.length === 0 ? undefined : vals);
+    }
+  }
+  // Fallback: e.object (ldapjs v1/v2)
+  if (Object.keys(obj).length === 0 && e.object) {
+    for (const k of Object.keys(e.object)) obj[k.toLowerCase()] = e.object[k];
+  }
+  if (!obj.dn && e.objectName) obj.dn = String(e.objectName);
+  return obj;
+}
+
 function ldapSearch(client, base, options) {
   return new Promise((resolve, reject) => {
     const entries = [];
     client.search(base, options, (err, res) => {
       if (err) return reject(err);
-      res.on('searchEntry', e => {
-        // ldapjs v3: read from e.attributes (array of {type, values})
-        // ldapjs v1/v2: read from e.object (plain object)
-        // Normalise all keys to lowercase for consistency
-        const obj = {};
-        if (Array.isArray(e.attributes)) {
-          for (const attr of e.attributes) {
-            const key = (attr.type || '').toLowerCase();
-            if (!key) continue;
-            const vals = attr.values || attr.vals || [];
-            obj[key] = vals.length === 1 ? vals[0] : (vals.length === 0 ? undefined : vals);
-          }
-        }
-        // Fallback: e.object (ldapjs v1/v2)
-        if (Object.keys(obj).length === 0 && e.object) {
-          for (const k of Object.keys(e.object)) obj[k.toLowerCase()] = e.object[k];
-        }
-        if (!obj.dn && e.objectName) obj.dn = String(e.objectName);
-        entries.push(obj);
-      });
+      res.on('searchEntry', e => entries.push(normalizeEntry(e)));
       res.on('error', e => reject(e));
       res.on('end',   () => resolve(entries));
     });
   });
+}
+
+/**
+ * Paged LDAP search — handles AD server-side size limits by requesting results
+ * in pages of `pageSize` using LDAP Paged Results Control (RFC 2696).
+ * Falls back to a plain ldapSearch with large sizeLimit if control unavailable.
+ */
+async function ldapSearchPaged(client, base, options, pageSize = 500) {
+  const PRC = ldap?.controls?.PagedResultsControl;
+  if (!PRC) {
+    logger.warn('[LDAP] PagedResultsControl not available, falling back to single search');
+    return ldapSearch(client, base, { ...options, sizeLimit: options.sizeLimit || 5000 });
+  }
+
+  const allEntries = [];
+  let cookie = Buffer.alloc(0);
+
+  for (let page = 1; ; page++) {
+    const ctrl = new PRC({ value: { size: pageSize, cookie } });
+    const { entries: pageEntries, nextCookie } = await new Promise((resolve, reject) => {
+      const collected = [];
+      client.search(base, { ...options, sizeLimit: 0 }, [ctrl], (err, res) => {
+        if (err) return reject(err);
+        res.on('searchEntry', e => collected.push(normalizeEntry(e)));
+        res.on('error', err => {
+          if (err.name === 'SizeLimitExceededError' || err.code === 4) {
+            return resolve({ entries: collected, nextCookie: null });
+          }
+          reject(err);
+        });
+        res.on('end', result => {
+          let nextCookie = null;
+          (result?.controls || []).forEach(c => {
+            if (c.type === '1.2.840.113556.1.4.319') nextCookie = c.value?.cookie;
+          });
+          resolve({ entries: collected, nextCookie });
+        });
+      });
+    });
+
+    allEntries.push(...pageEntries);
+    logger.debug(`[LDAP paged] page ${page}: +${pageEntries.length} entries (total ${allEntries.length})`);
+    if (!nextCookie || (Buffer.isBuffer(nextCookie) && nextCookie.length === 0)) break;
+    cookie = nextCookie;
+  }
+
+  return allEntries;
 }
 
 function ldapUnbind(client) {
@@ -405,12 +451,11 @@ async function searchPhonebook() {
 
   try {
     await ldapBind(client, bindDn, bindPwd);
-    const entries = await ldapSearch(client, baseDn, {
+    const entries = await ldapSearchPaged(client, baseDn, {
       scope:      'sub',
       filter,
-      attributes: ['displayName', 'cn', 'mobile', 'sAMAccountName'],
-      sizeLimit:  1000,
-    });
+      attributes: ['displayName', 'cn', 'mobile', 'mail', 'sAMAccountName'],
+    }, 500);
 
     // Deduplicate by sAMAccountName (a user may appear in multiple groups/OU)
     const seen = new Set();
@@ -421,9 +466,11 @@ async function searchPhonebook() {
       seen.add(sam);
       const mobile = e.mobile;
       if (!mobile) continue;
+      const mail = e.mail;
       contacts.push({
         display_name: e.displayname || e.displayName || e.cn || sam,
         phone:        Array.isArray(mobile) ? mobile[0] : mobile,
+        email:        Array.isArray(mail) ? mail[0] : (mail || null),
         source:       'ldap',
       });
     }

@@ -21,10 +21,10 @@ async function syncLdapToDb() {
   const db = getDb();
   db.exec("DELETE FROM contacts WHERE source='ldap'");
   const stmt = db.prepare(
-    "INSERT OR REPLACE INTO contacts (id, display_name, phone, source) VALUES (?, ?, ?, 'ldap')"
+    "INSERT OR REPLACE INTO contacts (id, display_name, phone, email, source) VALUES (?, ?, ?, ?, 'ldap')"
   );
   for (const c of contacts) {
-    stmt.run(uuidv4(), c.display_name, c.phone);
+    stmt.run(uuidv4(), c.display_name, c.phone, c.email || null);
   }
   logger.info(`[Phonebook] Synced ${contacts.length} LDAP contact(s) to local DB`);
   return contacts;
@@ -117,7 +117,7 @@ router.delete('/local/:id', requireAdmin, (req, res) => {
 router.get('/ldap', requireAdmin, async (req, res) => {
   try {
     const contacts = await syncLdapToDb();
-    res.json(contacts);
+    res.json({ synced: contacts.length, contacts });
   } catch (err) {
     logger.warn(`[Phonebook] LDAP sync error: ${err.message}`);
     res.status(502).json({ error: err.message });

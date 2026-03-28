@@ -134,13 +134,20 @@ router.post('/send', [
     if (Number.isInteger(n) && n >= 1 && n <= 16) return true;
     throw new Error('port must be an integer 1-16 or "auto"');
   }),
-  body('recipient').isMobilePhone('any').withMessage('Invalid recipient phone number'),
+  body('recipient').custom(val => {
+    // Accept normalized phone numbers: optional +, then only digits, 6–20 chars
+    if (typeof val !== 'string' || !/^\+?[\d]{6,20}$/.test(val.replace(/[\s\-\(\)]+/g, '')))
+      throw new Error('Invalid recipient phone number (expected digits with optional + prefix)');
+    return true;
+  }),
   body('message').isString().trim().isLength({ min: 1, max: 1024 }),
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   let { device_id, port, recipient, message } = req.body;
+  // Normalize recipient: strip spaces, dashes, parens (consistent with frontend normalization)
+  recipient = String(recipient).replace(/[\s\-\(\)]+/g, '');
 
   if (port === 'auto') {
     // For non-admin users, pass their allowed_ports so balanced routing respects permissions

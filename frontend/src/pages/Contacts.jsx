@@ -80,6 +80,9 @@ export default function Contacts() {
   const [syncing, setSyncing] = useState(false)
   const [ldapError, setLdapError] = useState(null)
   const [syncMsg, setSyncMsg] = useState(null)
+  const [ldapSearchQuery, setLdapSearchQuery] = useState('')
+  const [ldapPage, setLdapPage] = useState(1)
+  const LDAP_PAGE_SIZE = 25
 
   // Global LDAP enabled flag (from superadmin LDAP config)
   const [globalLdapEnabled, setGlobalLdapEnabled] = useState(false)
@@ -158,10 +161,12 @@ export default function Contacts() {
     setLdapError(null)
     try {
       const res = await phonebookApi.syncLdap()
-      setSyncMsg(`Sync complete: ${res.synced} contacts imported.`)
-      // Refresh list
-      const all = await phonebookApi.getAll()
-      setLdapContacts(all.filter(c => c.source === 'ldap'))
+      // Backend returns { synced: N, contacts: [...] }
+      const count = res?.synced ?? (Array.isArray(res) ? res.length : 0)
+      const list  = res?.contacts ?? (Array.isArray(res) ? res : [])
+      setSyncMsg(`Sync complete: ${count} contact${count !== 1 ? 's' : ''} imported.`)
+      setLdapContacts(list)
+      setLdapPage(1)
     } catch (e) {
       setLdapError(e.response?.data?.error || 'LDAP sync failed')
     } finally {
@@ -329,28 +334,69 @@ export default function Contacts() {
               <div className="text-center py-12 text-gray-400">
                 {ldapSettings.enabled ? 'No LDAP contacts in DB. Click Refresh LDAP to sync.' : 'LDAP phonebook is disabled.'}
               </div>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Phone (mobile)</th>
-                      <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {ldapContacts.map(c => (
-                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-800">{c.display_name}</td>
-                        <td className="px-4 py-3 font-mono text-gray-700">{c.phone}</td>
-                        <td className="hidden sm:table-cell px-4 py-3 text-gray-500">{c.email || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            ) : (() => {
+              const q = ldapSearchQuery.trim().toLowerCase()
+              const filtered = q
+                ? ldapContacts.filter(c =>
+                    c.display_name?.toLowerCase().includes(q) ||
+                    c.phone?.includes(ldapSearchQuery.trim()) ||
+                    c.email?.toLowerCase().includes(q))
+                : ldapContacts
+              const totalPages = Math.max(1, Math.ceil(filtered.length / LDAP_PAGE_SIZE))
+              const safePage = Math.min(ldapPage, totalPages)
+              const paged = filtered.slice((safePage - 1) * LDAP_PAGE_SIZE, safePage * LDAP_PAGE_SIZE)
+              const btnCls = (disabled) => `px-2 py-1 text-xs rounded border transition-colors ${
+                disabled ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`
+              return (
+                <div className="space-y-2">
+                  {/* Search */}
+                  <input
+                    type="text"
+                    placeholder="Search by name, phone or email…"
+                    value={ldapSearchQuery}
+                    onChange={e => { setLdapSearchQuery(e.target.value); setLdapPage(1) }}
+                    className="input text-sm"
+                  />
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Phone (mobile)</th>
+                          <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {paged.length === 0 ? (
+                          <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">No contacts match your search.</td></tr>
+                        ) : paged.map(c => (
+                          <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-800">{c.display_name}</td>
+                            <td className="px-4 py-3 font-mono text-gray-700">{c.phone}</td>
+                            <td className="hidden sm:table-cell px-4 py-3 text-gray-500">{c.email || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-xs text-gray-400">
+                        {filtered.length} contact{filtered.length !== 1 ? 's' : ''}{q ? ` matching “${ldapSearchQuery.trim()}”` : ''}
+                        {' '}— page {safePage} of {totalPages}
+                      </p>
+                      <div className="flex gap-1">
+                        <button disabled={safePage === 1} onClick={() => setLdapPage(1)} className={btnCls(safePage === 1)}>«</button>
+                        <button disabled={safePage === 1} onClick={() => setLdapPage(p => Math.max(1, p - 1))} className={btnCls(safePage === 1)}>‹</button>
+                        <button disabled={safePage === totalPages} onClick={() => setLdapPage(p => Math.min(totalPages, p + 1))} className={btnCls(safePage === totalPages)}>›</button>
+                        <button disabled={safePage === totalPages} onClick={() => setLdapPage(totalPages)} className={btnCls(safePage === totalPages)}>»</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

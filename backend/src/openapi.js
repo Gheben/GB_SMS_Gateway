@@ -315,7 +315,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                       { type: 'string', enum: ['auto'] },
                     ],
                   },
-                  recipient: { type: 'string', example: '+39012345678' },
+                  recipient: { type: 'string', example: '+39012345678', description: 'Recipient phone number. Digits only with optional `+` prefix (spaces, dashes, and parentheses are stripped automatically). Use `GET /api/phonebook` to retrieve contacts from the phonebook.' },
                   message:   { type: 'string', minLength: 1, maxLength: 1024, example: 'Hello from API!' },
                 },
               },
@@ -1317,12 +1317,24 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Phonebook'],
         summary: 'Sync LDAP contacts to DB (admin)',
-        description: 'Forces a full LDAP phonebook sync. Deletes existing LDAP contacts and re-imports from Active Directory using only the **mobile** attribute. **Admin** or **superadmin** only.',
+        description: 'Forces a full LDAP phonebook sync using **paged LDAP search** (handles > 1000 contacts). Deletes existing LDAP contacts and re-imports from Active Directory using the **mobile** attribute (phone) and **mail** attribute (email). **Admin** or **superadmin** only.',
         responses: {
-          200: { description: 'Synced contacts', content: { 'application/json': { example: [{ id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Anna Bianchi', phone: '+39087654321', source: 'ldap', created_at: '2026-01-15T10:00:00.000Z' }] } } },
+          200: {
+            description: 'Sync result',
+            content: {
+              'application/json': {
+                example: {
+                  synced: 1250,
+                  contacts: [
+                    { id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Anna Bianchi', phone: '+39087654321', email: 'anna.bianchi@example.com', source: 'ldap' },
+                  ],
+                },
+              },
+            },
+          },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
-          500: { description: 'LDAP sync error' },
+          502: { description: 'LDAP sync error (server unreachable or credentials invalid)' },
         },
       },
     },
