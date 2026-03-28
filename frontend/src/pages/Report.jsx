@@ -173,16 +173,15 @@ export default function Report() {
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie data={data.dispatchByRule} dataKey="dispatches" nameKey="rule"
-                      cx="50%" cy="50%" outerRadius={70}
-                      label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                      cx="50%" cy="45%" outerRadius={70}
                       labelLine={false}
-                      style={{ fontSize: 10 }}
                     >
                       {data.dispatchByRule.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(v) => [v, 'forwards']} />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
               )}
