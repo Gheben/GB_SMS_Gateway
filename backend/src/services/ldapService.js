@@ -51,10 +51,23 @@ function _serviceBindPrincipal(cfg) {
   return cfg.bind_dn || '';
 }
 
-/** Returns the service account password (decrypted). */
+/**
+ * Returns the service account password (decrypted).
+ * Throws a clear error if decryption fails (wrong ENCRYPTION_SECRET).
+ */
 function _servicePassword(cfg) {
   const raw = cfg.ldap_service_password || cfg.bind_password || '';
-  return decrypt(raw);
+  const decrypted = decrypt(raw);
+  // decrypt() returns '' when AES-GCM auth tag fails (wrong key)
+  if (decrypted === '' && raw && isEncrypted(raw)) {
+    throw new Error(
+      'LDAP: impossibile decifrare la password del service account. ' +
+      'La variabile ENCRYPTION_SECRET (o JWT_SECRET) in questo ambiente non corrisponde a quella usata quando le impostazioni LDAP sono state salvate. ' +
+      'Soluzione: (1) impostare ENCRYPTION_SECRET con lo stesso valore in tutti gli ambienti, oppure ' +
+      '(2) reinserire la password del service account in Impostazioni → LDAP.'
+    );
+  }
+  return decrypted;
 }
 
 /** Returns the Base DN. */

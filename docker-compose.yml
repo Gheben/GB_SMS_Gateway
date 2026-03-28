@@ -41,6 +41,11 @@ services:
       - PORT=4673
       - DB_PATH=/app/data/smsgateway.db
       - LOG_FILE=/app/logs/app.log
+      # ENCRYPTION_SECRET — MUST match the value used when LDAP/SMTP settings were saved.
+      # Set it in .env (recommended) or directly here.
+      # If different from the environment where settings were configured,
+      # LDAP and SMTP passwords will fail to decrypt → re-enter them in the UI.
+      # - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
       # SSO via reverse proxy (Authentik, NetScaler ADC, etc.)
       # Uncomment and set in .env or directly here:
       # - SSO_ENABLED=true

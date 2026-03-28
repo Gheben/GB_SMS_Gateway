@@ -320,13 +320,13 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 },
               },
               examples: {
-                manual: {
-                  summary: 'Manual port selection',
-                  value: { device_id: '00000000-0000-0000-0000-000000000001', port: 3, recipient: '+39012345678', message: 'Hello!' },
-                },
                 auto: {
-                  summary: 'Balanced auto-routing',
+                  summary: '✅ Balanced auto-routing (port="auto") — recommended',
                   value: { port: 'auto', recipient: '+39012345678', message: 'Hello!' },
+                },
+                manual: {
+                  summary: 'Manual port selection (port=integer, device_id required)',
+                  value: { device_id: '00000000-0000-0000-0000-000000000001', port: 3, recipient: '+39012345678', message: 'Hello!' },
                 },
               },
             },

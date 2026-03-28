@@ -50,7 +50,14 @@ function decrypt(ciphertext) {
     decipher.setAuthTag(tag);
     return decipher.update(ct) + decipher.final('utf8');
   } catch {
-    return s; // fallback se la chiave è cambiata o dati corrotti
+    // AES-GCM auth tag verification failed → la chiave differisce da quella usata per cifrare.
+    // Causa tipica in Docker: ENCRYPTION_SECRET/JWT_SECRET diversi tra ambienti che condividono lo stesso DB.
+    // Soluzione: impostare ENCRYPTION_SECRET con lo STESSO valore in tutti gli ambienti.
+    const _log = (() => { try { return require('../utils/logger'); } catch { return console; } })();
+    _log.warn('[Encryption] decrypt FAILED (AES-GCM auth-tag mismatch). ' +
+      'ENCRYPTION_SECRET o JWT_SECRET differiscono rispetto a quando il segreto è stato salvato. ' +
+      'Impostare ENCRYPTION_SECRET identico in tutti gli ambienti, oppure reinserire la password nelle Impostazioni.');
+    return ''; // NON restituire il ciphertext raw — evita che venga usato come password
   }
 }
 
