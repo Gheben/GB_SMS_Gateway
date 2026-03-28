@@ -459,7 +459,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
               'application/json': {
                 example: {
                   month: '2025-06',
-                  ports: [{ device_id: 'uuid', port_number: 1, balanced: 1, sim_number: '+39012345678', operator: 'TIM', device_name: 'GSM-01', sent_count: 42 }],
+                  ports: [{ device_id: 'uuid', port_number: 1, balanced: 1, monthly_limit: 200, sim_number: '+39012345678', operator: 'TIM', device_name: 'GSM-01', sent_count: 42 }],
                 },
               },
             },
@@ -472,7 +472,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
     '/ports/{device_id}/{port_number}/info': {
       put: {
         tags: ['Ports'],
-        summary: 'Update SIM number, operator and/or balanced flag for a port',
+        summary: 'Update SIM number, operator, balanced flag and/or monthly limit for a port',
         parameters: [
           { name: 'device_id',   in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'port_number', in: 'path', required: true, schema: { type: 'integer' } },
@@ -485,7 +485,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 properties: {
                   sim_number: { type: 'string', example: '+39012345678' },
                   operator:   { type: 'string', example: 'TIM' },
-                  balanced:   { type: 'boolean', description: 'Include this port in the round-robin balanced SIM pool' },
+                  balanced:      { type: 'boolean', description: 'Include this port in the balanced SIM pool (least-used-ratio routing)' },
+                  monthly_limit: { type: 'integer', minimum: 0, description: 'Max outbound SMS per month for this SIM. 0 = no limit. Ports at limit are excluded from auto-routing.' },
                 },
               },
             },

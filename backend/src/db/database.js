@@ -139,6 +139,7 @@ function initSchema() {
   try { db.exec(`ALTER TABLE messages ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE messages ADD COLUMN sent_by_user_id TEXT`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE ports ADD COLUMN carrier TEXT`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE ports ADD COLUMN monthly_limit INTEGER NOT NULL DEFAULT 0`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN source TEXT NOT NULL DEFAULT 'local'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN ldap_dn TEXT`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN display_name TEXT`); } catch (_) { /* already exists */ }

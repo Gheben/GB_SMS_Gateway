@@ -21,9 +21,12 @@ function pickBalancedPort() {
   const db = getDb();
   const ym = new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
-  // Fetch balanced+enabled ports with their monthly sent count
+  // Fetch balanced+enabled ports with their monthly sent count and limit
+  // Ports that have reached their monthly_limit are excluded.
+  // Ordering: ratio = sent_count / monthly_limit (if limit set), else raw sent_count.
+  // This way a SIM with limit=200@50sent (25%) is preferred over limit=100@40sent (40%).
   const ports = db.prepare(`
-    SELECT p.device_id, p.port_number,
+    SELECT p.device_id, p.port_number, p.monthly_limit,
            COALESCE(s.sent_count, 0) AS sent_count
     FROM ports p
     JOIN devices d ON d.id = p.device_id
@@ -32,14 +35,20 @@ function pickBalancedPort() {
       AND s.port_number = p.port_number
       AND s.year_month = ?
     WHERE p.balanced = 1 AND d.enabled = 1
-    ORDER BY sent_count ASC, p.device_id, p.port_number
+      AND (p.monthly_limit = 0 OR COALESCE(s.sent_count, 0) < p.monthly_limit)
+    ORDER BY
+      CASE WHEN p.monthly_limit > 0
+           THEN CAST(COALESCE(s.sent_count, 0) AS REAL) / p.monthly_limit
+           ELSE CAST(COALESCE(s.sent_count, 0) AS REAL)
+      END ASC,
+      p.device_id, p.port_number
   `).all(ym).filter(p => {
     const conn = deviceManager.get(p.device_id);
     return conn && conn.connected;
   });
 
   if (!ports.length) return null;
-  // Pick the port with the lowest sent count (first after ORDER BY)
+  // Pick the port with the lowest usage ratio (first after ORDER BY)
   return ports[0];
 }
 

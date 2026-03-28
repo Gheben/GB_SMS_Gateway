@@ -43,7 +43,7 @@ router.get('/stats', (req, res) => {
   }
   const db = getDb();
   const ports = db.prepare(`
-    SELECT p.device_id, p.port_number, p.balanced, p.sim_number, p.operator, p.status,
+    SELECT p.device_id, p.port_number, p.balanced, p.monthly_limit, p.sim_number, p.operator, p.status,
            d.name as device_name,
            COALESCE(s.sent_count, 0) as sent_count
     FROM ports p
@@ -57,33 +57,36 @@ router.get('/stats', (req, res) => {
   res.json({ month, ports });
 });
 
-// PUT /api/ports/:device_id/:port_number/info — salva sim_number, carrier e/o balanced
+// PUT /api/ports/:device_id/:port_number/info — salva sim_number, carrier, balanced e/o monthly_limit
 router.put('/:device_id/:port_number/info', [
   param('device_id').isUUID(),
   param('port_number').isInt({ min: 1 }),
   body('sim_number').optional().isString().trim(),
   body('operator').optional().isString().trim(),
   body('balanced').optional().isBoolean(),
+  body('monthly_limit').optional().isInt({ min: 0 }),
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   const db = getDb();
-  const { sim_number, operator, balanced } = req.body;
+  const { sim_number, operator, balanced, monthly_limit } = req.body;
   db.prepare(`
-    INSERT INTO ports (device_id, port_number, sim_number, operator, balanced, updated_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO ports (device_id, port_number, sim_number, operator, balanced, monthly_limit, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(device_id, port_number) DO UPDATE SET
-      sim_number = CASE WHEN excluded.sim_number IS NOT NULL THEN excluded.sim_number ELSE sim_number END,
-      operator   = CASE WHEN excluded.operator   IS NOT NULL THEN excluded.operator   ELSE operator   END,
-      balanced   = CASE WHEN excluded.balanced   IS NOT NULL THEN excluded.balanced   ELSE balanced   END,
-      updated_at = excluded.updated_at
+      sim_number    = CASE WHEN excluded.sim_number    IS NOT NULL THEN excluded.sim_number    ELSE sim_number    END,
+      operator      = CASE WHEN excluded.operator      IS NOT NULL THEN excluded.operator      ELSE operator      END,
+      balanced      = CASE WHEN excluded.balanced      IS NOT NULL THEN excluded.balanced      ELSE balanced      END,
+      monthly_limit = CASE WHEN excluded.monthly_limit IS NOT NULL THEN excluded.monthly_limit ELSE monthly_limit END,
+      updated_at    = excluded.updated_at
   `).run(
     req.params.device_id,
     parseInt(req.params.port_number, 10),
-    sim_number !== undefined ? (sim_number || null) : null,
-    operator   !== undefined ? (operator   || null) : null,
-    balanced   !== undefined ? (balanced ? 1 : 0)   : null,
+    sim_number     !== undefined ? (sim_number || null)        : null,
+    operator       !== undefined ? (operator   || null)        : null,
+    balanced       !== undefined ? (balanced ? 1 : 0)          : null,
+    monthly_limit  !== undefined ? parseInt(monthly_limit, 10) : null,
   );
   res.json({ ok: true });
 });

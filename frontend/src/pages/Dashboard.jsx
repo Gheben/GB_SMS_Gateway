@@ -154,6 +154,8 @@ export default function Dashboard() {
                   <th className="px-4 py-3 text-left">SIM / Operator</th>
                   <th className="px-4 py-3 text-center">Balanced</th>
                   <th className="px-4 py-3 text-right">Sent</th>
+                  <th className="px-4 py-3 text-right">Limit</th>
+                  <th className="px-4 py-3 text-left w-36">Usage</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -175,11 +177,28 @@ export default function Dashboard() {
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-2 text-right font-semibold text-gray-800">{p.sent_count}</td>
+                      <td className="px-4 py-2 text-right text-gray-500">
+                        {p.monthly_limit > 0 ? p.monthly_limit : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-2">
+                        {p.monthly_limit > 0 ? (() => {
+                          const pct = Math.min(100, Math.round(p.sent_count / p.monthly_limit * 100))
+                          const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-500'
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-xs text-gray-500 w-8 text-right">{pct}%</span>
+                            </div>
+                          )
+                        })() : <span className="text-gray-300 text-xs">no limit</span>}
+                      </td>
                     </tr>
                   ))
                   : (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No active SIMs found for {statsMonth}.</td>
+                      <td colSpan={7} className="px-4 py-6 text-center text-gray-400">No active SIMs found for {statsMonth}.</td>
                     </tr>
                   )
                 })()
