@@ -584,18 +584,21 @@ GB-SMS-Gateway/
 
 | Table | Contents |
 |-------|----------|
-| `devices` | Configured Yeastar gateways |
+| `devices` | Configured Yeastar gateways (name, host, port, credentials, enabled flag) |
 | `ports` | SIM ports with status, carrier, IMEI, SIM number, `balanced` flag, `monthly_limit` |
 | `port_monthly_stats` | Monthly outbound SMS counter per SIM port (keyed by `YYYY-MM` in local time) |
-| `messages` | Inbound/outbound SMS (includes `sender_name`, `recipient_name` resolved from contacts) |
-| `contacts` | Phonebook entries (`display_name`, `phone`, `source`: `local` or `ldap`) |
-| `routing_rules` | Forwarding rules with `allowed_groups` (JSON) |
-| `rule_conditions` | Rule conditions |
-| `rule_targets` | Email recipients for forwarding |
-| `dispatches` | Email forwarding log per SMS |
-| `users` | Local and LDAP users (`source`, `ldap_dn`, `ldap_groups`) |
-| `settings` | Key-value configuration (SMTP, LDAP, email template) |
-| `audit_log` | Complete operation audit trail |
+| `messages` | Inbound/outbound SMS — includes `retry_count`, `sent_by_user_id`, `sender_name`/`recipient_name` resolved from contacts at display time |
+| `contacts` | Phonebook entries: `display_name`, `phone`, `email`, `notes`, `source` (`local` or `ldap`) |
+| `routing_rules` | Forwarding rules: `allowed_groups` (LDAP/AD DNs), `allowed_local_groups`, `sms_targets` (JSON array), `webhook_url`, `webhook_method`, `stop_on_match` |
+| `rule_conditions` | Per-rule match conditions (`sender`, `content`, `device`, etc.) combined with AND/OR |
+| `rule_targets` | Email recipients for each rule (one rule → N emails) |
+| `dispatches` | Forwarding action log per SMS: email sends and webhook calls (`action_type`: `email` or `webhook`) |
+| `message_rule_matches` | Junction table: which rules matched each message (used for per-rule message visibility) |
+| `users` | Local and LDAP/SAML users: `source`, `ldap_dn`, `ldap_groups`, `display_name`, `allowed_ports` (JSON), `permissions` (JSON) |
+| `local_groups` | Local user groups: `role`, `permissions` (JSON), `allowed_ports` (JSON) |
+| `local_group_members` | Many-to-many: users → local groups |
+| `settings` | Key-value configuration: SMTP, LDAP, email template, phonebook LDAP, SAML, webhook |
+| `audit_log` | Complete operation audit trail: user, action, resource, IP, timestamp |
 
 ---
 
