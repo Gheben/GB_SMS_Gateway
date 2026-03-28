@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { User } from 'lucide-react'
 
 const MAX_SUGGESTIONS = 8
 
 /**
  * A controlled input with phonebook contact autocomplete dropdown.
+ * The dropdown is rendered via a React portal at document.body so it is never
+ * clipped by parent overflow:hidden/auto containers (e.g. scrollable modals).
  *
  * Props:
  *   contacts   - array of {display_name, phone, email} from phonebook API
@@ -30,8 +33,9 @@ export default function PhonebookAutocomplete({
 }) {
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const containerRef = useRef(null)
+  const [dropdownStyle, setDropdownStyle] = useState({})
   const inputRef = useRef(null)
+  const dropdownRef = useRef(null)
 
   const field = mode === 'email' ? 'email' : 'phone'
 
@@ -48,22 +52,54 @@ export default function PhonebookAutocomplete({
       .slice(0, MAX_SUGGESTIONS)
   }, [value, contacts, field])
 
-  // Open/close dropdown based on suggestions
-  useEffect(() => {
-    setOpen(suggestions.length > 0)
-    setActiveIndex(-1)
-  }, [suggestions])
+  // Recompute fixed position of the dropdown below the input
+  const reposition = useCallback(() => {
+    if (!inputRef.current) return
+    const rect = inputRef.current.getBoundingClientRect()
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    })
+  }, [])
 
-  // Close when clicking outside
+  // Open/close and reposition whenever suggestions change
   useEffect(() => {
-    function handleOutsideClick(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    if (suggestions.length > 0) {
+      reposition()
+      setOpen(true)
+    } else {
+      setOpen(false)
+    }
+    setActiveIndex(-1)
+  }, [suggestions, reposition])
+
+  // Keep dropdown aligned while scrolling/resizing
+  useEffect(() => {
+    if (!open) return
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [open, reposition])
+
+  // Close when clicking outside both the input and the portal dropdown
+  useEffect(() => {
+    function onMouseDown(e) {
+      if (
+        !inputRef.current?.contains(e.target) &&
+        !dropdownRef.current?.contains(e.target)
+      ) {
         setOpen(false)
         setActiveIndex(-1)
       }
     }
-    document.addEventListener('mousedown', handleOutsideClick)
-    return () => document.removeEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
   }, [])
 
   function selectContact(contact) {
@@ -74,7 +110,6 @@ export default function PhonebookAutocomplete({
     }
     setOpen(false)
     setActiveIndex(-1)
-    // Restore focus to input after selection
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 
@@ -86,20 +121,18 @@ export default function PhonebookAutocomplete({
       e.preventDefault()
       setActiveIndex(i => Math.max(i - 1, -1))
     } else if (e.key === 'Enter' && open && activeIndex >= 0) {
-      // A suggestion is actively highlighted — select it
       e.preventDefault()
       selectContact(suggestions[activeIndex])
     } else if (e.key === 'Escape' && open) {
       setOpen(false)
       setActiveIndex(-1)
     } else {
-      // Pass through to external handler (e.g. Enter to add chip in SendSMS)
       externalOnKeyDown?.(e)
     }
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <>
       <input
         ref={inputRef}
         type="text"
@@ -111,13 +144,16 @@ export default function PhonebookAutocomplete({
         autoComplete="off"
         {...rest}
       />
-      {open && (
-        <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm">
+      {open && createPortal(
+        <ul
+          ref={dropdownRef}
+          style={dropdownStyle}
+          className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm"
+        >
           {suggestions.map((c, i) => (
             <li key={c.id ?? i}>
               <button
                 type="button"
-                // Use onMouseDown to fire before onBlur so the dropdown stays open long enough
                 onMouseDown={e => { e.preventDefault(); selectContact(c) }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-blue-50 transition-colors ${
                   i === activeIndex ? 'bg-blue-50' : ''
@@ -129,8 +165,9 @@ export default function PhonebookAutocomplete({
               </button>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
