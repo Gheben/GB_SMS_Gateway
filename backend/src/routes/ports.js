@@ -37,7 +37,9 @@ router.get('/stats', (req, res) => {
   if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  const month = (req.query.month || new Date().toISOString().slice(0, 7)).slice(0, 7);
+  const now = new Date();
+  const currentLocalMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = (req.query.month || currentLocalMonth).slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return res.status(400).json({ error: 'Invalid month format (expected YYYY-MM)' });
   }

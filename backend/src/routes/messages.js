@@ -17,9 +17,15 @@ const router = Router();
  * Ties are broken by stable ordering (device_id, port_number) to avoid
  * oscillation. Returns null if no balanced port is connected.
  */
+/** Returns current local year-month string "YYYY-MM" respecting the process TZ. */
+function localYearMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function pickBalancedPort() {
   const db = getDb();
-  const ym = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const ym = localYearMonth();
 
   // Fetch balanced+enabled ports with their monthly sent count and limit
   // Ports that have reached their monthly_limit are excluded.
@@ -57,7 +63,7 @@ function pickBalancedPort() {
  */
 function incrementMonthlyStat(deviceId, portNumber) {
   const db = getDb();
-  const ym = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const ym = localYearMonth();
   db.prepare(`
     INSERT INTO port_monthly_stats (device_id, port_number, year_month, sent_count)
     VALUES (?, ?, ?, 1)

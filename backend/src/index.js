@@ -1,4 +1,6 @@
 const path = require('path');
+// TZ must be set BEFORE any other require so all Date operations use the correct timezone.
+// Set TZ=Europe/Rome (or your local IANA zone) in .env to fix timestamps and log times.
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const http = require('http');
 const express = require('express');
@@ -35,6 +37,14 @@ const openApiSpec = require('./openapi');
 
 // Init DB schema
 getDb();
+
+// Log effective timezone so operators can verify at startup
+{
+  const tz = process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC (system default)';
+  const localNow = new Date().toLocaleString('it-IT', { timeZoneName: 'short' });
+  // Use a direct console.log here since logger may not be fully ready yet
+  console.log(`[startup] Timezone: ${tz} — local time: ${localNow}`);
+}
 
 // Seed superadmin (da .env)
 seedSuperAdmin();
