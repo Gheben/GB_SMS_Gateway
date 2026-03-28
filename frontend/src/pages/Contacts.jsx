@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { phonebookApi, ldapApi } from '../api'
 import {
   Plus, Pencil, Trash2, X, RefreshCw, Save, Loader2,
@@ -80,9 +80,11 @@ export default function Contacts() {
   const [syncing, setSyncing] = useState(false)
   const [ldapError, setLdapError] = useState(null)
   const [syncMsg, setSyncMsg] = useState(null)
+  const [syncProgress, setSyncProgress] = useState(null) // shown while running
   const [ldapSearchQuery, setLdapSearchQuery] = useState('')
   const [ldapPage, setLdapPage] = useState(1)
   const LDAP_PAGE_SIZE = 25
+  const pollRef = useRef(null)
 
   // Global LDAP enabled flag (from superadmin LDAP config)
   const [globalLdapEnabled, setGlobalLdapEnabled] = useState(false)
@@ -107,7 +109,7 @@ export default function Contacts() {
     setLoadingLdap(true)
     setLdapError(null)
     Promise.all([
-      phonebookApi.getAll().then(all => all.filter(c => c.source === 'ldap')),
+      phonebookApi.getLdapContacts().then(r => r.contacts || []),
       phonebookApi.getSettings(),
     ])
       .then(([contacts, settings]) => {
@@ -124,6 +126,8 @@ export default function Contacts() {
     ldapApi.getSettings()
       .then(cfg => setGlobalLdapEnabled(!!(cfg?.enabled && (cfg?.host || cfg?.ldap_server))))
       .catch(() => setGlobalLdapEnabled(false))
+    // Clean up any running poll on unmount
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
   useEffect(() => { if (tab === 'ldap') fetchLdap() }, [tab])
 
@@ -155,23 +159,56 @@ export default function Contacts() {
     }
   }
 
+  function stopPolling() {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
   async function handleSync() {
+    if (syncing) return
     setSyncing(true)
     setSyncMsg(null)
+    setSyncProgress('Starting sync…')
     setLdapError(null)
+    stopPolling()
     try {
-      const res = await phonebookApi.syncLdap()
-      // Backend returns { synced: N, contacts: [...] }
-      const count = res?.synced ?? (Array.isArray(res) ? res.length : 0)
-      const list  = res?.contacts ?? (Array.isArray(res) ? res : [])
-      setSyncMsg(`Sync complete: ${count} contact${count !== 1 ? 's' : ''} imported.`)
-      setLdapContacts(list)
-      setLdapPage(1)
+      const res = await phonebookApi.startLdapSync()
+      if (res.status === 'already_running') setSyncProgress('Sync already in progress…')
     } catch (e) {
-      setLdapError(e.response?.data?.error || 'LDAP sync failed')
-    } finally {
+      setLdapError(e.response?.data?.error || 'Failed to start LDAP sync')
       setSyncing(false)
+      setSyncProgress(null)
+      return
     }
+    // Poll every 3 seconds until done or error
+    pollRef.current = setInterval(async () => {
+      try {
+        const s = await phonebookApi.getLdapStatus()
+        if (s.status === 'running') {
+          const elapsed = s.startedAt
+            ? Math.round((Date.now() - new Date(s.startedAt)) / 1000)
+            : ''
+          setSyncProgress(`Syncing${elapsed ? ` (${elapsed}s)` : ''}… please wait`)
+        } else {
+          stopPolling()
+          setSyncing(false)
+          setSyncProgress(null)
+          if (s.status === 'error') {
+            setLdapError(`Sync failed: ${s.error}`)
+          } else {
+            setSyncMsg(`Sync complete: ${s.synced} contact${s.synced !== 1 ? 's' : ''} imported.`)
+            // Reload contacts from DB
+            phonebookApi.getLdapContacts()
+              .then(r => { setLdapContacts(r.contacts || []); setLdapPage(1) })
+              .catch(() => {})
+          }
+        }
+      } catch {
+        stopPolling()
+        setSyncing(false)
+        setSyncProgress(null)
+        setLdapError('Lost contact with server during sync.')
+      }
+    }, 3000)
   }
 
   async function handleSaveSettings(e) {
@@ -313,9 +350,15 @@ export default function Contacts() {
                 title={!ldapSettings.enabled ? 'Enable LDAP phonebook first' : 'Sync contacts from Active Directory'}
               >
                 <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Syncing…' : 'Refresh LDAP'}
+                {syncing ? 'Syncing…' : 'Sync LDAP'}
               </button>
             </div>
+
+            {syncProgress && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3 rounded-lg">
+                <Loader2 size={15} className="animate-spin flex-shrink-0" /> {syncProgress}
+              </div>
+            )}
 
             {syncMsg && (
               <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm p-3 rounded-lg">
