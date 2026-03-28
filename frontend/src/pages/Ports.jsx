@@ -45,7 +45,7 @@ function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
     <div className="flex items-center gap-1 group min-w-0">
       {initialValue
         ? <span className={`text-xs truncate max-w-[120px] ${mono ? 'font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{initialValue}</span>
-        : <span className="text-xs text-gray-300 italic">â€”</span>}
+        : <span className="text-xs text-gray-300 italic">{'\u2014'}</span>}
       <button
         onClick={() => { setValue(initialValue || ''); setEditing(true) }}
         className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0"
