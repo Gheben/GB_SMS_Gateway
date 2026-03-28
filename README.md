@@ -271,6 +271,7 @@ Configure from **Devices → SIM Ports** panel (expand any device card):
 - SIMs that have reached their monthly limit are **automatically excluded** until the next month
 - Ties are broken by stable port order to avoid oscillation
 - If only **one SIM** is in the balanced pool it will handle all `auto` sends alone — if it also has a monthly limit and reaches it, subsequent `auto` requests return **503** until the next month
+- **`allowed_ports` enforcement**: for non-admin users, `port="auto"` only selects from balanced SIMs in their permission list; if none are eligible, returns **503**
 - Monthly stats reset to 0 on the 1st of each month (buckets are keyed by `YYYY-MM` in local time per the `TZ` setting)
 
 ### 5. Yeastar Device Management

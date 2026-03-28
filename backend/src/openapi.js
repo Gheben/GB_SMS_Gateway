@@ -293,7 +293,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 properties: {
                   device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device. Required when port is not "auto".' },
                   port:      {
-                    description: 'SIM port number (1–16) or "auto" to use the balanced SIM pool.\n\n**Balancing algorithm (port="auto"):**\n- Picks the port with the **lowest usage ratio** (`sent_count / monthly_limit`) among all connected, enabled, balanced SIM ports.\n- Ports that have **reached their monthly limit** (`monthly_limit > 0 AND sent_count >= monthly_limit`) are automatically excluded.\n- SIM ports with **no limit** configured (`monthly_limit = 0`) are sorted by raw `sent_count`.\n- Ties are broken by stable ordering (`device_id`, `port_number`) to avoid oscillation.\n- If only **one** balanced SIM is configured it handles all `"auto"` requests alone; if it also has a monthly limit and reaches it, further requests return **503** until the next month.\n- Returns HTTP 503 if no eligible balanced port is available.',
+                    description: 'SIM port number (1–16) or "auto" to use the balanced SIM pool.\n\n**Balancing algorithm (port="auto"):**\n- Picks the port with the **lowest usage ratio** (`sent_count / monthly_limit`) among all connected, enabled, balanced SIM ports.\n- Ports that have **reached their monthly limit** (`monthly_limit > 0 AND sent_count >= monthly_limit`) are automatically excluded.\n- SIM ports with **no limit** configured (`monthly_limit = 0`) are sorted by raw `sent_count`.\n- Ties are broken by stable ordering (`device_id`, `port_number`) to avoid oscillation.\n- If only **one** balanced SIM is configured it handles all `"auto"` requests alone; if it also has a monthly limit and reaches it, further requests return **503** until the next month.\n- **llowed_ports enforcement**: for non-admin users, only balanced ports in their permission list are candidates; if none are eligible, returns **503**.
+- Returns HTTP 503 if no eligible balanced port is available.',
                     oneOf: [
                       { type: 'integer', minimum: 1, maximum: 16, example: 1 },
                       { type: 'string', enum: ['auto'] },
@@ -429,15 +430,16 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Ports'],
         summary: 'List SIM ports (optionally filter by device)',
+        description: 'Returns all SIM ports with their current-month `sent_count`. For non-admin users, only ports present in their `allowed_ports` permission list are returned (enforced at the backend).',
         parameters: [
-          { name: 'device_id', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'device_id', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filter by device UUID. When provided, also triggers a live port-status refresh from the device.' },
         ],
         responses: {
           200: {
-            description: '',
+            description: 'Array of SIM port objects',
             content: {
               'application/json': {
-                example: [{ device_id: 'uuid', port_number: 1, balanced: 0, sim_number: '+39012345678', operator: 'TIM', status: 'READY' }],
+                example: [{ device_id: 'uuid', port_number: 1, balanced: 0, monthly_limit: 200, sim_number: '+39012345678', operator: 'Wind', status: 'READY', device_name: 'GSM-01', sent_count: 42 }],
               },
             },
           },
