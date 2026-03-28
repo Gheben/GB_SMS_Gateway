@@ -1,18 +1,21 @@
-import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { portsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { Pencil, Check, X, Smartphone, Loader2 } from 'lucide-react'
+import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight } from 'lucide-react'
 
 function StatusBadge({ status }) {
-  if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Active</span>
-  if (status === 'DOWN')  return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />Unregistered</span>
-  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{status || 'N/A'}</span>
+  if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Active</span>
+  if (status === 'DOWN')  return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />Unreg.</span>
+  return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{status || 'N/A'}</span>
 }
 
 function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(initialValue || '')
   const [saving, setSaving] = useState(false)
+
+  // sync when parent reloads data
+  useEffect(() => { if (!editing) setValue(initialValue || '') }, [initialValue, editing])
 
   async function handleSave() {
     setSaving(true)
@@ -23,31 +26,31 @@ function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <input
           autoFocus
-          className={`text-sm border border-blue-300 rounded px-2 py-1 w-44 focus:outline-none focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
+          className={`text-xs border border-blue-300 rounded px-1.5 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false) }}
           placeholder={placeholder}
         />
-        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-1"><Check size={15} /></button>
-        <button onClick={() => { setValue(initialValue || ''); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-1"><X size={15} /></button>
+        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">{saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}</button>
+        <button onClick={() => { setValue(initialValue || ''); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-2 group">
+    <div className="flex items-center gap-1 group min-w-0">
       {initialValue
-        ? <span className={`text-sm ${mono ? 'font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{initialValue}</span>
-        : <span className="text-xs text-gray-400 italic">not set</span>}
+        ? <span className={`text-xs truncate max-w-[120px] ${mono ? 'font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{initialValue}</span>
+        : <span className="text-xs text-gray-300 italic">â€”</span>}
       <button
         onClick={() => { setValue(initialValue || ''); setEditing(true) }}
-        className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+        className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0"
       >
-        <Pencil size={13} />
+        <Pencil size={11} />
       </button>
     </div>
   )
@@ -57,6 +60,9 @@ function EditableLimitCell({ initialValue, onSave }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(String(initialValue ?? 0))
   const [saving, setSaving] = useState(false)
+
+  // sync when parent reloads data
+  useEffect(() => { if (!editing) setValue(String(initialValue ?? 0)) }, [initialValue, editing])
 
   async function handleSave() {
     const num = parseInt(value, 10)
@@ -75,58 +81,85 @@ function EditableLimitCell({ initialValue, onSave }) {
           type="number"
           min="0"
           step="1"
-          className="text-sm border border-blue-300 rounded px-2 py-1 w-24 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="text-xs border border-blue-300 rounded px-1.5 py-1 w-16 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false) }}
         />
-        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-1"><Check size={15} /></button>
-        <button onClick={() => { setValue(String(initialValue ?? 0)); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-1"><X size={15} /></button>
+        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">{saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}</button>
+        <button onClick={() => { setValue(String(initialValue ?? 0)); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
       </div>
     )
   }
 
-  const display = (initialValue ?? 0) === 0 ? '—' : String(initialValue)
   return (
-    <div className="flex items-center gap-2 group">
-      <span className="text-sm text-gray-700" title="Max SMS per month (0 = no limit)">{display === '—' ? <span className="text-gray-300 italic text-xs">no limit</span> : display}</span>
+    <div className="flex items-center gap-1 group">
+      {(initialValue ?? 0) === 0
+        ? <span className="text-xs text-gray-300 italic">no limit</span>
+        : <span className="text-xs text-gray-700 font-medium tabular-nums">{initialValue}</span>}
       <button
         onClick={() => { setValue(String(initialValue ?? 0)); setEditing(true) }}
-        className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+        className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0"
         title="Set monthly SMS limit (0 = no limit)"
       >
-        <Pencil size={13} />
+        <Pencil size={11} />
       </button>
     </div>
   )
 }
 
 function SimRow({ port, onSaved }) {
+  const [toggling, setToggling] = useState(false)
+
+  async function toggleBalanced() {
+    setToggling(true)
+    try {
+      await portsApi.setPortInfo(port.device_id, port.port_number, { balanced: !port.balanced })
+      await onSaved()
+    } catch {}
+    setToggling(false)
+  }
+
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50">
-      <td className="px-4 py-3 text-sm text-gray-700 font-medium">{port.device_name}</td>
-      <td className="px-4 py-3 text-sm text-gray-800 font-mono">T{port.port_number}</td>
-      <td className="px-4 py-3"><StatusBadge status={port.status} /></td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2 text-xs text-gray-700 font-medium whitespace-nowrap">{port.device_name}</td>
+      <td className="px-3 py-2 text-xs text-gray-800 font-mono whitespace-nowrap">T{port.port_number}</td>
+      <td className="px-3 py-2 whitespace-nowrap"><StatusBadge status={port.status} /></td>
+      <td className="px-3 py-2">
         <EditableCell
           initialValue={port.operator}
-          placeholder="e.g. T-Mobile Business"
+          placeholder="e.g. TIM"
           onSave={operator => portsApi.setPortInfo(port.device_id, port.port_number, { operator }).then(onSaved)}
         />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2">
         <EditableCell
           initialValue={port.sim_number}
-          placeholder="+1 555 123 4567"
+          placeholder="+39..."
           mono
           onSave={sim_number => portsApi.setPortInfo(port.device_id, port.port_number, { sim_number }).then(onSaved)}
         />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2">
         <EditableLimitCell
           initialValue={port.monthly_limit}
           onSave={monthly_limit => portsApi.setPortInfo(port.device_id, port.port_number, { monthly_limit }).then(onSaved)}
         />
+      </td>
+      <td className="px-3 py-2 whitespace-nowrap">
+        <button
+          onClick={toggleBalanced}
+          disabled={toggling}
+          title={port.balanced ? 'Remove from balanced pool' : 'Add to balanced pool'}
+          className="flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none"
+        >
+          {toggling
+            ? <Loader2 size={15} className="animate-spin text-gray-400" />
+            : port.balanced
+              ? <><ToggleRight size={18} className="text-blue-600" /><span className="text-blue-600">Yes</span></>
+              : <><ToggleLeft  size={18} className="text-gray-400" /><span className="text-gray-400">No</span></>
+          }
+        </button>
       </td>
     </tr>
   )
@@ -140,10 +173,17 @@ export default function SimMapping() {
     setLoading(true)
     try {
       const all = await portsApi.getAll()
-      // Solo porte con SIM inserita (READY o DOWN)
       setPorts(all.filter(p => p.status === 'READY' || p.status === 'DOWN'))
     } catch {}
     setLoading(false)
+  }, [])
+
+  // Silent reload: no spinner, just update data in place (used after inline edits)
+  const silentReload = useCallback(async () => {
+    try {
+      const all = await portsApi.getAll()
+      setPorts(all.filter(p => p.status === 'READY' || p.status === 'DOWN'))
+    } catch {}
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -159,7 +199,7 @@ export default function SimMapping() {
         <h2 className="text-2xl font-bold text-gray-800">SIM Mapping</h2>
       </div>
       <p className="text-sm text-gray-500">
-        Associate a phone number and monthly send limit with each active SIM port. The SIM number is informational; the limit controls how many outbound SMS this SIM can send per month when using balanced auto-routing (<span className="font-mono text-xs bg-gray-100 px-1 rounded">port="auto"</span>).
+        Configure each active SIM port: carrier, phone number, monthly send limit and whether it participates in balanced auto-routing (<span className="font-mono text-xs bg-gray-100 px-1 rounded">port="auto"</span>).
       </p>
 
       {loading ? (
@@ -173,16 +213,17 @@ export default function SimMapping() {
           <p className="text-xs mt-1">Ports are updated automatically when devices connect.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="min-w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="min-w-full text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Device</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Port</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Carrier</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month for this SIM (0 = no limit)">Monthly Limit</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Device</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Port</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Carrier</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month (0 = no limit)">Limit/mo</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Include in balanced auto-routing pool">Balanced</th>
               </tr>
             </thead>
             <tbody>
@@ -190,7 +231,7 @@ export default function SimMapping() {
                 <SimRow
                   key={`${port.device_id}-${port.port_number}`}
                   port={port}
-                  onSaved={load}
+                  onSaved={silentReload}
                 />
               ))}
             </tbody>
@@ -200,4 +241,3 @@ export default function SimMapping() {
     </div>
   )
 }
-

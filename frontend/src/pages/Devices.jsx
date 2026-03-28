@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
-import { devicesApi, portsApi } from '../api'
+import { devicesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { Plus, Pencil, Trash2, Wifi, WifiOff, Loader2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react'
 
 const EMPTY_FORM = { name: '', host: '', port: 5038, username: 'apiuser', password: 'apipass', enabled: true }
 
@@ -51,63 +51,10 @@ function DeviceModal({ device, onClose, onSaved }) {
   )
 }
 
-function PortsPanel({ deviceId }) {
-  const [ports, setPorts] = useState(null)
-  const [saving, setSaving] = useState({})
-
-  useEffect(() => {
-    portsApi.getAll({ device_id: deviceId }).then(setPorts).catch(() => setPorts([]))
-  }, [deviceId])
-
-  async function toggleBalanced(p) {
-    setSaving(s => ({ ...s, [p.port_number]: true }))
-    try {
-      const newVal = p.balanced ? 0 : 1
-      await portsApi.setPortInfo(deviceId, p.port_number, { balanced: newVal === 1 })
-      setPorts(prev => prev.map(x => x.port_number === p.port_number ? { ...x, balanced: newVal } : x))
-    } catch {} finally {
-      setSaving(s => ({ ...s, [p.port_number]: false }))
-    }
-  }
-
-  if (ports === null) return <p className="text-xs text-gray-400 mt-3 animate-pulse">Loading ports…</p>
-  const withSim = ports.filter(p => p.status && p.status !== 'NO_SIM')
-  if (withSim.length === 0) return <p className="text-xs text-gray-400 mt-3">No SIM detected on this device.</p>
-
-  return (
-    <div className="mt-3 border-t border-gray-100 pt-3 space-y-2">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">SIM Ports — Balanced pool</p>
-      {withSim.map(p => (
-        <div key={p.port_number} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
-          <div className="min-w-0">
-            <span className="font-medium text-gray-700">Port {p.port_number}</span>
-            {p.operator   && <span className="ml-1.5 text-xs text-gray-500">{p.operator}</span>}
-            {p.sim_number && <span className="ml-1 font-mono text-xs text-gray-400 break-all">({p.sim_number})</span>}
-          </div>
-          <button
-            onClick={() => toggleBalanced(p)}
-            disabled={saving[p.port_number]}
-            title={p.balanced ? 'Remove from balanced pool' : 'Add to balanced pool'}
-            className="flex items-center gap-1 text-xs font-medium rounded-full transition-colors flex-shrink-0 focus:outline-none"
-          >
-            {saving[p.port_number]
-              ? <Loader2 size={15} className="animate-spin text-gray-400" />
-              : p.balanced
-                ? <><ToggleRight size={20} className="text-blue-600" /><span className="text-blue-600">Balanced</span></>
-                : <><ToggleLeft  size={20} className="text-gray-400" /><span className="text-gray-400">Balanced</span></>
-            }
-          </button>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function Devices() {
   const [devices, setDevices] = useState([])
   const [modal, setModal] = useState(null) // null | 'new' | device_object
   const [loading, setLoading] = useState(true)
-  const [portsOpen, setPortsOpen] = useState({})
 
   const load = useCallback(async () => {
     try {
@@ -163,14 +110,6 @@ export default function Devices() {
               {!d.enabled && <span className="ml-2 text-gray-400">(disabled)</span>}
             </div>
             <p className="text-xs text-gray-400">User: {d.username}</p>
-            <button
-              onClick={() => setPortsOpen(p => ({ ...p, [d.id]: !p[d.id] }))}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium pt-1"
-            >
-              {portsOpen[d.id] ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              SIM Ports
-            </button>
-            {portsOpen[d.id] && <PortsPanel deviceId={d.id} />}
           </div>
         ))}
         {devices.length === 0 && (
