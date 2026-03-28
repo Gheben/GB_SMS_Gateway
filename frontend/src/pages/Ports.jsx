@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState, useCallback } from 'react'
 import { portsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
 
 function StatusBadge({ status }) {
   if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Active</span>
@@ -9,96 +9,154 @@ function StatusBadge({ status }) {
   return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{status || 'N/A'}</span>
 }
 
+// EditableCell: text fields (operator, sim_number)
+// Uses local `confirmed` state for display so it never depends on prop-update timing
 function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(initialValue || '')
-  const [saving, setSaving] = useState(false)
+  const [editing, setEditing]   = useState(false)
+  const [draft, setDraft]       = useState('')
+  const [confirmed, setConfirmed] = useState(initialValue || '')
+  const [saving, setSaving]     = useState(false)
+  const [errMsg, setErrMsg]     = useState(null)
 
-  // sync when parent reloads data
-  useEffect(() => { if (!editing) setValue(initialValue || '') }, [initialValue, editing])
+  // Sync from parent only when NOT editing (e.g. WebSocket-triggered full refresh)
+  useEffect(() => {
+    if (!editing) setConfirmed(initialValue || '')
+  }, [initialValue, editing])
+
+  function startEdit() {
+    setDraft(confirmed)
+    setErrMsg(null)
+    setEditing(true)
+  }
+
+  function cancel() {
+    setEditing(false)
+    setErrMsg(null)
+  }
 
   async function handleSave() {
+    const trimmed = draft.trim()
     setSaving(true)
-    try { await onSave(value.trim()) } catch {}
-    setSaving(false)
-    setEditing(false)
+    setErrMsg(null)
+    try {
+      await onSave(trimmed)
+      setConfirmed(trimmed)   // update display immediately on success
+      setEditing(false)
+    } catch (e) {
+      const msg = e?.response?.data?.errors?.[0]?.msg || e?.response?.data?.error || 'Save failed'
+      setErrMsg(msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1">
-        <input
-          autoFocus
-          className={`text-xs border border-blue-300 rounded px-1.5 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false) }}
-          placeholder={placeholder}
-        />
-        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">{saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}</button>
-        <button onClick={() => { setValue(initialValue || ''); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1">
+          <input
+            autoFocus
+            className={`text-xs border border-blue-300 rounded px-1.5 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') cancel() }}
+            placeholder={placeholder}
+          />
+          <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+          </button>
+          <button onClick={cancel} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
+        </div>
+        {errMsg && <span className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={11} />{errMsg}</span>}
       </div>
     )
   }
 
   return (
     <div className="flex items-center gap-1 group min-w-0">
-      {initialValue
-        ? <span className={`text-xs truncate max-w-[120px] ${mono ? 'font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{initialValue}</span>
+      {confirmed
+        ? <span className={`text-xs truncate max-w-[120px] ${mono ? 'font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800' : 'text-gray-700'}`}>{confirmed}</span>
         : <span className="text-xs text-gray-300 italic">{'\u2014'}</span>}
-      <button
-        onClick={() => { setValue(initialValue || ''); setEditing(true) }}
-        className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0"
-      >
+      <button onClick={startEdit} className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0">
         <Pencil size={11} />
       </button>
     </div>
   )
 }
 
+// EditableLimitCell: numeric field for monthly_limit
+// Same pattern: local `confirmed` (number) drives display
 function EditableLimitCell({ initialValue, onSave }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(String(initialValue ?? 0))
-  const [saving, setSaving] = useState(false)
+  const [editing, setEditing]     = useState(false)
+  const [draft, setDraft]         = useState('')
+  const [confirmed, setConfirmed] = useState(initialValue ?? 0)
+  const [saving, setSaving]       = useState(false)
+  const [errMsg, setErrMsg]       = useState(null)
 
-  // sync when parent reloads data
-  useEffect(() => { if (!editing) setValue(String(initialValue ?? 0)) }, [initialValue, editing])
+  // Sync from parent only when NOT editing
+  useEffect(() => {
+    if (!editing) setConfirmed(initialValue ?? 0)
+  }, [initialValue, editing])
+
+  function startEdit() {
+    setDraft(String(confirmed))
+    setErrMsg(null)
+    setEditing(true)
+  }
+
+  function cancel() {
+    setEditing(false)
+    setErrMsg(null)
+  }
 
   async function handleSave() {
-    const num = parseInt(value, 10)
-    if (isNaN(num) || num < 0) { setEditing(false); return }
+    const num = parseInt(draft, 10)
+    if (isNaN(num) || num < 0) { cancel(); return }
     setSaving(true)
-    try { await onSave(num) } catch {}
-    setSaving(false)
-    setEditing(false)
+    setErrMsg(null)
+    try {
+      await onSave(num)
+      setConfirmed(num)     // update display immediately on success
+      setEditing(false)
+    } catch (e) {
+      const msg = e?.response?.data?.errors?.[0]?.msg || e?.response?.data?.error || 'Save failed'
+      setErrMsg(msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1">
-        <input
-          autoFocus
-          type="number"
-          min="0"
-          step="1"
-          className="text-xs border border-blue-300 rounded px-1.5 py-1 w-16 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false) }}
-        />
-        <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">{saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}</button>
-        <button onClick={() => { setValue(String(initialValue ?? 0)); setEditing(false) }} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1">
+          <input
+            autoFocus
+            type="number"
+            min="0"
+            step="1"
+            className="text-xs border border-blue-300 rounded px-1.5 py-1 w-16 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') cancel() }}
+          />
+          <button onClick={handleSave} disabled={saving} className="text-green-600 hover:text-green-800 p-0.5">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+          </button>
+          <button onClick={cancel} className="text-gray-400 hover:text-gray-600 p-0.5"><X size={13} /></button>
+        </div>
+        {errMsg && <span className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={11} />{errMsg}</span>}
       </div>
     )
   }
 
   return (
     <div className="flex items-center gap-1 group">
-      {(initialValue ?? 0) === 0
+      {confirmed === 0
         ? <span className="text-xs text-gray-300 italic">no limit</span>
-        : <span className="text-xs text-gray-700 font-medium tabular-nums">{initialValue}</span>}
+        : <span className="text-xs text-gray-700 font-medium tabular-nums">{confirmed}</span>}
       <button
-        onClick={() => { setValue(String(initialValue ?? 0)); setEditing(true) }}
+        onClick={startEdit}
         className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 flex-shrink-0"
         title="Set monthly SMS limit (0 = no limit)"
       >
@@ -114,9 +172,9 @@ function SimRow({ port, onPortUpdate }) {
   async function toggleBalanced() {
     setToggling(true)
     try {
-      const newBalanced = port.balanced ? 0 : 1
-      await portsApi.setPortInfo(port.device_id, port.port_number, { balanced: newBalanced === 1 })
-      onPortUpdate(port.device_id, port.port_number, { balanced: newBalanced })
+      const newVal = port.balanced ? 0 : 1
+      await portsApi.setPortInfo(port.device_id, port.port_number, { balanced: newVal === 1 })
+      onPortUpdate(port.device_id, port.port_number, { balanced: newVal })
     } catch {}
     setToggling(false)
   }
@@ -176,7 +234,7 @@ function SimRow({ port, onPortUpdate }) {
 }
 
 export default function SimMapping() {
-  const [ports, setPorts] = useState([])
+  const [ports, setPorts]   = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -188,7 +246,6 @@ export default function SimMapping() {
     setLoading(false)
   }, [])
 
-  // Silent reload: no spinner, just update data in place (used after inline edits)
   const silentReload = useCallback(async () => {
     try {
       const all = await portsApi.getAll()
@@ -196,7 +253,6 @@ export default function SimMapping() {
     } catch {}
   }, [])
 
-  // Update a single port in state without a network reload
   const handlePortUpdate = useCallback((deviceId, portNumber, updates) => {
     setPorts(prev => prev.map(p =>
       p.device_id === deviceId && p.port_number === portNumber ? { ...p, ...updates } : p
