@@ -3,6 +3,7 @@ node_modules/
 dist/
 .env
 data/
+test-*.js
 logs/
 *.db
 *.log

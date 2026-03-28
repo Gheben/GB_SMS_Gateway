@@ -293,7 +293,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 properties: {
                   device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device. Required when port is not "auto".' },
                   port:      {
-                    description: 'SIM port number (1–16) or "auto" to use round-robin balanced SIM selection.',
+                    description: 'SIM port number (1–16) or "auto" to use least-sent-this-month load balancing (self-correcting imbalances automatically).',
                     oneOf: [
                       { type: 'integer', minimum: 1, maximum: 16, example: 1 },
                       { type: 'string', enum: ['auto'] },

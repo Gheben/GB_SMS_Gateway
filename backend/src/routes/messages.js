@@ -4,33 +4,43 @@ const messageService = require('../services/messageService');
 const deviceManager = require('../services/deviceManager');
 const logger = require('../utils/logger');
 const auditService = require('../services/auditService');
-const { getDb, getSetting, setSettings } = require('../db/database');
+const { getDb } = require('../db/database');
 
 const router = Router();
 
 // ── Balanced SIM round-robin ──────────────────────────────────────────────────
 
 /**
- * Returns the next connected balanced SIM port using round-robin.
- * Returns null if no balanced port is connected.
+ * Returns the next connected balanced SIM port using a "least-sent this month"
+ * algorithm: always picks the port with the fewest outbound SMS in the current
+ * month, so any imbalance (e.g. from manual sends or restarts) self-corrects.
+ * Ties are broken by stable ordering (device_id, port_number) to avoid
+ * oscillation. Returns null if no balanced port is connected.
  */
 function pickBalancedPort() {
   const db = getDb();
+  const ym = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+  // Fetch balanced+enabled ports with their monthly sent count
   const ports = db.prepare(`
-    SELECT p.device_id, p.port_number
+    SELECT p.device_id, p.port_number,
+           COALESCE(s.sent_count, 0) AS sent_count
     FROM ports p
     JOIN devices d ON d.id = p.device_id
+    LEFT JOIN port_monthly_stats s
+      ON s.device_id = p.device_id
+      AND s.port_number = p.port_number
+      AND s.year_month = ?
     WHERE p.balanced = 1 AND d.enabled = 1
-    ORDER BY p.device_id, p.port_number
-  `).all().filter(p => {
+    ORDER BY sent_count ASC, p.device_id, p.port_number
+  `).all(ym).filter(p => {
     const conn = deviceManager.get(p.device_id);
     return conn && conn.connected;
   });
+
   if (!ports.length) return null;
-  const rr = parseInt(getSetting('BALANCED_RR_INDEX', '0'), 10) || 0;
-  const idx = rr % ports.length;
-  setSettings({ BALANCED_RR_INDEX: String(idx + 1) });
-  return ports[idx];
+  // Pick the port with the lowest sent count (first after ORDER BY)
+  return ports[0];
 }
 
 /**
