@@ -19,17 +19,22 @@ function getPhonebookLdapCfg() {
 async function syncLdapToDb() {
   const contacts = await ldapService.searchPhonebook();
   const db = getDb();
-  // Wrap DELETE + bulk INSERT in a single transaction: avoids blocking the event
-  // loop for seconds with 1000+ individual sync disk flushes (better-sqlite3 is sync).
+  // Wrap DELETE + bulk INSERT in a single transaction to avoid 1000+ individual
+  // disk flushes that would block the event loop (node:sqlite has no .transaction()).
   const stmt = db.prepare(
     "INSERT OR REPLACE INTO contacts (id, display_name, phone, email, source) VALUES (?, ?, ?, ?, 'ldap')"
   );
-  db.transaction(() => {
+  db.exec('BEGIN');
+  try {
     db.exec("DELETE FROM contacts WHERE source='ldap'");
     for (const c of contacts) {
       stmt.run(uuidv4(), c.display_name, c.phone, c.email || null);
     }
-  })();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
   logger.info(`[Phonebook] Synced ${contacts.length} LDAP contact(s) to local DB`);
   return contacts;
 }
