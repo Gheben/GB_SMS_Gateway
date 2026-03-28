@@ -23,7 +23,7 @@ function localYearMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function pickBalancedPort() {
+function pickBalancedPort(allowedPorts = []) {
   const db = getDb();
   const ym = localYearMonth();
 
@@ -49,6 +49,13 @@ function pickBalancedPort() {
       END ASC,
       p.device_id, p.port_number
   `).all(ym).filter(p => {
+    // Enforce allowed_ports restriction for non-admin users
+    if (allowedPorts.length > 0) {
+      const permitted = allowedPorts.some(ap =>
+        String(ap.device_id) === String(p.device_id) && Number(ap.port_number) === p.port_number
+      );
+      if (!permitted) return false;
+    }
     const conn = deviceManager.get(p.device_id);
     return conn && conn.connected;
   });
@@ -133,7 +140,10 @@ router.post('/send', [
   let { device_id, port, recipient, message } = req.body;
 
   if (port === 'auto') {
-    const chosen = pickBalancedPort();
+    // For non-admin users, pass their allowed_ports so balanced routing respects permissions
+    const isAdmin = req.user.role === 'superadmin' || req.user.role === 'admin';
+    const allowedPorts = isAdmin ? [] : (req.user.allowed_ports || []);
+    const chosen = pickBalancedPort(allowedPorts);
     if (!chosen) return res.status(503).json({ error: 'No balanced SIM ports available or connected. Configure balanced ports in Settings → Devices.' });
     device_id = chosen.device_id;
     port = chosen.port_number;

@@ -25,9 +25,16 @@ export default function SendSMS() {
       setDevices(filtered)
       if (filtered.length > 0) setForm(f => ({ ...f, device_id: String(filtered[0].id) }))
     }).catch(() => {})
-    // Check if any balanced ports exist (and store them for limit checks)
+    // Check if any balanced ports exist within the user's allowed scope
     portsApi.getAll().then(list => {
-      const balanced = list.filter(p => p.balanced)
+      const allowedPorts = user?.allowed_ports || []
+      const balanced = list.filter(p => {
+        if (!p.balanced) return false
+        if (isAdmin || allowedPorts.length === 0) return true
+        return allowedPorts.some(ap =>
+          String(ap.device_id) === String(p.device_id) && Number(ap.port_number) === p.port_number
+        )
+      })
       setAllBalancedPorts(balanced)
       setHasBalancedPorts(balanced.length > 0)
     }).catch(() => {})
