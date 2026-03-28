@@ -283,6 +283,22 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Messages'],
         summary: 'Send an SMS',
+        description:
+          'Send an outbound SMS via a specific SIM port or via the **balanced auto-routing pool**.\n\n' +
+          '## Manual send (`port` = integer)\n' +
+          'Specify `device_id` (UUID of the Yeastar device) and `port` (1–16). The monthly limit of the selected port is enforced server-side: if reached, returns **HTTP 429**.\n\n' +
+          '## Balanced auto-routing (`port` = `"auto"`)\n' +
+          'Omit `device_id`. The system picks the best available SIM automatically:\n\n' +
+          '| Step | Rule |\n' +
+          '|------|------|\n' +
+          '| Eligible pool | Ports with `balanced = true` on connected, enabled devices |\n' +
+          '| Limit filter | Ports at or above their `monthly_limit` are excluded |\n' +
+          '| Selection | Port with the **lowest usage ratio** (`sent / limit`); unlimited ports sorted by raw `sent_count` |\n' +
+          '| Tie-break | Stable order by `device_id`, `port_number` |\n' +
+          '| Permissions | Non-admin users: only ports in their `allowed_ports` list are candidates |\n' +
+          '| No match | Returns **HTTP 503** |\n\n' +
+          '> **Single-SIM pool:** if only one SIM is in the balanced pool it handles all `"auto"` requests alone.' +
+          ' If it reaches its monthly limit, subsequent requests return **HTTP 503** until the next month.',
         requestBody: {
           required: true,
           content: {
@@ -291,10 +307,9 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 type: 'object',
                 required: ['port', 'recipient', 'message'],
                 properties: {
-                  device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device. Required when port is not "auto".' },
-                  port:      {
-                    description: 'SIM port number (1–16) or "auto" to use the balanced SIM pool.\n\n**Balancing algorithm (port="auto"):**\n- Picks the port with the **lowest usage ratio** (`sent_count / monthly_limit`) among all connected, enabled, balanced SIM ports.\n- Ports that have **reached their monthly limit** (`monthly_limit > 0 AND sent_count >= monthly_limit`) are automatically excluded.\n- SIM ports with **no limit** configured (`monthly_limit = 0`) are sorted by raw `sent_count`.\n- Ties are broken by stable ordering (`device_id`, `port_number`) to avoid oscillation.\n- If only **one** balanced SIM is configured it handles all `"auto"` requests alone; if it also has a monthly limit and reaches it, further requests return **503** until the next month.\n- **llowed_ports enforcement**: for non-admin users, only balanced ports in their permission list are candidates; if none are eligible, returns **503**.
-- Returns HTTP 503 if no eligible balanced port is available.',
+                  device_id: { type: 'string', format: 'uuid', description: 'UUID of the Yeastar device. Required when `port` is an integer; omit when `port="auto"`.' },
+                  port: {
+                    description: 'SIM port number (1–16) for manual send, or `"auto"` to trigger balanced auto-routing (see operation description).',
                     oneOf: [
                       { type: 'integer', minimum: 1, maximum: 16, example: 1 },
                       { type: 'string', enum: ['auto'] },
@@ -304,33 +319,27 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   message:   { type: 'string', minLength: 1, maxLength: 1024, example: 'Hello from API!' },
                 },
               },
+              examples: {
+                manual: {
+                  summary: 'Manual port selection',
+                  value: { device_id: '00000000-0000-0000-0000-000000000001', port: 3, recipient: '+39012345678', message: 'Hello!' },
+                },
+                auto: {
+                  summary: 'Balanced auto-routing',
+                  value: { port: 'auto', recipient: '+39012345678', message: 'Hello!' },
+                },
+              },
             },
           },
         },
         responses: {
           202: {
             description: 'Message queued for delivery',
-            content: {
-              'application/json': {
-                example: { id: 'uuid', gsmId: '123', status: 'pending' },
-              },
-            },
+            content: { 'application/json': { example: { id: 'uuid', gsmId: '123', status: 'pending' } } },
           },
           400: { description: 'Validation error or missing device_id' },
-          429: { description: 'Monthly send limit reached for the selected SIM port' },
-          503: { description: 'No balanced SIM available or device not connected' },
-        },
-      },
-    },
-
-    '/messages/{id}': {
-      get: {
-        tags: ['Messages'],
-        summary: 'Get a single message by ID',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-        responses: {
-          200: { description: 'Message object', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Message' } } } },
-          404: { description: 'Not found' },
+          429: { description: 'Monthly send limit reached for the selected SIM port (manual send only)' },
+          503: { description: 'No balanced SIM available (port="auto") or device not connected' },
         },
       },
     },
