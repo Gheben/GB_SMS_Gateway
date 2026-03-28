@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { phonebookApi } from '../api'
+import { phonebookApi, ldapApi } from '../api'
 import {
   Plus, Pencil, Trash2, X, RefreshCw, Save, Loader2,
   BookOpen, Globe, CheckCircle, AlertCircle
@@ -81,6 +81,9 @@ export default function Contacts() {
   const [ldapError, setLdapError] = useState(null)
   const [syncMsg, setSyncMsg] = useState(null)
 
+  // Global LDAP enabled flag (from superadmin LDAP config)
+  const [globalLdapEnabled, setGlobalLdapEnabled] = useState(false)
+
   // LDAP settings
   const [ldapSettings, setLdapSettings] = useState({ enabled: false, base_dn: '', filter: '' })
   const [savingSettings, setSavingSettings] = useState(false)
@@ -112,7 +115,13 @@ export default function Contacts() {
       .finally(() => setLoadingLdap(false))
   }
 
-  useEffect(() => { fetchLocal() }, [])
+  useEffect(() => {
+    fetchLocal()
+    // Check if global LDAP is enabled and configured
+    ldapApi.getSettings()
+      .then(cfg => setGlobalLdapEnabled(!!(cfg?.enabled && (cfg?.host || cfg?.ldap_server))))
+      .catch(() => setGlobalLdapEnabled(false))
+  }, [])
   useEffect(() => { if (tab === 'ldap') fetchLdap() }, [tab])
 
   async function handleSaveContact(form) {
@@ -186,12 +195,14 @@ export default function Contacts() {
         >
           <span className="flex items-center gap-2"><BookOpen size={15} /> Local contacts</span>
         </button>
-        <button
-          onClick={() => setTab('ldap')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'ldap' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-2"><Globe size={15} /> LDAP / Active Directory</span>
-        </button>
+        {globalLdapEnabled && (
+          <button
+            onClick={() => setTab('ldap')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'ldap' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-2"><Globe size={15} /> LDAP / Active Directory</span>
+          </button>
+        )}
       </div>
 
       {/* ── LOCAL TAB ── */}
