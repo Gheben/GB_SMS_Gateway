@@ -75,6 +75,9 @@ export default function MessageDetailModal({ msg, onClose }) {
             {msg.direction === 'inbound' && (msg.port_sim_number || msg.recipient) && (
               <Field label="Receiving SIM number" value={msg.port_sim_number || msg.recipient} mono />
             )}
+            {msg.direction === 'outbound' && msg.port_sim_number && (
+              <Field label="Sending SIM number" value={msg.port_sim_number} mono />
+            )}
             <Field label="Device"   value={msg.device_name} />
             <Field label="Date"     value={fmt(msg.received_at || msg.created_at)} />
           </div>

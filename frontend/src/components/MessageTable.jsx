@@ -22,7 +22,7 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">From / To</th>
-            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Port</th>
+            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
             <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -45,7 +45,9 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                 {msg.direction === 'inbound' ? msg.sender : msg.recipient}
               </td>
               <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
-                {msg.port ? `Port ${msg.port}` : '—'}
+                {msg.port_sim_number
+                  ? <span className="font-mono">{msg.port_sim_number}</span>
+                  : msg.port ? `Port ${msg.port}` : '—'}
               </td>
               <td className="px-4 py-3 max-w-xs truncate text-gray-800" title={msg.content}>
                 {msg.content}
