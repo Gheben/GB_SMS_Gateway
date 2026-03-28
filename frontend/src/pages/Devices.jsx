@@ -54,17 +54,9 @@ function DeviceModal({ device, onClose, onSaved }) {
 function PortsPanel({ deviceId }) {
   const [ports, setPorts] = useState(null)
   const [saving, setSaving] = useState({})
-  const [limitDraft, setLimitDraft] = useState({}) // port_number → string value while editing
-  const [savingLimit, setSavingLimit] = useState({})
 
   useEffect(() => {
-    portsApi.getAll({ device_id: deviceId }).then(ports => {
-      setPorts(ports)
-      // initialise limit draft from DB values
-      const drafts = {}
-      ports.forEach(p => { drafts[p.port_number] = String(p.monthly_limit ?? 0) })
-      setLimitDraft(drafts)
-    }).catch(() => setPorts([]))
+    portsApi.getAll({ device_id: deviceId }).then(setPorts).catch(() => setPorts([]))
   }, [deviceId])
 
   async function toggleBalanced(p) {
@@ -75,19 +67,6 @@ function PortsPanel({ deviceId }) {
       setPorts(prev => prev.map(x => x.port_number === p.port_number ? { ...x, balanced: newVal } : x))
     } catch {} finally {
       setSaving(s => ({ ...s, [p.port_number]: false }))
-    }
-  }
-
-  async function saveLimit(p) {
-    const val = parseInt(limitDraft[p.port_number], 10)
-    if (isNaN(val) || val < 0) return
-    if (val === (p.monthly_limit ?? 0)) return // nothing changed
-    setSavingLimit(s => ({ ...s, [p.port_number]: true }))
-    try {
-      await portsApi.setPortInfo(deviceId, p.port_number, { monthly_limit: val })
-      setPorts(prev => prev.map(x => x.port_number === p.port_number ? { ...x, monthly_limit: val } : x))
-    } catch {} finally {
-      setSavingLimit(s => ({ ...s, [p.port_number]: false }))
     }
   }
 
@@ -105,38 +84,19 @@ function PortsPanel({ deviceId }) {
             {p.operator   && <span className="ml-1.5 text-xs text-gray-500">{p.operator}</span>}
             {p.sim_number && <span className="ml-1 font-mono text-xs text-gray-400 break-all">({p.sim_number})</span>}
           </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Monthly limit input */}
-            <div className="flex items-center gap-1">
-              <label className="text-[10px] text-gray-400 uppercase tracking-wide whitespace-nowrap">Limit/mo</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={limitDraft[p.port_number] ?? '0'}
-                onChange={e => setLimitDraft(s => ({ ...s, [p.port_number]: e.target.value }))}
-                onBlur={() => saveLimit(p)}
-                onKeyDown={e => e.key === 'Enter' && saveLimit(p)}
-                className="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 text-right focus:outline-none focus:ring-1 focus:ring-blue-300"
-                title="Max SMS per month (0 = no limit)"
-              />
-              {savingLimit[p.port_number] && <Loader2 size={12} className="animate-spin text-blue-400" />}
-            </div>
-            {/* Balanced toggle */}
-            <button
-              onClick={() => toggleBalanced(p)}
-              disabled={saving[p.port_number]}
-              title={p.balanced ? 'Remove from balanced pool' : 'Add to balanced pool'}
-              className="flex items-center gap-1 text-xs font-medium rounded-full transition-colors focus:outline-none"
-            >
-              {saving[p.port_number]
-                ? <Loader2 size={15} className="animate-spin text-gray-400" />
-                : p.balanced
-                  ? <><ToggleRight size={20} className="text-blue-600" /><span className="text-blue-600">Balanced</span></>
-                  : <><ToggleLeft  size={20} className="text-gray-400" /><span className="text-gray-400">Balanced</span></>
-              }
-            </button>
-          </div>
+          <button
+            onClick={() => toggleBalanced(p)}
+            disabled={saving[p.port_number]}
+            title={p.balanced ? 'Remove from balanced pool' : 'Add to balanced pool'}
+            className="flex items-center gap-1 text-xs font-medium rounded-full transition-colors flex-shrink-0 focus:outline-none"
+          >
+            {saving[p.port_number]
+              ? <Loader2 size={15} className="animate-spin text-gray-400" />
+              : p.balanced
+                ? <><ToggleRight size={20} className="text-blue-600" /><span className="text-blue-600">Balanced</span></>
+                : <><ToggleLeft  size={20} className="text-gray-400" /><span className="text-gray-400">Balanced</span></>
+            }
+          </button>
         </div>
       ))}
     </div>
