@@ -1,6 +1,8 @@
 const path = require('path');
 // TZ must be set BEFORE any other require so all Date operations use the correct timezone.
-// Set TZ=Europe/Rome (or your local IANA zone) in .env to fix timestamps and log times.
+// Priority: DB setting (configured via UI) > .env TZ > system default.
+// The .env value acts as the *initial* default on first startup; once saved via the UI it is
+// persisted in the DB and applied here, overriding .env on every subsequent restart.
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const http = require('http');
 const express = require('express');

@@ -880,6 +880,76 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       },
     },
 
+    // ─── NTP / TIMEZONE ─────────────────────────────────────────────────────
+
+    '/settings/ntp': {
+      get: {
+        tags: ['Settings (Superadmin)'],
+        summary: 'Get NTP server and timezone configuration — superadmin only',
+        description: 'Returns the NTP server hostname and the IANA timezone currently stored in the DB. The timezone is applied to all timestamps in the application. Priority: DB value > `.env TZ` > system default.',
+        responses: {
+          200: {
+            description: '',
+            content: {
+              'application/json': {
+                example: { ntp_server: 'pool.ntp.org', timezone: 'Europe/Rome' },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ['Settings (Superadmin)'],
+        summary: 'Save NTP server and timezone — superadmin only',
+        description: 'Persists both values in the DB and applies the timezone immediately to the running Node.js process (no restart needed). Survives container restarts. The IANA timezone string is validated server-side via `Intl`.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['ntp_server', 'timezone'],
+                properties: {
+                  ntp_server: { type: 'string', example: 'pool.ntp.org', description: 'Hostname or IP of the NTP server' },
+                  timezone:   { type: 'string', example: 'Europe/Rome', description: 'IANA timezone identifier (must be valid in Node.js Intl)' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Ok' } } } },
+          400: { description: 'Invalid hostname or unrecognised IANA timezone' },
+        },
+      },
+    },
+
+    '/settings/ntp/sync': {
+      post: {
+        tags: ['Settings (Superadmin)'],
+        summary: 'Query the configured NTP server — superadmin only',
+        description: 'Sends a UDP NTP request (RFC 4330) to the configured NTP server using the built-in Node.js `dgram` module (no extra packages). Returns the server time, system time, and the clock offset in milliseconds. Does **not** modify the system clock.',
+        responses: {
+          200: {
+            description: 'NTP query succeeded',
+            content: {
+              'application/json': {
+                example: {
+                  ok: true,
+                  ntp_server:  'pool.ntp.org',
+                  ntp_time:    '2026-03-29T10:00:00.123Z',
+                  system_time: '2026-03-29T10:00:00.145Z',
+                  offset_ms:   -22,
+                },
+              },
+            },
+          },
+          500: { description: 'UDP send error or response parse failure' },
+          504: { description: 'NTP query timed out (8 s)' },
+        },
+      },
+    },
+
     // ─── REPORT ─────────────────────────────────────────────────────────────
 
     '/report': {

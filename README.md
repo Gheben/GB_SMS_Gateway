@@ -176,11 +176,16 @@ FRONTEND_PORT=4674
 # SSO_ENABLED=true
 # SSO_HEADER=X-Remote-User
 
-# ─── LDAP Phonebook auto-sync (optional) ────────────────────────────
+# ─── Timezone (optional — can also be set via UI → Settings → System) ────────
+# TZ=Europe/Rome         # IANA timezone identifier (initial default only)
+#                        # ⚠ Priority: DB value (saved via UI) > .env TZ > system default.
+#                        # Once saved via the UI the DB value overrides this on every restart.
+
+# ─── LDAP Phonebook auto-sync (optional) ────────────────────────────────────
 # LDAP_SYNC_INTERVAL_HOURS=6     # Repeat phonebook sync every N hours (default: 6)
 ```
 
-> SMTP and LDAP are configured directly from the web interface → **Settings** and **User management**.
+> SMTP, LDAP, NTP and SAML are configured directly from the web interface → **Settings** and **User management**.
 
 ---
 
@@ -281,7 +286,7 @@ Configure from the **SIM Mapping** page (sidebar → **SIM Mapping**):
 **Monthly limit enforcement:**
 - The limit is enforced **both** for `port="auto"` (balanced routing) and for **manual port selection** — if the limit is reached the backend returns **HTTP 429** and the send is blocked.
 - The Send SMS form shows the limit status in real time and disables the Send button proactively.
-- Limits reset on the 1st of each month (keyed by `YYYY-MM` in local time, respecting the `TZ` env variable).
+- Limits reset on the 1st of each month (keyed by `YYYY-MM` in local time, respecting the active timezone — set via **Settings → System** or `.env TZ`, with DB taking priority).
 
 **Balanced auto-routing algorithm (`port="auto"`):**
 - Picks the SIM with the **lowest `sent / limit` ratio** (e.g. 50/200 = 25% beats 40/100 = 40%)
