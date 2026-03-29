@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe, Clock, RefreshCw } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -106,6 +106,14 @@ export default function Settings() {
   const [webhookSaving, setWebhookSaving]   = useState(false)
   const [webhookResult, setWebhookResult]   = useState(null)
 
+  // NTP / Timezone
+  const [ntp, setNtp]             = useState({ ntp_server: 'pool.ntp.org', timezone: 'Europe/Rome' })
+  const [ntpDirty, setNtpDirty]   = useState(false)
+  const [ntpSaving, setNtpSaving] = useState(false)
+  const [ntpResult, setNtpResult] = useState(null)
+  const [ntpSyncing, setNtpSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState(null)
+
   useEffect(() => {
     Promise.all([
       settingsApi.getSmtp(),
@@ -113,13 +121,15 @@ export default function Settings() {
       settingsApi.getSubject(),
       isSuperAdmin ? settingsApi.getSaml() : Promise.resolve(null),
       settingsApi.getWebhook(),
-    ]).then(([smtpData, tplData, subjData, samlData, webhookData]) => {
+      isSuperAdmin ? settingsApi.getNtp() : Promise.resolve(null),
+    ]).then(([smtpData, tplData, subjData, samlData, webhookData, ntpData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)
         setSubject(subjData.subject || DEFAULT_SUBJECT)
         if (samlData) setSaml(s => ({ ...s, ...samlData }))
         if (webhookData) setWebhookHosts(webhookData.allowed_hosts || '')
+        if (ntpData) setNtp(n => ({ ...n, ...ntpData }))
         setLoading(false)
       }).catch(() => setLoading(false))
   }, [])
@@ -213,6 +223,36 @@ export default function Settings() {
     }
   }
 
+  async function handleSaveNtp() {
+    setNtpSaving(true); setNtpResult(null)
+    try {
+      await settingsApi.saveNtp(ntp)
+      setNtpDirty(false)
+      setNtpResult({ success: true, message: 'NTP / timezone settings saved.' })
+    } catch (err) {
+      setNtpResult({ success: false, message: err.response?.data?.error || 'Error saving settings.' })
+    } finally {
+      setNtpSaving(false)
+    }
+  }
+
+  async function handleSyncNtp() {
+    setNtpSyncing(true); setSyncResult(null)
+    try {
+      const r = await settingsApi.syncNtp()
+      const offsetSec = (r.offset_ms / 1000).toFixed(2)
+      const sign = r.offset_ms >= 0 ? '+' : ''
+      setSyncResult({
+        success: true,
+        message: `NTP OK — server time: ${new Date(r.ntp_time).toLocaleString()} — offset: ${sign}${offsetSec}s`,
+      })
+    } catch (err) {
+      setSyncResult({ success: false, message: err.response?.data?.error || 'NTP query failed.' })
+    } finally {
+      setNtpSyncing(false)
+    }
+  }
+
   if (loading) return (
     <div className="flex justify-center items-center py-8 text-gray-400 gap-2">
       <Loader2 size={18} className="animate-spin" /> Loading...
@@ -230,6 +270,7 @@ export default function Settings() {
           { key: 'template', label: 'Email Template',       icon: <FileCode size={14} />, superadminOnly: false },
           { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} />,  superadminOnly: true  },
           { key: 'webhook',  label: 'Webhook',              icon: <Globe size={14} />,   superadminOnly: false },
+          { key: 'system',   label: 'System',               icon: <Clock size={14} />,   superadminOnly: true  },
         ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
             key={t.key}
@@ -652,6 +693,85 @@ export default function Settings() {
                 {webhookResult.message}
               </div>
             )}
+          </section>
+        </div>
+      )}
+
+      {/* ── System (NTP / Timezone) ── */}
+      {tab === 'system' && (
+        <div className="space-y-4">
+          <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+            <div>
+              <h3 className="text-base font-semibold text-gray-700">Date &amp; Time</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Configure the NTP server used to verify server time accuracy and the timezone applied
+                to all timestamps in the application.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="label">NTP Server</label>
+                <input
+                  className="input font-mono"
+                  placeholder="pool.ntp.org"
+                  value={ntp.ntp_server}
+                  onChange={e => { setNtp(n => ({ ...n, ntp_server: e.target.value })); setNtpDirty(true); setNtpResult(null) }}
+                />
+                <p className="text-xs text-gray-400 mt-1">e.g. <code>pool.ntp.org</code>, <code>ntp.inrim.it</code>, <code>time.windows.com</code></p>
+              </div>
+
+              <div className="col-span-2 sm:col-span-1">
+                <label className="label">Timezone (IANA)</label>
+                <input
+                  className="input font-mono"
+                  placeholder="Europe/Rome"
+                  value={ntp.timezone}
+                  onChange={e => { setNtp(n => ({ ...n, timezone: e.target.value })); setNtpDirty(true); setNtpResult(null) }}
+                />
+                <p className="text-xs text-gray-400 mt-1">e.g. <code>Europe/Rome</code>, <code>UTC</code>, <code>America/New_York</code></p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button type="button" onClick={handleSaveNtp} disabled={ntpSaving || !ntpDirty}
+                className="btn-primary flex items-center gap-2">
+                <Save size={14} />{ntpSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button type="button" onClick={handleSyncNtp} disabled={ntpSyncing}
+                className="btn-ghost flex items-center gap-2 text-gray-600 border border-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                <RefreshCw size={14} className={ntpSyncing ? 'animate-spin' : ''} />
+                {ntpSyncing ? 'Querying...' : 'Query NTP server'}
+              </button>
+            </div>
+
+            {ntpResult && (
+              <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                ntpResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {ntpResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                {ntpResult.message}
+              </div>
+            )}
+
+            {syncResult && (
+              <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm font-mono ${
+                syncResult.success ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {syncResult.success ? <Clock size={16} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={16} />}
+                <span className="break-all">{syncResult.message}</span>
+              </div>
+            )}
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Note</p>
+              <p className="text-xs text-amber-700">
+                The timezone is applied immediately to the running process and persisted in the database
+                (survives restarts). The <strong>Query NTP server</strong> button checks reachability and
+                reports the offset between the NTP server clock and the server&rsquo;s system clock — it does
+                not modify the system clock (use your OS/Docker host NTP daemon for that).
+              </p>
+            </div>
           </section>
         </div>
       )}

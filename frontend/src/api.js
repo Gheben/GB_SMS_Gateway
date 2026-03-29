@@ -114,6 +114,9 @@ export const settingsApi = {
   saveSaml:      (data) => api.post('/settings/saml', data).then(r => r.data),
   getWebhook:    () => api.get('/settings/webhook').then(r => r.data),
   saveWebhook:   (data) => api.post('/settings/webhook', data).then(r => r.data),
+  getNtp:        () => api.get('/settings/ntp').then(r => r.data),
+  saveNtp:       (data) => api.post('/settings/ntp', data).then(r => r.data),
+  syncNtp:       () => api.post('/settings/ntp/sync').then(r => r.data),
 }
 
 export const reportApi = {

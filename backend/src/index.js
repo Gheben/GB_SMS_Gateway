@@ -39,6 +39,16 @@ const openApiSpec = require('./openapi');
 // Init DB schema
 getDb();
 
+// Apply timezone from DB setting (set via UI) — takes effect for all subsequent Date operations.
+// Note: TZ from .env (if any) was already applied at process start; the DB value overrides it.
+{
+  const { getSetting } = require('./db/database');
+  const dbTz = getSetting('TZ');
+  if (dbTz) {
+    process.env.TZ = dbTz;
+  }
+}
+
 // Log effective timezone so operators can verify at startup
 {
   const tz = process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC (system default)';

@@ -148,5 +148,95 @@ router.post('/webhook', [
   res.json({ ok: true });
 });
 
+// ─── NTP / Timezone ──────────────────────────────────────────────────────────
+
+const NTP_HOST_RE = /^[a-zA-Z0-9][a-zA-Z0-9.\-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+
+// GET /api/settings/ntp — superadmin only
+router.get('/ntp', requireSuperAdmin, (req, res) => {
+  res.json({
+    ntp_server: getSetting('NTP_SERVER', 'pool.ntp.org'),
+    timezone:   getSetting('TZ', process.env.TZ || 'UTC'),
+  });
+});
+
+// POST /api/settings/ntp — superadmin only
+router.post('/ntp', requireSuperAdmin, [
+  body('ntp_server').isString().trim().isLength({ min: 1, max: 253 }),
+  body('timezone').isString().trim().isLength({ min: 1, max: 100 }),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { ntp_server, timezone } = req.body;
+
+  if (!NTP_HOST_RE.test(ntp_server.trim()))
+    return res.status(400).json({ error: 'Invalid NTP server address (only hostname or IP allowed).' });
+
+  try { new Intl.DateTimeFormat(undefined, { timeZone: timezone }); }
+  catch { return res.status(400).json({ error: 'Invalid IANA timezone identifier.' }); }
+
+  setSettings({ NTP_SERVER: ntp_server.trim(), TZ: timezone.trim() });
+  // Apply timezone immediately to the running process
+  process.env.TZ = timezone.trim();
+  res.json({ ok: true });
+});
+
+// POST /api/settings/ntp/sync — queries NTP server and returns offset vs system clock
+// Pure Node.js UDP — no extra npm packages required
+router.post('/ntp/sync', requireSuperAdmin, async (req, res) => {
+  const ntpServer = getSetting('NTP_SERVER', 'pool.ntp.org');
+  if (!NTP_HOST_RE.test(ntpServer))
+    return res.status(400).json({ error: 'Invalid NTP server configured.' });
+
+  const dgram = require('dgram');
+  const NTP_PORT = 123;
+  const socket = dgram.createSocket('udp4');
+  const msg = Buffer.alloc(48, 0);
+  msg[0] = 0x1b; // LI=0, VN=3, Mode=3 (client)
+
+  const timer = setTimeout(() => {
+    try { socket.close(); } catch {}
+    return res.status(504).json({ error: `NTP query timed out (server: ${ntpServer})` });
+  }, 8000);
+
+  socket.on('error', (err) => {
+    clearTimeout(timer);
+    try { socket.close(); } catch {}
+    return res.status(500).json({ error: err.message });
+  });
+
+  socket.on('message', (data) => {
+    clearTimeout(timer);
+    socket.close();
+    try {
+      // Transmit timestamp: bytes 40-43 (seconds), 44-47 (fraction)
+      const ntpSeconds = data.readUInt32BE(40);
+      const ntpMs = Math.round((data.readUInt32BE(44) / 0x100000000) * 1000);
+      const NTP_EPOCH_DELTA = 2208988800; // NTP epoch (1900) → Unix epoch (1970) in seconds
+      const ntpTime = new Date((ntpSeconds - NTP_EPOCH_DELTA) * 1000 + ntpMs);
+      const systemTime = new Date();
+      const offsetMs = ntpTime.getTime() - systemTime.getTime();
+      res.json({
+        ok:          true,
+        ntp_server:  ntpServer,
+        ntp_time:    ntpTime.toISOString(),
+        system_time: systemTime.toISOString(),
+        offset_ms:   offsetMs,
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to parse NTP response: ' + e.message });
+    }
+  });
+
+  socket.send(msg, NTP_PORT, ntpServer, (err) => {
+    if (err) {
+      clearTimeout(timer);
+      try { socket.close(); } catch {}
+      return res.status(500).json({ error: err.message });
+    }
+  });
+});
+
 module.exports = router;
 
