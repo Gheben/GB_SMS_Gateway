@@ -107,7 +107,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 ${cl ? 'px-1' : 'px-3'} space-y-0.5 overflow-y-auto`}>
+        <nav className={`flex-1 ${cl ? 'px-1' : 'px-3'} space-y-0.5 overflow-y-auto scrollbar-thin`}>
           {links.map((l, i) => {
             if (l.divider) {
               const prevDividerIdx = links.slice(0, i).reduce((acc, x, j) => x.divider ? j : acc, -1)

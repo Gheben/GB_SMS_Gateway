@@ -264,7 +264,7 @@ export default function Settings() {
       <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
 
       {/* Tab bar */}
-      <div className="flex overflow-x-auto border-b border-gray-200">
+      <div className="flex overflow-x-auto border-b border-gray-200 scrollbar-thin">
         {[
           { key: 'smtp',     label: 'SMTP & Email',   icon: <Mail size={14} />,    superadminOnly: false },
           { key: 'template', label: 'Template',        icon: <FileCode size={14} />, superadminOnly: false },
