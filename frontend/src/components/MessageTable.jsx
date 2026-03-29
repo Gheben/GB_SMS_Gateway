@@ -20,17 +20,17 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
       <table className="w-full table-fixed divide-y divide-gray-200 text-sm">
         <colgroup>
           <col className="w-[8%]" />
-          <col className="w-[22%]" />
-          <col className="hidden sm:table-column w-[13%]" />
-          <col className="w-[30%]" />
-          <col className="hidden sm:table-column w-[11%]" />
-          <col className="w-[16%]" />
+          <col className="w-[21%]" />
+          <col className="hidden sm:table-column w-[14%]" />
+          <col className="w-[28%]" />
+          <col className="hidden sm:table-column w-[12%]" />
+          <col className="w-[17%]" />
         </colgroup>
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">From / To</th>
-            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
+            <th className="hidden sm:table-cell px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
             <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -55,7 +55,7 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                   ? (msg.sender_name || msg.sender)
                   : (msg.recipient_name || msg.recipient)}
               </td>
-              <td className="hidden sm:table-cell px-4 py-3 text-gray-500">
+              <td className="hidden sm:table-cell px-4 py-3 pr-6 text-gray-500">
                 {msg.port_sim_number
                   ? <span className="font-mono">{msg.port_sim_number}</span>
                   : msg.port ? `Port ${msg.port}` : '—'}
