@@ -1,4 +1,4 @@
-const { verifyToken } = require('../services/authService');
+const { verifyToken, updateLastSeen } = require('../services/authService');
 const { getDb } = require('../db/database');
 const ldapService = require('../services/ldapService');
 
@@ -51,6 +51,7 @@ function requireAuth(req, res, next) {
       allowed_ports,
       groups,
     };
+    updateLastSeen(payload.sub);
     next();
   } catch {
     return res.status(401).json({ error: 'Token non valido o scaduto' });

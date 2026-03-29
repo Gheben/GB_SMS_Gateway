@@ -8,6 +8,19 @@ const ldapService = require('./ldapService');
 const JWT_SECRET  = process.env.JWT_SECRET  || 'changeme-insecure-default';
 const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '8h';
 
+// In-memory map: userId → last-seen timestamp (ms). Cleared on restart.
+const _activeUsers = new Map();
+const ONLINE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+function updateLastSeen(userId) {
+  _activeUsers.set(userId, Date.now());
+}
+
+function isOnline(userId) {
+  const ts = _activeUsers.get(userId);
+  return ts !== undefined && (Date.now() - ts) < ONLINE_WINDOW_MS;
+}
+
 // Mappa dei permessi disponibili: chiave → label
 const PERMISSION_KEYS = [
   'dashboard',
@@ -84,6 +97,7 @@ async function login(username, password) {
     const ok = verifyPassword(password, localUser.password_hash);
     logger.info(`[Auth] login local user="${username}" role=${localUser.role} passwordMatch=${ok}`);
     if (!ok) return null;
+    db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(localUser.id);
     const permissions = JSON.parse(localUser.permissions || '{}');
     return { token: signToken({ ...localUser, permissions }), user: safeUser({ ...localUser, permissions }) };
   }
@@ -96,6 +110,7 @@ async function login(username, password) {
     const ok = verifyPassword(password, anyUser.password_hash);
     logger.info(`[Auth] login fallback user="${username}" source=${anyUser.source} passwordMatch=${ok}`);
     if (!ok) return null;
+    db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(anyUser.id);
     const permissions = JSON.parse(anyUser.permissions || '{}');
     return { token: signToken({ ...anyUser, permissions }), user: safeUser({ ...anyUser, permissions }) };
   }
@@ -128,6 +143,7 @@ async function login(username, password) {
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
   }
 
+  db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(ldapUser.id);
   return {
     token: signToken({ ...ldapUser, permissions }),
     user:  safeUser({ ...ldapUser, permissions, groups: ldapResult.groups }),
@@ -151,12 +167,13 @@ function safeUser(u) {
 
 function getAllUsers() {
   const db = getDb();
-  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, created_at FROM users ORDER BY created_at').all()
+  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, created_at, last_login FROM users ORDER BY created_at').all()
     .map(u => ({
       ...u,
       permissions: JSON.parse(u.permissions || '{}'),
       allowed_ports: JSON.parse(u.allowed_ports || '[]'),
       source: u.source || 'local',
+      is_online: isOnline(u.id),
     }));
 }
 
@@ -203,4 +220,4 @@ function deleteUser(id) {
   db.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
-module.exports = { seedSuperAdmin, login, getAllUsers, createUser, updateUser, deleteUser, PERMISSION_KEYS, safeUser, verifyToken, signJwt: signToken };
+module.exports = { seedSuperAdmin, login, getAllUsers, createUser, updateUser, deleteUser, PERMISSION_KEYS, safeUser, verifyToken, signJwt: signToken, updateLastSeen };
