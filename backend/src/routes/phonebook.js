@@ -25,21 +25,18 @@ function getPhonebookLdapCfg() {
 async function syncLdapToDb() {
   const contacts = await ldapService.searchPhonebook();
   const db = getDb();
-  // Wrap DELETE + bulk INSERT in a single transaction to avoid 1000+ individual
-  // disk flushes that would block the event loop (node:sqlite has no .transaction()).
+
+  // node:sqlite's DatabaseSync does not support .transaction() and manual BEGIN/COMMIT
+  // wrappers cause prepared-statement conflicts that silently roll back the DELETE,
+  // leaving stale contacts in the DB.  Use plain auto-commit statements instead.
+  const deleted = db.prepare("DELETE FROM contacts WHERE source='ldap'").run();
+  logger.info(`[Phonebook] Deleted ${deleted.changes} stale LDAP contact(s)`);
+
   const stmt = db.prepare(
-    "INSERT OR REPLACE INTO contacts (id, display_name, phone, email, source) VALUES (?, ?, ?, ?, 'ldap')"
+    "INSERT INTO contacts (id, display_name, phone, email, source) VALUES (?, ?, ?, ?, 'ldap')"
   );
-  db.exec('BEGIN');
-  try {
-    db.exec("DELETE FROM contacts WHERE source='ldap'");
-    for (const c of contacts) {
-      stmt.run(uuidv4(), c.display_name, c.phone, c.email || null);
-    }
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
+  for (const c of contacts) {
+    stmt.run(uuidv4(), c.display_name, c.phone, c.email || null);
   }
   logger.info(`[Phonebook] Synced ${contacts.length} LDAP contact(s) to local DB`);
   return contacts;
