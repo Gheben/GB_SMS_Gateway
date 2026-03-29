@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen, Notebook } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen, Notebook, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const links = [
@@ -21,8 +22,33 @@ const links = [
   { href: '/docs/',  label: 'API Docs',     icon: BookOpen,        perm: 'api' },
 ]
 
-export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout }) {
+export default function Sidebar({ connectedCount, totalCount, open, onClose, onLogout, collapsed, onToggleCollapse }) {
   const { user, can } = useAuth()
+
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const handler = e => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  // Collapse only applies on desktop; mobile drawer always shows full width + labels
+  const cl = collapsed && isDesktop
+
+  const isVisible = link => {
+    if (link.divider) return false
+    if (link.perm && !can(link.perm)) return false
+    if (link.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false
+    if (link.superadminOnly && user?.role !== 'superadmin') return false
+    return true
+  }
+
+  const itemBase = cl
+    ? 'flex justify-center items-center p-2 rounded-lg text-sm transition-colors'
+    : 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors'
 
   return (
     <>
@@ -31,48 +57,60 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white flex flex-col
-        transform transition-transform duration-200 ease-in-out
+        fixed inset-y-0 left-0 z-30 bg-gray-900 text-white flex flex-col
+        transform transition-all duration-200 ease-in-out
         md:static md:translate-x-0 md:flex-shrink-0
+        ${cl ? 'w-16' : 'w-64'}
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center gap-3">
+        <div className={`border-b border-gray-700 flex items-center ${cl ? 'px-1 py-4 justify-between' : 'px-5 py-4 gap-3'}`}>
           <img src="/logo.svg" alt="GB SMS Gateway logo" className="w-8 h-8 flex-shrink-0" />
-          <div className="min-w-0">
-            <h1 className="text-sm font-bold tracking-wide leading-tight">GB SMS Gateway</h1>
-            <p className="text-xs text-gray-400 truncate">Yeastar TG Multi-Device</p>
-          </div>
-          <button onClick={onClose} className="ml-auto md:hidden text-gray-400 hover:text-white p-1" aria-label="Close menu">
-            <X size={18} />
+          {!cl && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-bold tracking-wide leading-tight">GB SMS Gateway</h1>
+              <p className="text-xs text-gray-400 truncate">Yeastar TG Multi-Device</p>
+            </div>
+          )}
+          {/* Mobile: close button */}
+          {!cl && (
+            <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white p-1" aria-label="Close menu">
+              <X size={18} />
+            </button>
+          )}
+          {/* Desktop: collapse toggle */}
+          <button
+            onClick={onToggleCollapse}
+            className="hidden md:block text-gray-400 hover:text-white p-1"
+            aria-label={cl ? 'Espandi menu' : 'Comprimi menu'}
+          >
+            {cl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
 
         {/* Connection status */}
-        <div className="px-4 py-3">
-          <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded ${connectedCount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className={`py-3 ${cl ? 'flex justify-center px-1' : 'px-4'}`}>
+          <div
+            className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded ${connectedCount > 0 ? 'text-green-400' : 'text-red-400'}`}
+            title={cl ? (totalCount === 0 ? 'No devices' : connectedCount > 0 ? `Online ${connectedCount}/${totalCount}` : `Offline ${connectedCount}/${totalCount}`) : undefined}
+          >
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${connectedCount > 0 ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
-            {totalCount === 0 ? 'No devices' : connectedCount > 0 ? 'Online' : 'Offline'}
-            {totalCount > 0 && (
-              <span className="ml-auto opacity-60 font-normal">{connectedCount}/{totalCount}</span>
+            {!cl && (
+              <>
+                {totalCount === 0 ? 'No devices' : connectedCount > 0 ? 'Online' : 'Offline'}
+                {totalCount > 0 && (
+                  <span className="ml-auto opacity-60 font-normal">{connectedCount}/{totalCount}</span>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+        <nav className={`flex-1 ${cl ? 'px-1' : 'px-3'} space-y-0.5 overflow-y-auto`}>
           {links.map((l, i) => {
             if (l.divider) {
-              const isVisible = link => {
-                if (link.divider) return false
-                if (link.perm && !can(link.perm)) return false
-                if (link.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false
-                if (link.superadminOnly && user?.role !== 'superadmin') return false
-                return true
-              }
-              // Find the index of the previous divider (or -1 if none)
               const prevDividerIdx = links.slice(0, i).reduce((acc, x, j) => x.divider ? j : acc, -1)
-              // Show only if there is at least one visible item on BOTH sides
               const hasVisibleBefore = links.slice(prevDividerIdx + 1, i).some(isVisible)
               const hasVisibleAfter  = links.slice(i + 1).some(isVisible)
               return (hasVisibleBefore && hasVisibleAfter) ? <div key={i} className="border-t border-gray-700 my-2" /> : null
@@ -87,10 +125,11 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                title={cl ? l.label : undefined}
+                className={`${itemBase} text-gray-300 hover:bg-gray-800 hover:text-white`}
               >
                 <l.icon size={17} className="flex-shrink-0" />
-                {l.label}
+                {!cl && l.label}
               </a>
             )
             return (
@@ -99,22 +138,23 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
                 to={l.to}
                 end={l.to === '/'}
                 onClick={onClose}
+                title={cl ? l.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  `${itemBase} ${
                     isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   }`
                 }
               >
                 <l.icon size={17} className="flex-shrink-0" />
-                {l.label}
+                {!cl && l.label}
               </NavLink>
             )
           })}
         </nav>
 
         {/* User footer + logout */}
-        <div className="px-3 py-3 border-t border-gray-700 space-y-1">
-          {user && (
+        <div className={`${cl ? 'px-1' : 'px-3'} py-3 border-t border-gray-700 space-y-1`}>
+          {user && !cl && (
             <div className="px-3 py-1.5 min-w-0">
               <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
                 title={user.displayName || user.username}>
@@ -127,16 +167,19 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
           )}
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            title={cl ? 'Sign out' : undefined}
+            className={`w-full flex items-center py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors ${cl ? 'justify-center p-2' : 'gap-3 px-3'}`}
           >
             <LogOut size={17} className="flex-shrink-0" />
-            Sign out
+            {!cl && 'Sign out'}
           </button>
-          <div className="px-3 py-1">
-            <p className="text-[10px] text-gray-600 leading-snug truncate">
-              v1.1 — Powered by <span className="text-gray-500 font-medium">Guido Ballarini</span> © {new Date().getFullYear()}
-            </p>
-          </div>
+          {!cl && (
+            <div className="px-3 py-1">
+              <p className="text-[10px] text-gray-600 leading-snug truncate">
+                v1.1 — Powered by <span className="text-gray-500 font-medium">Guido Ballarini</span> © {new Date().getFullYear()}
+              </p>
+            </div>
+          )}
         </div>
       </aside>
     </>

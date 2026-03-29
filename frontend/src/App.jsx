@@ -41,6 +41,16 @@ function AppShell() {
   const [connectedCount, setConnectedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    localStorage.getItem('sidebar_collapsed') === 'true'
+  )
+
+  function toggleSidebarCollapse() {
+    setSidebarCollapsed(v => {
+      localStorage.setItem('sidebar_collapsed', String(!v))
+      return !v
+    })
+  }
 
   function refreshDeviceCounts() {
     devicesApi.getAll().then(list => {
@@ -101,6 +111,8 @@ function AppShell() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapse}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 text-white flex-shrink-0">
