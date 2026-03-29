@@ -176,7 +176,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
           {!cl && (
             <div className="px-3 py-1">
               <p className="text-[10px] text-gray-600 leading-snug truncate">
-                v1.1 — Powered by <span className="text-gray-500 font-medium">Guido Ballarini</span> © {new Date().getFullYear()}
+                v1.4 — Powered by <span className="text-gray-500 font-medium">Guido Ballarini</span> © {new Date().getFullYear()}
               </p>
             </div>
           )}
