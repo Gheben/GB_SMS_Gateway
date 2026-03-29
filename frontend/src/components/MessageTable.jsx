@@ -28,8 +28,8 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
         </colgroup>
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">From / To</th>
+            <th className="px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
+            <th className="px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">From / To</th>
             <th className="hidden sm:table-cell px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
             <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -45,12 +45,12 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
               onDoubleClick={() => onDoubleClick?.(msg)}
               title="Double-click for details"
             >
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 pr-6">
                 <span className={`badge-${msg.direction}`}>
                   {msg.direction === 'inbound' ? 'Received' : 'Sent'}
                 </span>
               </td>
-              <td className="px-4 py-3 font-mono text-gray-700" title={msg.direction === 'inbound' ? msg.sender : msg.recipient}>
+              <td className="px-4 py-3 pr-6 font-mono text-gray-700" title={msg.direction === 'inbound' ? msg.sender : msg.recipient}>
                 {msg.direction === 'inbound'
                   ? (msg.sender_name || msg.sender)
                   : (msg.recipient_name || msg.recipient)}
