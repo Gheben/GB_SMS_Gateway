@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { query, body, param, validationResult } = require('express-validator');
 const { getDb } = require('../db/database');
 const deviceManager = require('../services/deviceManager');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -113,6 +114,13 @@ router.put('/:device_id/:port_number/info', [
     db.prepare(`UPDATE ports SET ${setClauses.join(', ')} WHERE device_id = ? AND port_number = ?`).run(...params);
   }
 
+  const detail = [`Port: ${port_number}`];
+  if (sim_number  !== undefined) detail.push(`SIM: ${sim_number || '—'}`);
+  if (operator    !== undefined) detail.push(`Operator: ${operator || '—'}`);
+  if (balanced    !== undefined) detail.push(`Balanced: ${balanced}`);
+  if (monthly_limit !== undefined) detail.push(`Monthly limit: ${monthly_limit}`);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'port:update', 'port', `${device_id}:${port_number}`, detail.join(', '), req.ip);
+
   res.json({ ok: true });
 });
 
@@ -128,6 +136,7 @@ router.put('/:device_id/:port_number/sim', [
     VALUES (?, ?, ?, datetime('now'))
     ON CONFLICT(device_id, port_number) DO UPDATE SET sim_number = excluded.sim_number, updated_at = excluded.updated_at
   `).run(req.params.device_id, parseInt(req.params.port_number, 10), req.body.sim_number || null);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'port:update', 'port', `${req.params.device_id}:${req.params.port_number}`, `SIM: ${req.body.sim_number || '—'}`, req.ip);
   res.json({ ok: true });
 });
 

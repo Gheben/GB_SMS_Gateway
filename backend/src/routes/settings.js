@@ -5,6 +5,7 @@ const { getSetting, setSettings } = require('../db/database');
 const routingEngine = require('../services/routingEngine');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { requireSuperAdmin, requireAdmin } = require('../middleware/authMiddleware');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -44,6 +45,7 @@ router.post('/smtp', [
   setSettings(updates);
   routingEngine.resetTransporter();
 
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:smtp_update', 'settings', null, `Host: ${host}:${port}, User: ${user || '(none)'}`, req.ip);
   res.json({ ok: true });
 });
 
@@ -90,6 +92,7 @@ router.post('/email-template', [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   setSettings({ EMAIL_TEMPLATE: req.body.template });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:email_template_update', 'settings', null, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -105,6 +108,7 @@ router.post('/email-subject', [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   setSettings({ EMAIL_SUBJECT: req.body.subject.trim() });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:email_subject_update', 'settings', null, `Subject: ${req.body.subject.trim()}`, req.ip);
   res.json({ ok: true });
 });
 
@@ -130,6 +134,7 @@ router.post('/saml', requireSuperAdmin, [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   setSettings({ saml_config: JSON.stringify(req.body) });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:saml_update', 'settings', null, `enabled=${req.body.enabled}`, req.ip);
   res.json({ ok: true });
 });
 
@@ -145,6 +150,7 @@ router.post('/webhook', [
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   setSettings({ WEBHOOK_ALLOWED_HOSTS: req.body.allowed_hosts });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:webhook_update', 'settings', null, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -179,6 +185,7 @@ router.post('/ntp', requireAdmin, [
   setSettings({ NTP_SERVER: ntp_server.trim(), TZ: timezone.trim() });
   // Apply timezone immediately to the running process
   process.env.TZ = timezone.trim();
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:ntp_update', 'settings', null, `NTP: ${ntp_server.trim()}, TZ: ${timezone.trim()}`, req.ip);
   res.json({ ok: true });
 });
 

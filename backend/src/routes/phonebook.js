@@ -4,6 +4,7 @@ const { getDb } = require('../db/database');
 const { requireAdmin } = require('../middleware/authMiddleware');
 const ldapService = require('../services/ldapService');
 const logger = require('../utils/logger');
+const auditService = require('../services/auditService');
 
 const router = express.Router();
 
@@ -149,6 +150,7 @@ router.post('/local', requireAdmin, (req, res) => {
     "INSERT INTO contacts (id, display_name, phone, email, notes, source) VALUES (?, ?, ?, ?, ?, 'local')"
   ).run(id, display_name.trim(), normalizePhone(phone), email?.trim() || null, notes?.trim() || null);
 
+  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:create', 'contact', id, `Name: ${display_name.trim()}, Phone: ${normalizePhone(phone)}`, req.ip);
   res.status(201).json({ id, display_name: display_name.trim(), phone: normalizePhone(phone), email: email?.trim() || null, notes: notes?.trim() || null, source: 'local' });
 });
 
@@ -164,6 +166,7 @@ router.put('/local/:id', requireAdmin, (req, res) => {
   ).run(display_name.trim(), normalizePhone(phone), email?.trim() || null, notes?.trim() || null, req.params.id);
 
   if (!info.changes) return res.status(404).json({ error: 'Contact not found' });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:update', 'contact', req.params.id, `Name: ${display_name.trim()}, Phone: ${normalizePhone(phone)}`, req.ip);
   res.json({ id: req.params.id, display_name: display_name.trim(), phone: normalizePhone(phone), source: 'local' });
 });
 
@@ -172,6 +175,7 @@ router.delete('/local/:id', requireAdmin, (req, res) => {
   const db = getDb();
   const info = db.prepare("DELETE FROM contacts WHERE id=? AND source='local'").run(req.params.id);
   if (!info.changes) return res.status(404).json({ error: 'Contact not found' });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:delete', 'contact', req.params.id, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -181,6 +185,7 @@ router.post('/ldap/sync', requireAdmin, (req, res) => {
     return res.json({ status: 'already_running', ...syncState });
   }
   startSyncJob();
+  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:ldap_sync', 'phonebook', null, 'Manual LDAP sync triggered', req.ip);
   res.json({ status: 'started', ...syncState });
 });
 
@@ -219,6 +224,7 @@ router.put('/settings', requireAdmin, (req, res) => {
   if (!cfg.enabled) {
     db.exec("DELETE FROM contacts WHERE source='ldap'");
   }
+  auditService.log(req.user?.id, req.user?.username || 'system', 'phonebook:settings_update', 'phonebook', null, `enabled=${cfg.enabled}, base_dn=${cfg.base_dn || '(default)'}`, req.ip);
   res.json(cfg);
 });
 

@@ -364,6 +364,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Devices'],
         summary: 'Add a new device',
+        description: '**Audit-logged** (`device:create`).',
         requestBody: {
           required: true,
           content: {
@@ -402,6 +403,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       put: {
         tags: ['Devices'],
         summary: 'Update a device',
+        description: '**Audit-logged** (`device:update`).',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         requestBody: {
           content: {
@@ -427,6 +429,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       delete: {
         tags: ['Devices'],
         summary: 'Delete a device',
+        description: '**Audit-logged** (`device:delete`).',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         responses: {
           200: { description: '', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Ok' } } } },
@@ -485,7 +488,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       put: {
         tags: ['Ports'],
         summary: 'Update SIM port metadata (sim_number, operator, balanced, monthly_limit)',
-        description: 'Only the fields present in the request body are updated. All fields are optional — send only what you want to change. If the port row does not exist yet it is created with balanced=0 as default.',
+        description: 'Only the fields present in the request body are updated. All fields are optional — send only what you want to change. If the port row does not exist yet it is created with balanced=0 as default. **Audit-logged** (`port:update`).',
         parameters: [
           { name: 'device_id',   in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'port_number', in: 'path', required: true, schema: { type: 'integer' } },
@@ -684,7 +687,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings'],
         summary: 'Save webhook allowed hosts whitelist',
-        description: 'Newline- or comma-separated list of allowed hostnames, wildcards (`*.domain`), or CIDR ranges (`192.168.1.0/24`). An empty string blocks all webhooks.',
+        description: 'Newline- or comma-separated list of allowed hostnames, wildcards (`*.domain`), or CIDR ranges (`192.168.1.0/24`). An empty string blocks all webhooks. **Audit-logged** (`settings:webhook_update`).',
         requestBody: {
           required: true,
           content: {
@@ -723,6 +726,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings'],
         summary: 'Save SMTP configuration',
+        description: '**Audit-logged** (`settings:smtp_update`). The password is stored encrypted.',
         requestBody: {
           required: true,
           content: {
@@ -782,6 +786,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings'],
         summary: 'Save the email body template',
+        description: '**Audit-logged** (`settings:email_template_update`).',
         requestBody: {
           required: true,
           content: {
@@ -811,6 +816,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings'],
         summary: 'Save the email subject template',
+        description: '**Audit-logged** (`settings:email_subject_update`).',
         requestBody: {
           required: true,
           content: {
@@ -853,6 +859,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings (Superadmin)'],
         summary: 'Save SAML configuration — superadmin only',
+        description: '**Audit-logged** (`settings:saml_update`).',
         requestBody: {
           required: true,
           content: {
@@ -901,7 +908,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Settings (Admin)'],
         summary: 'Save NTP server and timezone — admin+',
-        description: 'Persists both values in the DB and applies the timezone immediately to the running Node.js process (no restart needed). Survives container restarts. The IANA timezone string is validated server-side via `Intl`.',
+        description: 'Persists both values in the DB and applies the timezone immediately to the running Node.js process (no restart needed). Survives container restarts. The IANA timezone string is validated server-side via `Intl`. **Audit-logged** (`settings:ntp_update`).',
         requestBody: {
           required: true,
           content: {
@@ -1242,6 +1249,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Audit (Superadmin)'],
         summary: 'Get audit log (paginated) — superadmin only',
+        description: 'Returns a paginated, filterable list of all audited events. All write operations are audit-logged.\n\n**Logged action types:**\n\n| Action | Triggered by |\n|--------|-------------|\n| `auth:login` | POST /auth/login |\n| `auth:saml_login` | SAML ACS |\n| `auth:saml_logout` | SAML SLO |\n| `user:create` / `user:update` / `user:delete` | User CRUD |\n| `device:create` / `device:update` / `device:delete` | Device CRUD |\n| `port:update` | PUT /ports/…/info or /sim |\n| `rule:create` / `rule:update` / `rule:delete` | Forwarding rules CRUD |\n| `contact:create` / `contact:update` / `contact:delete` | Local phonebook CRUD |\n| `contact:ldap_sync` | POST /phonebook/ldap/sync |\n| `phonebook:settings_update` | PUT /phonebook/settings |\n| `settings:smtp_update` | POST /settings/smtp |\n| `settings:email_template_update` | POST /settings/email-template |\n| `settings:email_subject_update` | POST /settings/email-subject |\n| `settings:saml_update` | POST /settings/saml |\n| `settings:webhook_update` | POST /settings/webhook |\n| `settings:ntp_update` | POST /settings/ntp |\n| `group:create` / `group:update` / `group:delete` | Local groups CRUD |\n| `group:add_member` / `group:remove_member` | Local group membership |\n| `sms:send` | POST /messages/send |',
         parameters: [
           { name: 'page',          in: 'query', schema: { type: 'integer', default: 1 } },
           { name: 'limit',         in: 'query', schema: { type: 'integer', default: 50 } },
@@ -1318,6 +1326,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Phonebook'],
         summary: 'Create a local contact (admin)',
+        description: '**Audit-logged** (`contact:create`).',
         requestBody: {
           required: true,
           content: {
@@ -1348,6 +1357,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       put: {
         tags: ['Phonebook'],
         summary: 'Update a local contact (admin)',
+        description: '**Audit-logged** (`contact:update`).',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Contact ID' }],
         requestBody: {
           required: true,
@@ -1375,6 +1385,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       delete: {
         tags: ['Phonebook'],
         summary: 'Delete a local contact (admin)',
+        description: '**Audit-logged** (`contact:delete`).',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Contact ID' }],
         responses: {
           200: { description: 'OK', content: { 'application/json': { example: { ok: true } } } },
@@ -1415,7 +1426,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Phonebook'],
         summary: 'Start background LDAP sync (admin)',
-        description: 'Starts an asynchronous LDAP phonebook sync in the background and **returns immediately**. The sync runs in the background using paged LDAP search (supports 2000+ contacts). Poll `GET /api/phonebook/ldap/status` every few seconds to follow progress. If a sync is already running the response will have `status: "already_running"`. **Admin** or **superadmin** only.',
+        description: 'Starts an asynchronous LDAP phonebook sync in the background and **returns immediately**. The sync runs in the background using paged LDAP search (supports 2000+ contacts). Poll `GET /api/phonebook/ldap/status` every few seconds to follow progress. If a sync is already running the response will have `status: "already_running"`. If the phonebook settings form has unsaved changes, the frontend automatically saves them before triggering the sync (so the sync always uses the current `base_dn`). **Admin** or **superadmin** only. **Audit-logged** (`contact:ldap_sync`).',
         responses: {
           200: {
             description: 'Sync started (or already running)',
@@ -1481,6 +1492,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       put: {
         tags: ['Phonebook'],
         summary: 'Save phonebook LDAP settings (admin)',
+        description: 'Saves the phonebook-specific LDAP overrides (`base_dn`, `filter`, `enabled`). If `enabled` is set to `false`, all LDAP contacts are removed from the local DB. **Audit-logged** (`phonebook:settings_update`).',
         requestBody: {
           required: true,
           content: {

@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const deviceManager = require('../services/deviceManager');
 const { encrypt, isEncrypted } = require('../utils/encryption');
+const auditService = require('../services/auditService');
 
 const router = Router();
 
@@ -44,6 +45,7 @@ router.post('/', [
     VALUES (?,?,?,?,?,?,?)
   `).run(id, name, host, port, username, encPwd, enabled ? 1 : 0);
   deviceManager.reload(id);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'device:create', 'device', id, `Name: ${name}, Host: ${host}:${port}`, req.ip);
   res.status(201).json({ id });
 });
 
@@ -75,14 +77,17 @@ router.put('/:id', [
          fields.password, fields.enabled ? 1 : 0, fields.updated_at, req.params.id);
 
   deviceManager.reload(req.params.id);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'device:update', 'device', req.params.id, `Name: ${fields.name}, Host: ${fields.host}:${fields.port}`, req.ip);
   res.json({ ok: true });
 });
 
 // DELETE /api/devices/:id
 router.delete('/:id', [param('id').isUUID()], (req, res) => {
   if (!sanitize(req, res)) return;
+  const toDelete = getDb().prepare(`SELECT name FROM devices WHERE id=?`).get(req.params.id);
   deviceManager.disconnect(req.params.id);
   getDb().prepare(`DELETE FROM devices WHERE id=?`).run(req.params.id);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'device:delete', 'device', req.params.id, toDelete ? `Name: ${toDelete.name}` : null, req.ip);
   res.json({ ok: true });
 });
 
