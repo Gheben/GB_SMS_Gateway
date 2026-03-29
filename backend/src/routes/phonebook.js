@@ -26,19 +26,35 @@ async function syncLdapToDb() {
   const contacts = await ldapService.searchPhonebook();
   const db = getDb();
 
-  // node:sqlite's DatabaseSync does not support .transaction() and manual BEGIN/COMMIT
-  // wrappers cause prepared-statement conflicts that silently roll back the DELETE,
-  // leaving stale contacts in the DB.  Use plain auto-commit statements instead.
-  const deleted = db.prepare("DELETE FROM contacts WHERE source='ldap'").run();
-  logger.info(`[Phonebook] Deleted ${deleted.changes} stale LDAP contact(s)`);
+  // Build the entire replace as a single SQL string executed via db.exec() so that:
+  //  1. All writes are batched inside one transaction → single disk flush → fast even for
+  //     thousands of contacts, keeping the event loop responsive during the poll window.
+  //  2. Atomicity: if anything fails the DELETE is rolled back automatically.
+  //
+  // We cannot mix db.exec('BEGIN') with stmt.run() inside node:sqlite's DatabaseSync —
+  // that combination can silently roll-back the DELETE.  By building one big SQL string
+  // and calling db.exec() once we stay entirely within exec's implicit transaction support.
 
-  const stmt = db.prepare(
-    "INSERT INTO contacts (id, display_name, phone, email, source) VALUES (?, ?, ?, ?, 'ldap')"
+  const escStr = (s) => (s == null ? 'NULL' : `'${String(s).replace(/'/g, "''")}'`);
+
+  const rows = contacts.map(c =>
+    `(${escStr(uuidv4())},${escStr(c.display_name)},${escStr(c.phone)},${escStr(c.email)},'ldap')`
   );
-  for (const c of contacts) {
-    stmt.run(uuidv4(), c.display_name, c.phone, c.email || null);
+
+  let sql = "BEGIN;\nDELETE FROM contacts WHERE source='ldap';\n";
+  if (rows.length > 0) {
+    sql += `INSERT INTO contacts (id, display_name, phone, email, source) VALUES\n${rows.join(',\n')};\n`;
   }
-  logger.info(`[Phonebook] Synced ${contacts.length} LDAP contact(s) to local DB`);
+  sql += 'COMMIT;';
+
+  try {
+    db.exec(sql);
+    logger.info(`[Phonebook] Synced ${contacts.length} LDAP contact(s) to local DB`);
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch { /* already rolled back or never started */ }
+    throw err;
+  }
+
   return contacts;
 }
 
