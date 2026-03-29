@@ -81,7 +81,10 @@ export default function MessageDetailModal({ msg, onClose }) {
               <Field label="Sending SIM number" value={msg.port_sim_number} mono />
             )}
             <Field label="Device"   value={msg.device_name} />
-            <Field label="Date"     value={fmt(msg.received_at || msg.created_at)} />
+            <Field label="Date"     value={fmt(msg.created_at)} />
+            {msg.direction === 'inbound' && msg.received_at && (
+              <Field label="Received at (device)" value={fmt(msg.received_at)} />
+            )}
           </div>
 
           {/* Testo SMS */}

@@ -2,6 +2,25 @@ const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const logger = require('../utils/logger');
 
+/**
+ * Normalizes Yeastar's compact Recvtime (YYYYMMDDHHmmss, device local time)
+ * to a UTC ISO string for consistent DB storage. Falls back to raw value if
+ * already ISO or unparseable.
+ */
+function normalizeRecvtime(rt) {
+  if (!rt) return null;
+  const m = String(rt).match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (m) {
+    // Parse as server local time (device is synced to same NTP/TZ as server)
+    const d = new Date(
+      parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]),
+      parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+    );
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  return rt; // already ISO or unknown format — store as-is
+}
+
 class MessageService {
   saveInbound(smsEvent) {
     const db = getDb();
@@ -15,7 +34,7 @@ class MessageService {
     db.prepare(`
       INSERT INTO messages (id, device_id, direction, port, sender, recipient, content, status, gsm_id, smsc, received_at)
       VALUES (?, ?, 'inbound', ?, ?, ?, ?, 'received', ?, ?, ?)
-    `).run(id, smsEvent.deviceId || null, smsEvent.port, smsEvent.sender, simNumber, smsEvent.content, smsEvent.id, smsEvent.smsc, smsEvent.recvtime);
+    `).run(id, smsEvent.deviceId || null, smsEvent.port, smsEvent.sender, simNumber, smsEvent.content, smsEvent.id, smsEvent.smsc, normalizeRecvtime(smsEvent.recvtime));
     logger.info(`Inbound SMS saved: id=${id} from=${smsEvent.sender}`);
     return id;
   }
