@@ -17,7 +17,15 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
+      <table className="w-full table-fixed divide-y divide-gray-200 text-sm">
+        <colgroup>
+          <col className="w-[8%]" />
+          <col className="w-[22%]" />
+          <col className="hidden sm:table-column w-[13%]" />
+          <col className="w-[30%]" />
+          <col className="hidden sm:table-column w-[11%]" />
+          <col className="w-[16%]" />
+        </colgroup>
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -52,7 +60,7 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                   ? <span className="font-mono">{msg.port_sim_number}</span>
                   : msg.port ? `Port ${msg.port}` : '—'}
               </td>
-              <td className="px-4 py-3 max-w-xs truncate text-gray-800" title={msg.content}>
+              <td className="px-4 py-3 truncate text-gray-800" title={msg.content}>
                 {msg.content}
               </td>
               <td className="hidden sm:table-cell px-4 py-3">
