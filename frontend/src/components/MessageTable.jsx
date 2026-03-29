@@ -33,6 +33,7 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
             <tr
               key={msg.id}
               className="hover:bg-blue-50 transition-colors cursor-pointer select-none"
+              style={{ touchAction: 'manipulation' }}
               onDoubleClick={() => onDoubleClick?.(msg)}
               title="Double-click for details"
             >

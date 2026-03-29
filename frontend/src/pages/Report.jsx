@@ -241,6 +241,7 @@ export default function Report() {
                         <tr
                           key={r.id}
                           className="hover:bg-blue-50 cursor-pointer transition-colors select-none"
+                          style={{ touchAction: 'manipulation' }}
                           onDoubleClick={() => handleRowDblClick(r)}
                           title="Double-click for details"
                         >
