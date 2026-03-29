@@ -7,6 +7,11 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+/** Strip spaces, dashes, parentheses, and dots for canonical phone storage. */
+function normalizePhone(raw) {
+  return String(raw || '').replace(/[\s\-().]/g, '');
+}
+
 /* â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function getPhonebookLdapCfg() {
@@ -142,9 +147,9 @@ router.post('/local', requireAdmin, (req, res) => {
   const id = uuidv4();
   db.prepare(
     "INSERT INTO contacts (id, display_name, phone, email, notes, source) VALUES (?, ?, ?, ?, ?, 'local')"
-  ).run(id, display_name.trim(), phone.trim(), email?.trim() || null, notes?.trim() || null);
+  ).run(id, display_name.trim(), normalizePhone(phone), email?.trim() || null, notes?.trim() || null);
 
-  res.status(201).json({ id, display_name: display_name.trim(), phone: phone.trim(), email: email?.trim() || null, notes: notes?.trim() || null, source: 'local' });
+  res.status(201).json({ id, display_name: display_name.trim(), phone: normalizePhone(phone), email: email?.trim() || null, notes: notes?.trim() || null, source: 'local' });
 });
 
 /* â”€â”€â”€ PUT /api/phonebook/local/:id â€” update local contact (admin only) â”€â”€â”€ */
@@ -156,10 +161,10 @@ router.put('/local/:id', requireAdmin, (req, res) => {
   const db = getDb();
   const info = db.prepare(
     "UPDATE contacts SET display_name=?, phone=?, email=?, notes=?, updated_at=datetime('now') WHERE id=? AND source='local'"
-  ).run(display_name.trim(), phone.trim(), email?.trim() || null, notes?.trim() || null, req.params.id);
+  ).run(display_name.trim(), normalizePhone(phone), email?.trim() || null, notes?.trim() || null, req.params.id);
 
   if (!info.changes) return res.status(404).json({ error: 'Contact not found' });
-  res.json({ id: req.params.id, display_name: display_name.trim(), phone: phone.trim(), source: 'local' });
+  res.json({ id: req.params.id, display_name: display_name.trim(), phone: normalizePhone(phone), source: 'local' });
 });
 
 /* â”€â”€â”€ DELETE /api/phonebook/local/:id â€” delete local contact (admin only) â”€â”€â”€ */

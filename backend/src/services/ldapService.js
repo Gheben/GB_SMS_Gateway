@@ -8,6 +8,17 @@ const { encrypt, decrypt, isEncrypted } = require('../utils/encryption');
 
 const SETTINGS_KEY = 'ldap_config';
 
+/* ─── Helpers ───────────────────────────────────────────────── */
+
+/**
+ * Strip spaces, dashes, parentheses, and dots from a phone number string
+ * so that AD-formatted numbers (e.g. "+39 345 678 9875") are stored in a
+ * canonical form that matches manually-entered numbers.
+ */
+function normalizePhone(raw) {
+  return String(raw || '').replace(/[\s\-().]/g, '');
+}
+
 /* ─── Settings CRUD ─────────────────────────────────────────── */
 
 function getLdapSettings() {
@@ -476,7 +487,7 @@ async function searchPhonebook() {
       const mail = e.mail;
       contacts.push({
         display_name: e.displayname || e.displayName || e.cn || sam,
-        phone:        Array.isArray(mobile) ? mobile[0] : mobile,
+        phone:        normalizePhone(Array.isArray(mobile) ? mobile[0] : mobile),
         email:        Array.isArray(mail) ? mail[0] : (mail || null),
         source:       'ldap',
       });
