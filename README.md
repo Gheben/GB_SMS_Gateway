@@ -676,6 +676,28 @@ docker compose up -d
 
 ## 📝 Changelog
 
+### v1.4.0 (March 2026)
+- ✅ Feat: NTP server + timezone configuration in Settings → System (superadmin only)
+  - IANA timezone saved in DB, applied immediately to the running process (no restart)
+  - UDP NTP query button returns server time + clock offset (pure Node.js, no extra packages)
+  - Priority chain: DB value > `.env TZ` > system default
+- ✅ Feat: Collapsible sidebar on desktop (chevron toggle, state persisted in `localStorage`)
+- ✅ Fix: Phone number normalization for LDAP contacts and local contacts
+  - AD numbers with spaces/dashes (e.g. `+39 345 678 9875`) are now stripped before DB insert
+  - Applied at both LDAP sync time and `POST/PUT /phonebook/local`
+- ✅ Docs: Swagger updated with `GET/POST /settings/ntp`, `POST /settings/ntp/sync`
+- ✅ Docs: README and `.env.example` updated with TZ priority explanation
+
+### v1.3.0 (March 2026)
+- ✅ Feat: LDAP phonebook — background sync job with real-time polling (`POST /phonebook/ldap/sync`, `GET /phonebook/ldap/status`)
+- ✅ Feat: Periodic LDAP sync scheduler (60 s warm-up + every 6 h, configurable via `LDAP_SYNC_INTERVAL_HOURS`)
+- ✅ Fix: SQLite bulk INSERT wrapped in `BEGIN`/`COMMIT` transaction (node:sqlite has no `.transaction()`)
+- ✅ Fix: Polling retry ×3 before showing "Lost contact with server during sync"
+- ✅ Fix: Removed duplicate route definitions in `phonebook.js`
+- ✅ Feat: Phonebook autocomplete in Forward Rules (email + SMS targets) and SendSMS recipient field
+- ✅ Feat: Multi-recipient SMS — phonebook multi-select, chips UI, collapse for 1 000+ recipients
+- ✅ Fix: Paged LDAP search (> 1 000 contacts), phone validator relaxed, per-page timeout
+
 ### v1.2.0 (March 2026)
 - ✅ Feat: Interactive Swagger UI at `/docs` with dark theme and full OpenAPI 3.0 spec
 - ✅ Feat: Swagger auto-populates JWT token from app session — no manual copy-paste needed
