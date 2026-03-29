@@ -94,6 +94,7 @@ export default function Contacts() {
   const [ldapSettings, setLdapSettings] = useState({ enabled: false, base_dn: '', filter: '' })
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMsg, setSettingsMsg] = useState(null)
+  const [settingsDirty, setSettingsDirty] = useState(false)
 
   // Load local contacts
   function fetchLocal() {
@@ -116,6 +117,7 @@ export default function Contacts() {
       .then(([contacts, settings]) => {
         setLdapContacts(contacts)
         setLdapSettings({ enabled: !!settings.enabled, base_dn: settings.base_dn || '', filter: settings.filter || '' })
+        setSettingsDirty(false)
       })
       .catch(e => setLdapError(e.response?.data?.error || 'Error loading LDAP data'))
       .finally(() => setLoadingLdap(false))
@@ -171,6 +173,19 @@ export default function Contacts() {
     setSyncProgress('Starting sync…')
     setLdapError(null)
     stopPolling()
+    // Auto-save settings if the form has unsaved changes so the sync uses current values
+    if (settingsDirty) {
+      try {
+        await phonebookApi.saveSettings(ldapSettings)
+        setSettingsDirty(false)
+        setSettingsMsg('Settings saved.')
+      } catch (err) {
+        setLdapError('Failed to save settings before sync: ' + (err.response?.data?.error || err.message))
+        setSyncing(false)
+        setSyncProgress(null)
+        return
+      }
+    }
     try {
       const res = await phonebookApi.startLdapSync()
       if (res.status === 'already_running') setSyncProgress('Sync already in progress…')
@@ -196,11 +211,18 @@ export default function Contacts() {
           if (s.status === 'error') {
             setLdapError(`Sync failed: ${s.error}`)
           } else {
-            setSyncMsg(`Sync complete: ${s.synced} contact${s.synced !== 1 ? 's' : ''} imported.`)
-            // Reload contacts from DB
+            // Reload from DB — use the actual stored count for both the counter and the message
             phonebookApi.getLdapContacts()
-              .then(r => { setLdapContacts(r.contacts || []); setLdapPage(1) })
-              .catch(() => {})
+              .then(r => {
+                const count = (r.contacts || []).length
+                setLdapContacts(r.contacts || [])
+                setLdapPage(1)
+                setSyncMsg(`Sync complete: ${count} contact${count !== 1 ? 's' : ''} imported.`)
+              })
+              .catch(() => {
+                // Reload failed – fall back to syncState count and surface a warning
+                setSyncMsg(`Sync complete: ${s.synced} contact${s.synced !== 1 ? 's' : ''} imported. (reload failed – refresh the page)`)
+              })
           }
         }
       } catch {
@@ -223,6 +245,7 @@ export default function Contacts() {
     setSettingsMsg(null)
     try {
       await phonebookApi.saveSettings(ldapSettings)
+      setSettingsDirty(false)
       setSettingsMsg('Settings saved.')
     } catch (err) {
       setSettingsMsg('Error saving settings: ' + (err.response?.data?.error || err.message))
@@ -319,7 +342,7 @@ export default function Contacts() {
                   type="checkbox"
                   id="ldap_enabled"
                   checked={ldapSettings.enabled}
-                  onChange={e => setLdapSettings(s => ({ ...s, enabled: e.target.checked }))}
+                  onChange={e => { setLdapSettings(s => ({ ...s, enabled: e.target.checked })); setSettingsDirty(true) }}
                   className="w-4 h-4 accent-blue-600"
                 />
                 <label htmlFor="ldap_enabled" className="text-sm font-medium text-gray-700">Enable LDAP phonebook</label>
@@ -328,11 +351,11 @@ export default function Contacts() {
                 <>
                   <div>
                     <label className="label">Base DN <span className="text-gray-400 font-normal text-xs">(leave empty to use global LDAP base DN)</span></label>
-                    <input className="input font-mono text-sm" placeholder="OU=Users,DC=example,DC=com" value={ldapSettings.base_dn} onChange={e => setLdapSettings(s => ({ ...s, base_dn: e.target.value }))} />
+                    <input className="input font-mono text-sm" placeholder="OU=Users,DC=example,DC=com" value={ldapSettings.base_dn} onChange={e => { setLdapSettings(s => ({ ...s, base_dn: e.target.value })); setSettingsDirty(true) }} />
                   </div>
                   <div>
                     <label className="label">Filter <span className="text-gray-400 font-normal text-xs">(leave empty for default)</span></label>
-                    <input className="input font-mono text-sm" placeholder="(objectClass=person)" value={ldapSettings.filter} onChange={e => setLdapSettings(s => ({ ...s, filter: e.target.value }))} />
+                    <input className="input font-mono text-sm" placeholder="(objectClass=person)" value={ldapSettings.filter} onChange={e => { setLdapSettings(s => ({ ...s, filter: e.target.value })); setSettingsDirty(true) }} />
                   </div>
                 </>
               )}
