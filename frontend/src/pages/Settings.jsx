@@ -66,6 +66,7 @@ const VARIABLES = [
 export default function Settings() {
   const { user } = useAuth()
   const isSuperAdmin = user?.role === 'superadmin'
+  const isAdmin = user?.role === 'admin' || isSuperAdmin
 
   const [smtp, setSmtp] = useState({
     host: '', port: '587', secure: false, ignoreTls: false, user: '', pass: '', from: '',
@@ -121,7 +122,7 @@ export default function Settings() {
       settingsApi.getSubject(),
       isSuperAdmin ? settingsApi.getSaml() : Promise.resolve(null),
       settingsApi.getWebhook(),
-      isSuperAdmin ? settingsApi.getNtp() : Promise.resolve(null),
+      isAdmin ? settingsApi.getNtp() : Promise.resolve(null),
     ]).then(([smtpData, tplData, subjData, samlData, webhookData, ntpData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
@@ -270,7 +271,7 @@ export default function Settings() {
           { key: 'template', label: 'Template',        icon: <FileCode size={14} />, superadminOnly: false },
           { key: 'saml',     label: 'SAML / SSO',      icon: <Shield size={14} />,  superadminOnly: true  },
           { key: 'webhook',  label: 'Webhook',         icon: <Globe size={14} />,   superadminOnly: false },
-          { key: 'system',   label: 'System',          icon: <Clock size={14} />,   superadminOnly: true  },
+          { key: 'system',   label: 'System',          icon: <Clock size={14} />,   superadminOnly: false },
         ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
             key={t.key}

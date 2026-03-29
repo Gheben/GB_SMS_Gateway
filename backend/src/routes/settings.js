@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 const { getSetting, setSettings } = require('../db/database');
 const routingEngine = require('../services/routingEngine');
 const { encrypt, decrypt } = require('../utils/encryption');
-const { requireSuperAdmin } = require('../middleware/authMiddleware');
+const { requireSuperAdmin, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = Router();
 
@@ -152,16 +152,16 @@ router.post('/webhook', [
 
 const NTP_HOST_RE = /^[a-zA-Z0-9][a-zA-Z0-9.\-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
 
-// GET /api/settings/ntp — superadmin only
-router.get('/ntp', requireSuperAdmin, (req, res) => {
+// GET /api/settings/ntp — admin + superadmin
+router.get('/ntp', requireAdmin, (req, res) => {
   res.json({
     ntp_server: getSetting('NTP_SERVER', 'pool.ntp.org'),
     timezone:   getSetting('TZ', process.env.TZ || 'UTC'),
   });
 });
 
-// POST /api/settings/ntp — superadmin only
-router.post('/ntp', requireSuperAdmin, [
+// POST /api/settings/ntp — admin + superadmin
+router.post('/ntp', requireAdmin, [
   body('ntp_server').isString().trim().isLength({ min: 1, max: 253 }),
   body('timezone').isString().trim().isLength({ min: 1, max: 100 }),
 ], (req, res) => {
@@ -184,7 +184,7 @@ router.post('/ntp', requireSuperAdmin, [
 
 // POST /api/settings/ntp/sync — queries NTP server and returns offset vs system clock
 // Pure Node.js UDP — no extra npm packages required
-router.post('/ntp/sync', requireSuperAdmin, async (req, res) => {
+router.post('/ntp/sync', requireAdmin, async (req, res) => {
   const ntpServer = getSetting('NTP_SERVER', 'pool.ntp.org');
   if (!NTP_HOST_RE.test(ntpServer))
     return res.status(400).json({ error: 'Invalid NTP server configured.' });
