@@ -435,21 +435,27 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
 
           {/* Permissions */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Permissions</p>
-            {isLdap ? (
-              <p className="text-sm italic text-cyan-600">Managed via LDAP group mapping (updated at every login).</p>
-            ) : hasFullAccess ? (
-              <p className="text-sm italic text-gray-600">Full access to all sections (Admin/Super Admin).</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Permissions
+              {isLdap && <span className="ml-1 font-normal normal-case text-cyan-600">(from LDAP group mapping)</span>}
+            </p>
+            {hasFullAccess ? (
+              <div className="flex items-center gap-2 text-sm text-green-700 font-medium">
+                <CheckCircle size={15} className="text-green-500" />
+                Full access to all sections
+              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-y-1.5 gap-x-4">
                 {ALL_PERMS.map(p => {
                   const granted = !!u.permissions?.[p.key]
                   return (
-                    <div key={p.key} className={`flex items-center gap-1.5 text-xs ${
-                      granted ? 'text-green-700' : 'text-gray-300'
-                    }`}>
-                      <span className="font-bold">{granted ? '✓' : '○'}</span>
-                      {p.label}
+                    <div key={p.key} className="flex items-center gap-1.5 text-xs">
+                      {granted
+                        ? <CheckCircle size={13} className="text-green-500 flex-shrink-0" />
+                        : <XCircle    size={13} className="text-red-400 flex-shrink-0" />}
+                      <span className={granted ? 'text-gray-800 font-medium' : 'text-gray-400'}>
+                        {p.label}
+                      </span>
                     </div>
                   )
                 })}
