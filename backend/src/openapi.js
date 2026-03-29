@@ -59,11 +59,16 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       User: {
         type: 'object',
         properties: {
-          id:          { type: 'string', format: 'uuid' },
-          username:    { type: 'string', example: 'john' },
-          role:        { type: 'string', enum: ['superadmin', 'admin', 'user'] },
-          permissions: { type: 'object', example: { inbox: true, sent: true, rules: false } },
-          created_at:  { type: 'string', format: 'date-time' },
+          id:            { type: 'string', format: 'uuid' },
+          username:      { type: 'string', example: 'john' },
+          display_name:  { type: 'string', nullable: true, example: 'John Doe', description: 'Full name taken from LDAP (null for local users)' },
+          role:          { type: 'string', enum: ['superadmin', 'admin', 'user'] },
+          source:        { type: 'string', enum: ['local', 'ldap', 'saml'], description: '\'ldap\' and \'saml\' users are created automatically on first login' },
+          permissions:   { type: 'object', example: { inbox: true, sent: true, rules: false } },
+          allowed_ports: { type: 'array', items: { type: 'object', properties: { device_id: { type: 'string' }, port_number: { type: 'integer' } } }, description: 'Empty array = all ports allowed' },
+          created_at:    { type: 'string', format: 'date-time' },
+          last_login:    { type: 'string', format: 'date-time', nullable: true, description: 'UTC timestamp of last successful login. Null if the user has never logged in.' },
+          is_online:     { type: 'boolean', description: 'True if the user has made an authenticated request in the last 5 minutes (in-memory, resets on server restart).' },
         },
       },
       Message: {
@@ -992,6 +997,13 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Users (Admin)'],
         summary: 'List all users — admin only',
+        description:
+          'Returns all users (local, LDAP and SAML). Each object now includes:\n\n' +
+          '- **`last_login`** — UTC datetime of the last successful login (`null` if never logged in). Persisted in SQLite.\n' +
+          '- **`is_online`** — `true` when the user has sent at least one authenticated API request within the last **5 minutes**. Maintained in-memory; resets to `false` after a server restart.\n' +
+          '- **`display_name`** — full name from LDAP/SAML (`null` for local users).\n' +
+          '- **`source`** — `local`, `ldap`, or `saml`.\n\n' +
+          'The UI user list supports search (by username or display name) and paginates at 25 rows per page.',
         responses: {
           200: { description: '', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/User' } } } } },
         },

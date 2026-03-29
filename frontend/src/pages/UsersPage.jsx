@@ -370,6 +370,122 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
   )
 }
 
+/* ─── UserDetailModal ──────────────────────────────────────── */
+
+function UserDetailModal({ user: u, onClose, onEdit }) {
+  function formatDate(ts) {
+    if (!ts) return '—'
+    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
+      month: '2-digit', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  }
+
+  const isLdap = u.source === 'ldap'
+  const grantedPerms = ALL_PERMS.filter(p => u.permissions?.[p.key])
+  const deniedPerms  = ALL_PERMS.filter(p => !u.permissions?.[p.key])
+  const hasFullAccess = u.role !== 'user'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+          <div className="flex items-center gap-2">
+            <span
+              title={u.is_online ? 'Online' : 'Offline'}
+              className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                u.is_online ? 'bg-green-400' : 'bg-gray-300'
+              }`}
+            />
+            {u.role === 'superadmin'
+              ? <Shield size={16} className="text-purple-500" />
+              : <User size={16} className="text-gray-400" />}
+            <h2 className="font-semibold text-gray-800">{u.username}</h2>
+            {u.display_name && u.display_name !== u.username && (
+              <span className="text-sm text-gray-400">{u.display_name}</span>
+            )}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          {/* Badges row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <RoleBadge role={u.role} />
+            <SourceBadge source={u.source || 'local'} />
+            {u.is_online
+              ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">Online</span>
+              : <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-200 font-medium">Offline</span>
+            }
+          </div>
+
+          {/* Info grid */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Created on</p>
+              <p className="text-gray-700">{formatDate(u.created_at)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Last login</p>
+              <p className="text-gray-700">{formatDate(u.last_login)}</p>
+            </div>
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Permissions</p>
+            {isLdap ? (
+              <p className="text-sm italic text-cyan-600">Managed via LDAP group mapping (updated at every login).</p>
+            ) : hasFullAccess ? (
+              <p className="text-sm italic text-gray-600">Full access to all sections (Admin/Super Admin).</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5">
+                {ALL_PERMS.map(p => {
+                  const granted = !!u.permissions?.[p.key]
+                  return (
+                    <div key={p.key} className={`flex items-center gap-1.5 text-xs ${
+                      granted ? 'text-green-700' : 'text-gray-300'
+                    }`}>
+                      <span className="font-bold">{granted ? '✓' : '○'}</span>
+                      {p.label}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* LDAP groups if present */}
+          {isLdap && Array.isArray(u.ldap_groups) && u.ldap_groups.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">LDAP Groups</p>
+              <ul className="space-y-0.5">
+                {u.ldap_groups.map((g, i) => (
+                  <li key={i} className="text-xs font-mono text-gray-600 truncate" title={g}>{g}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Close</button>
+          {u.role !== 'superadmin' && !isLdap && onEdit && (
+            <button
+              onClick={() => { onClose(); onEdit(u) }}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+              Edit
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── LocalUsersTab ─────────────────────────────────────────── */
 
 const PAGE_SIZE = 25
@@ -378,7 +494,8 @@ function LocalUsersTab() {
   const { user: me } = useAuth()
   const [users, setUsers]     = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal]     = useState(null)
+  const [modal, setModal]     = useState(null)   // null | 'new' | user-obj
+  const [detail, setDetail]   = useState(null)   // user-obj for read-only detail modal
   const [search, setSearch]   = useState('')
   const [page, setPage]       = useState(1)
 
@@ -461,7 +578,12 @@ function LocalUsersTab() {
             {paginated.map(u => {
               const isLdap = u.source === 'ldap'
               return (
-                <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr
+                  key={u.id}
+                  className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer select-none"
+                  onDoubleClick={() => setDetail(u)}
+                  title="Double-click for details"
+                >
                   <td className="px-3 py-3 text-center">
                     <span
                       title={u.is_online ? 'Online' : 'Offline'}
@@ -543,6 +665,14 @@ function LocalUsersTab() {
         LDAP users appear in this list automatically after their first login with domain credentials.
         Their permissions are updated on every login based on the configured group mapping.
       </p>
+
+      {detail && (
+        <UserDetailModal
+          user={detail}
+          onClose={() => setDetail(null)}
+          onEdit={u => setModal(u)}
+        />
+      )}
 
       {modal && (
         <UserModal
