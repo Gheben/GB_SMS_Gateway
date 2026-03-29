@@ -58,7 +58,7 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                 <span className={`badge-${msg.status}`}>{msg.status}</span>
               </td>
               <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                {format(new Date(msg.created_at), 'MM/dd/yyyy HH:mm', { locale: enUS })}
+                {format(new Date(msg.created_at + (msg.created_at.endsWith('Z') ? '' : 'Z')), 'MM/dd/yyyy HH:mm', { locale: enUS })}
               </td>
             </tr>
           ))}

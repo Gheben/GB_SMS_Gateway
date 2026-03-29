@@ -35,7 +35,7 @@ function StatusBadge({ status }) {
 
 function fmtDate(s) {
   if (!s) return '—'
-  return new Date(s).toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(s.endsWith('Z') ? s : s + 'Z').toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtDay(s) {

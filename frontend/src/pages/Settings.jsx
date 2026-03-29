@@ -264,18 +264,18 @@ export default function Settings() {
       <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
 
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex overflow-x-auto border-b border-gray-200">
         {[
-          { key: 'smtp',     label: 'SMTP & Email Test',   icon: <Mail size={14} />,    superadminOnly: false },
-          { key: 'template', label: 'Email Template',       icon: <FileCode size={14} />, superadminOnly: false },
-          { key: 'saml',     label: 'SAML / SSO',           icon: <Shield size={14} />,  superadminOnly: true  },
-          { key: 'webhook',  label: 'Webhook',              icon: <Globe size={14} />,   superadminOnly: false },
-          { key: 'system',   label: 'System',               icon: <Clock size={14} />,   superadminOnly: true  },
+          { key: 'smtp',     label: 'SMTP & Email',   icon: <Mail size={14} />,    superadminOnly: false },
+          { key: 'template', label: 'Template',        icon: <FileCode size={14} />, superadminOnly: false },
+          { key: 'saml',     label: 'SAML / SSO',      icon: <Shield size={14} />,  superadminOnly: true  },
+          { key: 'webhook',  label: 'Webhook',         icon: <Globe size={14} />,   superadminOnly: false },
+          { key: 'system',   label: 'System',          icon: <Clock size={14} />,   superadminOnly: true  },
         ].filter(t => !t.superadminOnly || isSuperAdmin).map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'

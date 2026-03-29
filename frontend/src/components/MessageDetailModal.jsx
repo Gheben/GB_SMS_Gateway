@@ -11,7 +11,7 @@ const STATUS_DISPATCH = {
 
 function fmt(s) {
   if (!s) return '—'
-  try { return format(new Date(s), 'MM/dd/yyyy HH:mm:ss', { locale: enUS }) } catch { return s }
+  try { return format(new Date(s.endsWith('Z') ? s : s + 'Z'), 'MM/dd/yyyy HH:mm:ss', { locale: enUS }) } catch { return s }
 }
 
 function Field({ label, value, mono = false }) {
