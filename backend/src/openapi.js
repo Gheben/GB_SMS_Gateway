@@ -1002,8 +1002,10 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           '- **`last_login`** — UTC datetime of the last successful login (`null` if never logged in). Persisted in SQLite.\n' +
           '- **`is_online`** — `true` when the user has sent at least one authenticated API request within the last **5 minutes**. Maintained in-memory; resets to `false` after a server restart.\n' +
           '- **`display_name`** — full name from LDAP/SAML (`null` for local users).\n' +
-          '- **`source`** — `local`, `ldap`, or `saml`.\n\n' +
-          'The UI user list supports search (by username or display name) and paginates at 25 rows per page.',
+          '- **`source`** — `local`, `ldap`, or `saml`.\n' +
+          '- **`permissions`** — object with a key per feature (`dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`, `phonebook`), value `true`/`false`. For LDAP users, permissions are re-resolved from the current group mappings on every login; the `permissions` field returned here reflects the values stored at the time of the last login.\n\n' +
+          'Admin and Super Admin users always have full access regardless of the `permissions` object content.\n\n' +
+          'The UI user list supports search (by username or display name), paginates at **25 rows per page**, and opens a read-only detail panel (double-click) showing the full permission grid with granted/denied status for every feature.',
         responses: {
           200: { description: '', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/User' } } } } },
         },
