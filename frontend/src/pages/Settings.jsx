@@ -260,11 +260,11 @@ export default function Settings() {
   )
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
 
       {/* Tab bar */}
-      <div className="flex overflow-x-auto border-b border-gray-200 scrollbar-thin">
+      <div className="flex border-b border-gray-200">
         {[
           { key: 'smtp',     label: 'SMTP & Email',   icon: <Mail size={14} />,    superadminOnly: false },
           { key: 'template', label: 'Template',        icon: <FileCode size={14} />, superadminOnly: false },
