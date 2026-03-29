@@ -677,7 +677,7 @@ docker compose up -d
 ## 📝 Changelog
 
 ### v1.4.0 (March 2026)
-- ✅ Feat: NTP server + timezone configuration in Settings → System (superadmin only)
+- ✅ Feat: NTP server + timezone configuration in Settings → System (admin+)
   - IANA timezone saved in DB, applied immediately to the running process (no restart)
   - UDP NTP query button returns server time + clock offset (pure Node.js, no extra packages)
   - Priority chain: DB value > `.env TZ` > system default

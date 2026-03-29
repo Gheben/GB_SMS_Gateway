@@ -884,8 +884,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
 
     '/settings/ntp': {
       get: {
-        tags: ['Settings (Superadmin)'],
-        summary: 'Get NTP server and timezone configuration — superadmin only',
+        tags: ['Settings (Admin)'],
+        summary: 'Get NTP server and timezone configuration — admin+',
         description: 'Returns the NTP server hostname and the IANA timezone currently stored in the DB. The timezone is applied to all timestamps in the application. Priority: DB value > `.env TZ` > system default.',
         responses: {
           200: {
@@ -899,8 +899,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         },
       },
       post: {
-        tags: ['Settings (Superadmin)'],
-        summary: 'Save NTP server and timezone — superadmin only',
+        tags: ['Settings (Admin)'],
+        summary: 'Save NTP server and timezone — admin+',
         description: 'Persists both values in the DB and applies the timezone immediately to the running Node.js process (no restart needed). Survives container restarts. The IANA timezone string is validated server-side via `Intl`.',
         requestBody: {
           required: true,
@@ -926,8 +926,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
 
     '/settings/ntp/sync': {
       post: {
-        tags: ['Settings (Superadmin)'],
-        summary: 'Query the configured NTP server — superadmin only',
+        tags: ['Settings (Admin)'],
+        summary: 'Query the configured NTP server — admin+',
         description: 'Sends a UDP NTP request (RFC 4330) to the configured NTP server using the built-in Node.js `dgram` module (no extra packages). Returns the server time, system time, and the clock offset in milliseconds. Does **not** modify the system clock.',
         responses: {
           200: {
