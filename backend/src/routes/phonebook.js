@@ -170,9 +170,10 @@ router.put('/local/:id', requireAdmin, (req, res) => {
 /* â”€â”€â”€ DELETE /api/phonebook/local/:id â€” delete local contact (admin only) â”€â”€â”€ */
 router.delete('/local/:id', requireAdmin, (req, res) => {
   const db = getDb();
-  const info = db.prepare("DELETE FROM contacts WHERE id=? AND source='local'").run(req.params.id);
-  if (!info.changes) return res.status(404).json({ error: 'Contact not found' });
-  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:delete', 'contact', req.params.id, null, req.ip);
+  const existing = db.prepare("SELECT display_name, phone FROM contacts WHERE id=? AND source='local'").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Contact not found' });
+  db.prepare("DELETE FROM contacts WHERE id=? AND source='local'").run(req.params.id);
+  auditService.log(req.user?.id, req.user?.username || 'system', 'contact:delete', 'contact', req.params.id, `Name: ${existing.display_name}, Phone: ${existing.phone}`, req.ip);
   res.json({ ok: true });
 });
 

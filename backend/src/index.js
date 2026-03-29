@@ -82,6 +82,7 @@ seedSuperAdmin();
 
 // Express app
 const app = express();
+app.set('trust proxy', 1); // trust first proxy (nginx/Docker) so req.ip reflects X-Forwarded-For
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(morgan('combined'));
