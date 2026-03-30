@@ -161,10 +161,13 @@ router.delete('/:id', [param('id').isUUID()], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
   const existing = db.prepare('SELECT name FROM routing_rules WHERE id=?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Rule not found' });
+  // Nullify dispatches.rule_id before deleting (dispatches has no ON DELETE CASCADE)
+  db.prepare('BEGIN').run();
+  db.prepare('UPDATE dispatches SET rule_id=NULL WHERE rule_id=?').run(req.params.id);
   db.prepare('DELETE FROM routing_rules WHERE id=?').run(req.params.id);
-  if (existing) {
-    auditService.log(req.user?.id, req.user?.username || 'system', 'rule:delete', 'rule', req.params.id, `Nome: ${existing.name}`, req.ip);
-  }
+  db.prepare('COMMIT').run();
+  auditService.log(req.user?.id, req.user?.username || 'system', 'rule:delete', 'rule', req.params.id, `Name: ${existing.name}`, req.ip);
   res.json({ ok: true });
 });
 
