@@ -167,6 +167,23 @@ app.get(['/docs', '/docs/'], (req, res) => {
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
+    #docs-header .download-btn {
+      background: transparent;
+      border: 1px solid #4f46e5;
+      color: #818cf8;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    #docs-header .download-btn:hover { background: #4f46e5; color: #fff; }
+    #docs-header .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     /* ── Swagger UI wrapper ── */
     #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
@@ -346,6 +363,7 @@ app.get(['/docs', '/docs/'], (req, res) => {
     <div class="logo">📡</div>
     <h1>SMS Gateway &mdash; API Reference</h1>
     <span class="badge">v1</span>
+    <button class="download-btn" onclick="downloadPostman()" title="Scarica la collection Postman (OpenAPI 3.0)">&#x2B07; Postman</button>
   </div>
 
   <!-- Shown when already logged in -->
@@ -430,6 +448,33 @@ app.get(['/docs', '/docs/'], (req, res) => {
       ta.focus(); ta.select();
       try { document.execCommand('copy') ? done() : fail(); } catch(e) { fail(); }
       document.body.removeChild(ta);
+    }
+
+    async function downloadPostman() {
+      const btn = document.querySelector('.download-btn');
+      const orig = btn.innerHTML;
+      const token = getStoredToken();
+      btn.innerHTML = '&#x23F3; Download...';
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/docs.json', {
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const spec = await resp.json();
+        const blob = new Blob([JSON.stringify(spec, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'SMSGateway_OpenAPI.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        btn.innerHTML = '&#x2705; Scaricato!';
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+      } catch (e) {
+        btn.innerHTML = '&#x274C; Errore';
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+      }
     }
 
     window.onload = function () {
