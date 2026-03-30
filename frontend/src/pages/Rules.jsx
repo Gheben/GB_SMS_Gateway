@@ -9,6 +9,7 @@ const MATCH_TYPES = [
   { value: 'content',       label: 'Text contains' },
   { value: 'content_regex', label: 'Text (regex)' },
   { value: 'device',        label: 'Specific device' },
+  { value: 'port',          label: 'Specific port' },
 ]
 const ALL_MATCH_TYPES = [{ value: 'any', label: 'Any SMS (no filter)' }, ...MATCH_TYPES]
 
@@ -30,8 +31,9 @@ const EMPTY_RULE = {
 }
 
 function ConditionRow({ cond, total, devices, onChange, onRemove }) {
-  const needsValue = !['any', 'device'].includes(cond.match_type)
+  const needsTextValue = !['any', 'device', 'port'].includes(cond.match_type)
   const needsDevice = cond.match_type === 'device'
+  const needsPort = cond.match_type === 'port'
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
       <div className="flex gap-2 items-start">
@@ -49,7 +51,7 @@ function ConditionRow({ cond, total, devices, onChange, onRemove }) {
           </button>
         )}
       </div>
-      {needsValue && (
+      {needsTextValue && (
         <input className="input" value={cond.match_value}
           placeholder={cond.match_type.includes('regex') ? 'E.g.: ^\\+1|^001' : 'E.g.: +15551234567'}
           onChange={e => onChange({ ...cond, match_value: e.target.value })} />
@@ -60,6 +62,18 @@ function ConditionRow({ cond, total, devices, onChange, onRemove }) {
           <option value="">-- select device --</option>
           {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
+      )}
+      {needsPort && (
+        <>
+          <select className="input" value={cond.device_id}
+            onChange={e => onChange({ ...cond, device_id: e.target.value })}>
+            <option value="">-- any device (optional) --</option>
+            {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+          <input className="input" type="number" min="1" max="32" value={cond.match_value}
+            placeholder="Port number (e.g. 3)"
+            onChange={e => onChange({ ...cond, match_value: e.target.value })} />
+        </>
       )}
     </div>
   )
@@ -146,7 +160,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
       conditions: form.conditions.map(c => ({
         match_type: c.match_type,
         match_value: ['any', 'device'].includes(c.match_type) ? undefined : (c.match_value || undefined),
-        device_id: c.match_type === 'device' ? (c.device_id || undefined) : undefined,
+        device_id: ['device', 'port'].includes(c.match_type) ? (c.device_id || undefined) : undefined,
       })),
       stop_on_match: form.stop_on_match,
       targets: form.targets.filter(Boolean),
@@ -375,14 +389,16 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
 }
 
 function TestModal({ devices, onClose }) {
-  const [form, setForm] = useState({ sender: '', content: '', device_id: '' })
+  const [form, setForm] = useState({ sender: '', content: '', device_id: '', port: '' })
   const [result, setResult] = useState(null)
   const [testing, setTesting] = useState(false)
 
   async function runTest(e) {
     e.preventDefault()
     setTesting(true)
-    const res = await rulesApi.test(form)
+    const payload = { ...form }
+    if (form.port) payload.port_number = parseInt(form.port, 10)
+    const res = await rulesApi.test(payload)
     setResult(res)
     setTesting(false)
   }
@@ -400,6 +416,8 @@ function TestModal({ devices, onClose }) {
             <option value="">-- device (optional) --</option>
             {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
+          <input className="input" type="number" min="1" max="32" placeholder="Port number (optional)"
+            value={form.port} onChange={e => setForm(p => ({ ...p, port: e.target.value }))} />
           <button type="submit" disabled={testing} className="btn-primary w-full">
             {testing ? 'Testing...' : 'Run test'}
           </button>
@@ -450,9 +468,13 @@ export default function Rules() {
   useEffect(() => { load() }, [load])
 
   async function remove(id, name) {
-    if (!confirm(`Eliminare la regola "${name}"?`)) return
-    await rulesApi.remove(id)
-    load()
+    if (!window.confirm(`Delete rule "${name}"?`)) return
+    try {
+      await rulesApi.remove(id)
+    } catch (e) {
+      window.alert('Error deleting rule: ' + (e?.response?.data?.error || e.message))
+    }
+    await load()
   }
 
   async function toggleEnabled(rule) {
@@ -473,6 +495,10 @@ export default function Rules() {
       if (c.match_type === 'device') {
         const d = devices.find(dv => dv.id === c.device_id)
         return `Device: ${d?.name || '?'}`
+      }
+      if (c.match_type === 'port') {
+        const d = devices.find(dv => dv.id === c.device_id)
+        return `Port: ${c.match_value || '?'}${d ? ` on ${d.name}` : ''}`
       }
       const t = ALL_MATCH_TYPES.find(m => m.value === c.match_type)?.label || c.match_type
       return c.match_value ? `${t}: “${c.match_value}”` : t

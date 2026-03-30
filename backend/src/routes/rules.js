@@ -7,7 +7,7 @@ const auditService = require('../services/auditService');
 
 const router = Router();
 
-const MATCH_TYPES = ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device'];
+const MATCH_TYPES = ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device', 'port'];
 const COND_OPERATORS = ['AND', 'OR'];
 
 function sanitize(req, res) {
@@ -42,7 +42,7 @@ function insertConditions(db, ruleId, conditions) {
       uuidv4(), ruleId,
       c.match_type || 'any',
       ['any', 'device'].includes(c.match_type) ? null : (c.match_value || null),
-      c.match_type === 'device' ? (c.device_id || null) : null,
+      ['device', 'port'].includes(c.match_type) ? (c.device_id || null) : null,
       i
     );
   });
@@ -168,15 +168,16 @@ router.delete('/:id', [param('id').isUUID()], (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/rules/test â€” simula SMS senza salvare nÃ© inviare email
+// POST /api/rules/test — simulate SMS without saving or sending
 router.post('/test', [
   body('sender').isString().notEmpty(),
   body('content').isString().notEmpty(),
   body('device_id').optional().isString(),
+  body('port_number').optional().isInt({ min: 1 }).toInt(),
 ], (req, res) => {
   if (!sanitize(req, res)) return;
   const db = getDb();
-  const { sender, content, device_id } = req.body;
+  const { sender, content, device_id, port_number } = req.body;
 
   const rules = db.prepare(`
     SELECT r.*, GROUP_CONCAT(t.email, ',') as emails
@@ -189,7 +190,7 @@ router.post('/test', [
 
   const matched = [];
   for (const rule of rules) {
-    if (routingEngine._matches(rule, { sender, content, deviceId: device_id })) {
+    if (routingEngine._matches(rule, { sender, content, deviceId: device_id, port: port_number })) {
       matched.push({
         id: rule.id, name: rule.name,
         emails: rule.emails?.split(',').filter(Boolean) || [],

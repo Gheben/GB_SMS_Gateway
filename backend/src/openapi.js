@@ -551,11 +551,13 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                     items: {
                       type: 'object',
                       properties: {
-                        type:  { type: 'string', enum: ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device'] },
-                        value: { type: 'string', example: '+39012345678' },
+                        type:      { type: 'string', enum: ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device', 'port'],
+                                     description: '`any` — always matches. `sender` — exact phone number. `sender_regex` / `content_regex` — JS regex. `device` — matches a specific Yeastar device (requires `device_id`). `port` — matches a specific SIM port number (requires `match_value`; optionally also `device_id` to restrict to a specific device).' },
+                        value:     { type: 'string', example: '+15551234567', description: 'For `port` conditions: the port number as a string (e.g. "3"). For `device` conditions: omit (use `device_id` instead).' },
+                        device_id: { type: 'string', format: 'uuid', description: 'Required for `device` conditions; optional for `port` conditions (further restricts match to a specific device).' },
                       },
                     },
-                    example: [{ type: 'sender', value: '+39012345678' }],
+                    example: [{ type: 'sender', value: '+15551234567' }],
                   },
                   targets: {
                     type: 'array',
@@ -600,9 +602,10 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 type: 'object',
                 required: ['sender', 'content'],
                 properties: {
-                  sender:    { type: 'string', example: '+39012345678' },
-                  content:   { type: 'string', example: 'Alert: CPU 95%' },
-                  device_id: { type: 'string', format: 'uuid' },
+                  sender:      { type: 'string', example: '+12025550100' },
+                  content:     { type: 'string', example: 'Alert: CPU 95%' },
+                  device_id:   { type: 'string', format: 'uuid', description: 'Simulate a message received from this device (used to test `device` and `port` conditions).' },
+                  port_number: { type: 'integer', minimum: 1, example: 3, description: 'Simulate a message received on this SIM port number (used to test `port` conditions).' },
                 },
               },
             },

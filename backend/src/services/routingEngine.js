@@ -135,6 +135,12 @@ class RoutingEngine {
         try { return new RegExp(val, 'i').test(sms.content || ''); } catch { return false; }
       case 'device':
         return sms.deviceId === (cond.device_id || val);
+      case 'port': {
+        const portNum = parseInt(val, 10);
+        if (isNaN(portNum)) return false;
+        const deviceMatch = cond.device_id ? sms.deviceId === cond.device_id : true;
+        return deviceMatch && sms.port === portNum;
+      }
       default: return false;
     }
   }
