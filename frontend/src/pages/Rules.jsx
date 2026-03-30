@@ -76,11 +76,17 @@ function ConditionRow({ cond, total, devices, ports, onChange, onRemove }) {
             <option value="">-- filter by device (optional) --</option>
             {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <select className="input" value={cond.match_value}
-            onChange={e => onChange({ ...cond, match_value: e.target.value })}>
+          <select className="input"
+            value={cond.device_id && cond.match_value ? `${cond.device_id}:${cond.match_value}` : ''}
+            onChange={e => {
+              const val = e.target.value
+              if (!val) { onChange({ ...cond, device_id: '', match_value: '' }); return }
+              const found = ports.find(p => p.sim_number && `${p.device_id}:${p.port_number}` === val)
+              if (found) onChange({ ...cond, device_id: found.device_id, match_value: String(found.port_number) })
+            }}>
             <option value="">-- select SIM port --</option>
             {availablePorts.map(p => (
-              <option key={`${p.device_id}-${p.port_number}`} value={String(p.port_number)}>
+              <option key={`${p.device_id}-${p.port_number}`} value={`${p.device_id}:${p.port_number}`}>
                 Port {p.port_number}{p.sim_number ? ` — ${p.sim_number}` : ''}{p.operator ? ` (${p.operator})` : ''}
               </option>
             ))}
@@ -436,10 +442,17 @@ function TestModal({ devices, ports, onClose }) {
             <option value="">-- device (optional) --</option>
             {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <select className="input" value={form.port} onChange={e => setForm(p => ({ ...p, port: e.target.value }))}>
+          <select className="input"
+            value={form.device_id && form.port ? `${form.device_id}:${form.port}` : ''}
+            onChange={e => {
+              const val = e.target.value
+              if (!val) { setForm(p => ({ ...p, port: '' })); return }
+              const found = ports.find(p => p.sim_number && `${p.device_id}:${p.port_number}` === val)
+              if (found) setForm(p => ({ ...p, device_id: found.device_id, port: String(found.port_number) }))
+            }}>
             <option value="">-- SIM port (optional) --</option>
             {availablePorts.map(p => (
-              <option key={`${p.device_id}-${p.port_number}`} value={String(p.port_number)}>
+              <option key={`${p.device_id}-${p.port_number}`} value={`${p.device_id}:${p.port_number}`}>
                 Port {p.port_number}{p.sim_number ? ` — ${p.sim_number}` : ''}{p.operator ? ` (${p.operator})` : ''}
               </option>
             ))}
