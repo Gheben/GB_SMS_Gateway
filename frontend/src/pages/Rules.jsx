@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { rulesApi, devicesApi, ldapApi, localGroupsApi, phonebookApi } from '../api'
+import { rulesApi, devicesApi, portsApi, ldapApi, localGroupsApi, phonebookApi } from '../api'
 import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
 import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play } from 'lucide-react'
 
@@ -30,10 +30,16 @@ const EMPTY_RULE = {
   webhook_method: 'POST',
 }
 
-function ConditionRow({ cond, total, devices, onChange, onRemove }) {
+function ConditionRow({ cond, total, devices, ports, onChange, onRemove }) {
   const needsTextValue = !['any', 'device', 'port'].includes(cond.match_type)
   const needsDevice = cond.match_type === 'device'
   const needsPort = cond.match_type === 'port'
+
+  // For port condition: filter ports by selected device (if any), only those with a SIM number
+  const availablePorts = needsPort
+    ? ports.filter(p => (!cond.device_id || p.device_id === cond.device_id) && p.sim_number)
+    : []
+
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
       <div className="flex gap-2 items-start">
@@ -66,20 +72,29 @@ function ConditionRow({ cond, total, devices, onChange, onRemove }) {
       {needsPort && (
         <>
           <select className="input" value={cond.device_id}
-            onChange={e => onChange({ ...cond, device_id: e.target.value })}>
-            <option value="">-- any device (optional) --</option>
+            onChange={e => onChange({ ...cond, device_id: e.target.value, match_value: '' })}>
+            <option value="">-- filter by device (optional) --</option>
             {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <input className="input" type="number" min="1" max="32" value={cond.match_value}
-            placeholder="Port number (e.g. 3)"
-            onChange={e => onChange({ ...cond, match_value: e.target.value })} />
+          <select className="input" value={cond.match_value}
+            onChange={e => onChange({ ...cond, match_value: e.target.value })}>
+            <option value="">-- select SIM port --</option>
+            {availablePorts.map(p => (
+              <option key={`${p.device_id}-${p.port_number}`} value={String(p.port_number)}>
+                Port {p.port_number}{p.sim_number ? ` — ${p.sim_number}` : ''}{p.operator ? ` (${p.operator})` : ''}
+              </option>
+            ))}
+          </select>
+          {availablePorts.length === 0 && (
+            <p className="text-xs text-amber-600">No SIM ports found{cond.device_id ? ' for the selected device' : ''}.</p>
+          )}
         </>
       )}
     </div>
   )
 }
 
-function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved }) {
+function RuleModal({ rule, devices, ports, ldapGroups, localGroups, onClose, onSaved }) {
   const [form, setForm] = useState(() => {
     if (!rule) return { ...EMPTY_RULE, conditions: [emptyCondition()] }
     return {
@@ -226,7 +241,7 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
                       {form.condition_operator === 'OR' ? '— OR —' : '— AND —'}
                     </p>
                   )}
-                  <ConditionRow cond={c} total={form.conditions.length} devices={devices}
+                  <ConditionRow cond={c} total={form.conditions.length} devices={devices} ports={ports}
                     onChange={val => updateCond(i, val)} onRemove={() => removeCond(i)} />
                 </div>
               ))}
@@ -388,15 +403,20 @@ function RuleModal({ rule, devices, ldapGroups, localGroups, onClose, onSaved })
   )
 }
 
-function TestModal({ devices, onClose }) {
+function TestModal({ devices, ports, onClose }) {
   const [form, setForm] = useState({ sender: '', content: '', device_id: '', port: '' })
   const [result, setResult] = useState(null)
   const [testing, setTesting] = useState(false)
 
+  const availablePorts = ports.filter(p =>
+    (!form.device_id || p.device_id === form.device_id) && p.sim_number
+  )
+
   async function runTest(e) {
     e.preventDefault()
     setTesting(true)
-    const payload = { ...form }
+    const payload = { sender: form.sender, content: form.content }
+    if (form.device_id) payload.device_id = form.device_id
     if (form.port) payload.port_number = parseInt(form.port, 10)
     const res = await rulesApi.test(payload)
     setResult(res)
@@ -412,12 +432,18 @@ function TestModal({ devices, onClose }) {
             onChange={e => setForm(p => ({ ...p, sender: e.target.value }))} required />
           <textarea className="input" rows={3} placeholder="SMS text..." value={form.content}
             onChange={e => setForm(p => ({ ...p, content: e.target.value }))} required />
-          <select className="input" value={form.device_id} onChange={e => setForm(p => ({ ...p, device_id: e.target.value }))}>
+          <select className="input" value={form.device_id} onChange={e => setForm(p => ({ ...p, device_id: e.target.value, port: '' }))}>
             <option value="">-- device (optional) --</option>
             {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <input className="input" type="number" min="1" max="32" placeholder="Port number (optional)"
-            value={form.port} onChange={e => setForm(p => ({ ...p, port: e.target.value }))} />
+          <select className="input" value={form.port} onChange={e => setForm(p => ({ ...p, port: e.target.value }))}>
+            <option value="">-- SIM port (optional) --</option>
+            {availablePorts.map(p => (
+              <option key={`${p.device_id}-${p.port_number}`} value={String(p.port_number)}>
+                Port {p.port_number}{p.sim_number ? ` — ${p.sim_number}` : ''}{p.operator ? ` (${p.operator})` : ''}
+              </option>
+            ))}
+          </select>
           <button type="submit" disabled={testing} className="btn-primary w-full">
             {testing ? 'Testing...' : 'Run test'}
           </button>
@@ -446,6 +472,7 @@ function TestModal({ devices, onClose }) {
 export default function Rules() {
   const [rules, setRules] = useState([])
   const [devices, setDevices] = useState([])
+  const [ports, setPorts] = useState([])
   const [ldapGroups, setLdapGroups] = useState([])
   const [localGroups, setLocalGroups] = useState([])
   const [modal, setModal] = useState(null)
@@ -454,13 +481,14 @@ export default function Rules() {
 
   const load = useCallback(async () => {
     try {
-      const [r, d, g, lg] = await Promise.all([
+      const [r, d, p, g, lg] = await Promise.all([
         rulesApi.getAll(),
         devicesApi.getAll(),
+        portsApi.getAll().catch(() => []),
         ldapApi.getGroups().catch(() => []),
         localGroupsApi.getAllSimple().catch(() => []),
       ])
-      setRules(r); setDevices(d); setLdapGroups(g); setLocalGroups(lg)
+      setRules(r); setDevices(d); setPorts(p); setLdapGroups(g); setLocalGroups(lg)
     } catch {}
     setLoading(false)
   }, [])
@@ -579,13 +607,14 @@ export default function Rules() {
         <RuleModal
           rule={modal === 'new' ? null : modal}
           devices={devices}
+          ports={ports}
           ldapGroups={ldapGroups}
           localGroups={localGroups}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); load() }}
         />
       )}
-      {testOpen && <TestModal devices={devices} onClose={() => setTestOpen(false)} />}
+      {testOpen && <TestModal devices={devices} ports={ports} onClose={() => setTestOpen(false)} />}
     </div>
   )
 }
