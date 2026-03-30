@@ -78,8 +78,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           direction:      { type: 'string', enum: ['inbound', 'outbound'] },
           sender:         { type: 'string', example: '+39012345678' },
           recipient:      { type: 'string', example: '+39087654321' },
-          sender_name:    { type: 'string', nullable: true, example: 'Mario Rossi', description: 'Display name from phonebook (inbound messages)' },
-          recipient_name: { type: 'string', nullable: true, example: 'Anna Bianchi', description: 'Display name from phonebook (outbound messages)' },
+          sender_name:    { type: 'string', nullable: true, example: 'John Smith', description: 'Display name from phonebook (inbound messages)' },
+          recipient_name: { type: 'string', nullable: true, example: 'Jane Doe', description: 'Display name from phonebook (outbound messages)' },
           content:        { type: 'string', example: 'Hello world' },
           status:         { type: 'string', enum: ['received', 'pending', 'sent', 'failed'] },
           device_id:      { type: 'string', format: 'uuid' },
@@ -1312,8 +1312,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             content: {
               'application/json': {
                 example: [
-                  { id: 'uuid-1', display_name: 'Mario Rossi', phone: '+39012345678', email: 'mario@example.com', notes: '', source: 'local' },
-                  { id: 'ldap-abc', display_name: 'Anna Bianchi', phone: '+39087654321', email: 'anna@example.com', notes: null, source: 'ldap' },
+                  { id: 'uuid-1', display_name: 'John Smith', phone: '+12025550100', email: 'john.smith@example.com', notes: '', source: 'local' },
+                  { id: 'ldap-abc', display_name: 'Jane Doe', phone: '+12025550199', email: 'jane.doe@example.com', notes: null, source: 'ldap' },
                 ],
               },
             },
@@ -1331,7 +1331,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         description: 'Returns all locally managed contacts. **Admin** or **superadmin** only.',
         responses: {
           200: { description: 'Local contacts list', content: { 'application/json': { example: [
-            { id: 'uuid-1', display_name: 'Mario Rossi', phone: '+39012345678', email: 'mario@example.com', notes: 'CEO', source: 'local' },
+            { id: 'uuid-1', display_name: 'John Smith', phone: '+12025550100', email: 'john.smith@example.com', notes: 'CEO', source: 'local' },
           ] } } },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
@@ -1349,9 +1349,9 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 type: 'object',
                 required: ['display_name', 'phone'],
                 properties: {
-                  display_name: { type: 'string', example: 'Mario Rossi' },
-                  phone:        { type: 'string', example: '+39012345678' },
-                  email:        { type: 'string', example: 'mario@example.com' },
+                  display_name: { type: 'string', example: 'John Smith' },
+                  phone:        { type: 'string', example: '+12025550100' },
+                  email:        { type: 'string', example: 'john.smith@example.com' },
                   notes:        { type: 'string', example: 'CEO' },
                 },
               },
@@ -1359,7 +1359,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           },
         },
         responses: {
-          201: { description: 'Contact created', content: { 'application/json': { example: { id: 'uuid', display_name: 'Mario Rossi', phone: '+39012345678', source: 'local' } } } },
+          201: { description: 'Contact created', content: { 'application/json': { example: { id: 'uuid', display_name: 'John Smith', phone: '+12025550100', source: 'local' } } } },
           400: { description: 'Validation error' },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
@@ -1390,7 +1390,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           },
         },
         responses: {
-          200: { description: 'Updated contact', content: { 'application/json': { example: { id: 'uuid', display_name: 'Mario Rossi', phone: '+39012345678' } } } },
+          200: { description: 'Updated contact', content: { 'application/json': { example: { id: 'uuid', display_name: 'John Smith', phone: '+12025550100' } } } },
           401: { description: 'Unauthorized' },
           403: { description: 'Forbidden' },
           404: { description: 'Contact not found' },
@@ -1423,7 +1423,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 example: {
                   synced: 1250,
                   contacts: [
-                    { id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Anna Bianchi', phone: '+39087654321', email: 'anna.bianchi@example.com', source: 'ldap' },
+                    { id: '550e8400-e29b-41d4-a716-446655440000', display_name: 'Jane Doe', phone: '+12025550199', email: 'jane.doe@example.com', source: 'ldap' },
                   ],
                   syncStatus: { status: 'done', synced: 1250, error: null, startedAt: '2026-03-28T08:00:00.000Z', finishedAt: '2026-03-28T08:01:32.000Z' },
                 },

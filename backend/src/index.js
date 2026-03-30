@@ -363,7 +363,7 @@ app.get(['/docs', '/docs/'], (req, res) => {
     <div class="logo">📡</div>
     <h1>SMS Gateway &mdash; API Reference</h1>
     <span class="badge">v1</span>
-    <button class="download-btn" onclick="downloadPostman()" title="Scarica la collection Postman (OpenAPI 3.0)">&#x2B07; Postman</button>
+    <button class="download-btn" onclick="downloadPostman()" title="Download Postman Collection (OpenAPI 3.0)">&#x2B07; Postman</button>
   </div>
 
   <!-- Shown when already logged in -->
@@ -469,10 +469,10 @@ app.get(['/docs', '/docs/'], (req, res) => {
         a.download = 'SMSGateway_OpenAPI.json';
         a.click();
         URL.revokeObjectURL(url);
-        btn.innerHTML = '&#x2705; Scaricato!';
+        btn.innerHTML = '&#x2705; Downloaded!';
         setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
       } catch (e) {
-        btn.innerHTML = '&#x274C; Errore';
+        btn.innerHTML = '&#x274C; Error';
         setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
       }
     }
