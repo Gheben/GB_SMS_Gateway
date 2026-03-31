@@ -57,7 +57,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 cd /volume3/docker   # Synology NAS
 # or: cd /opt/docker  # Linux VPS
 
-git clone https://git.ballarini.app/guido/GB-SMS-Gateway.git smsgateway
+git clone https://github.com/Gheben/GB_SMS_Gateway.git smsgateway
 cd smsgateway
 
 # Create the configuration file
@@ -125,7 +125,7 @@ docker compose up -d --build
 **Steps:**
 
 ```bash
-git clone https://git.ballarini.app/guido/GB-SMS-Gateway.git
+git clone https://github.com/Gheben/GB_SMS_Gateway.git
 cd GB-SMS-Gateway
 
 # Backend
