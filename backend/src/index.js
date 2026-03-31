@@ -30,6 +30,7 @@ const groupsRouter      = require('./routes/localGroups');
 const phonebookRouter   = require('./routes/phonebook');
 const { requireAuth } = require('./middleware/authMiddleware');
 const { seedSuperAdmin } = require('./services/authService');
+const auditService     = require('./services/auditService');
 const openApiSpec = require('./openapi');
 
 // Ensure data and logs directories exist
@@ -567,6 +568,18 @@ server.listen(PORT, '0.0.0.0', async () => {
   logger.info(`GB SMS Gateway backend running on port ${PORT} (0.0.0.0)`);
   await deviceManager.init();
 });
+
+// Automatic audit log purge: every 24h delete entries older than 365 days
+const AUDIT_RETENTION_DAYS = 365;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+setInterval(() => {
+  try {
+    const removed = auditService.purgeOlderThan(AUDIT_RETENTION_DAYS);
+    if (removed > 0) logger.info(`[audit] Auto-purge: removed ${removed} entries older than ${AUDIT_RETENTION_DAYS} days`);
+  } catch (err) {
+    logger.error('[audit] Auto-purge failed:', err.message);
+  }
+}, MS_PER_DAY);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
