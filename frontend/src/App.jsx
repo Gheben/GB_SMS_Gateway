@@ -115,7 +115,7 @@ function AppShell() {
         onToggleCollapse={toggleSidebarCollapse}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 text-white flex-shrink-0">
+        <header style={{ paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: '12px' }} className="md:hidden flex items-center gap-3 px-4 bg-gray-900 text-white flex-shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="text-gray-300 hover:text-white" aria-label="Apri menu">
             <Menu size={22} />
           </button>

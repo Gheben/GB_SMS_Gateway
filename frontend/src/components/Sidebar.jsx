@@ -64,7 +64,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className={`border-b border-gray-700 flex items-center ${cl ? 'px-1 py-4 justify-between' : 'px-5 py-4 gap-3'}`}>
+        <div style={{ paddingTop: 'env(safe-area-inset-top)' }} className={`border-b border-gray-700 flex items-center ${cl ? 'px-1 py-4 justify-between' : 'px-5 py-4 gap-3'}`}>
           <img src="/logo.svg" alt="GB SMS Gateway logo" className="w-8 h-8 flex-shrink-0" />
           {!cl && (
             <div className="min-w-0 flex-1">
