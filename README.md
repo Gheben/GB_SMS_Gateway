@@ -42,7 +42,13 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ---
 
-## 🚀 Installation
+## � Screenshots
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+## �🚀 Installation
 
 ### Option 1: Docker (Recommended)
 
