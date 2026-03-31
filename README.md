@@ -1,4 +1,4 @@
-# GB SMS Gateway — SMS Management System for Yeastar TG1600
+﻿# GB SMS Gateway — SMS Management System for Yeastar TG1600
 
 ![Node.js](https://img.shields.io/badge/Node.js-22-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
@@ -42,7 +42,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ---
 
-## � Screenshots
+## 📸 Screenshots
 
 **Dashboard**
 ![Dashboard](docs/screenshots/dashboard.png)
@@ -70,7 +70,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ---
 
-## �🚀 Installation
+## 🚀 Installation
 
 ### Option 1: Docker (Recommended)
 
