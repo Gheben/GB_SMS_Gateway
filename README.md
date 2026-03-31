@@ -44,7 +44,29 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ## � Screenshots
 
+**Dashboard**
 ![Dashboard](docs/screenshots/dashboard.png)
+
+**Send SMS**
+![Send SMS](docs/screenshots/send_sms.png)
+
+**Forward Rules**
+![Forward Rules](docs/screenshots/forwarding_rules.png)
+
+**Reports**
+![Reports](docs/screenshots/reports.png)
+
+**Phonebook**
+![Phonebook](docs/screenshots/phonebook.png)
+
+**Users & Groups**
+![Users & Groups](docs/screenshots/user-groups.png)
+
+**Settings**
+![Settings](docs/screenshots/settings.png)
+
+**API Docs (Swagger)**
+![API Docs](docs/screenshots/swagger.png)
 
 ---
 
