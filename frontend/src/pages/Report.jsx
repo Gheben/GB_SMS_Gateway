@@ -223,7 +223,7 @@ export default function Report() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="min-w-[700px] w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">
                         <th className="pb-2 pr-4 font-medium">SMS received at</th>

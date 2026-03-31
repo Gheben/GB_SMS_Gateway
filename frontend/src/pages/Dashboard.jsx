@@ -146,7 +146,7 @@ export default function Dashboard() {
             </select>
           </div>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
+            <table className="min-w-[560px] w-full text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <tr>
                   <th className="px-4 py-3 text-left">Device</th>

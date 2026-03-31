@@ -568,7 +568,8 @@ function LocalUsersTab() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="min-w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="min-w-[680px] text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-6"></th>
@@ -643,6 +644,7 @@ function LocalUsersTab() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}
@@ -988,7 +990,8 @@ function LdapSettingsTab() {
               <span className="text-xs">Add at least one group to allow login with LDAP credentials.</span>
             </div>
           ) : (
-            <table className="min-w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="min-w-[500px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group (DN)</th>
@@ -1021,6 +1024,7 @@ function LdapSettingsTab() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

@@ -288,7 +288,7 @@ export default function SimMapping() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="min-w-[580px] text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Device</th>
