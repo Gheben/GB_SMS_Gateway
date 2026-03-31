@@ -113,12 +113,12 @@ export default function LoginPage() {
         <span className="text-slate-200 font-semibold">Guido Ballarini</span>
       </p>
       <div className="mt-2 flex items-center justify-center gap-4">
-        <a href="https://buymeacoffee.com/guidoballarini" target="_blank" rel="noreferrer"
+        <a href="https://buymeacoffee.com/guidoballau" target="_blank" rel="noreferrer"
           title="Buy me a coffee"
           className="text-slate-500 hover:text-yellow-400 transition-colors">
           <Coffee size={15} />
         </a>
-        <a href="https://paypal.me/guidoballarini" target="_blank" rel="noreferrer"
+        <a href="https://www.paypal.com/donate/?hosted_button_id=8RF28JBPLYASN" target="_blank" rel="noreferrer"
           title="PayPal"
           className="text-slate-500 hover:text-blue-400 transition-colors">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
