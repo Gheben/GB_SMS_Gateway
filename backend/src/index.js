@@ -185,6 +185,23 @@ app.get(['/docs', '/docs/'], (req, res) => {
     }
     #docs-header .download-btn:hover { background: #4f46e5; color: #fff; }
     #docs-header .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #docs-header .back-btn {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    #docs-header .back-btn:hover { background: #1e293b; color: #e2e8f0; }
 
     /* ── Swagger UI wrapper ── */
     #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
@@ -364,6 +381,7 @@ app.get(['/docs', '/docs/'], (req, res) => {
     <div class="logo">📡</div>
     <h1>SMS Gateway &mdash; API Reference</h1>
     <span class="badge">v1</span>
+    <a class="back-btn" id="back-btn" href="/">&#x2190; App</a>
     <button class="download-btn" onclick="downloadPostman()" title="Download Postman Collection (OpenAPI 3.0)">&#x2B07; Postman</button>
   </div>
 
@@ -515,6 +533,12 @@ app.get(['/docs', '/docs/'], (req, res) => {
           }
         },
       });
+
+      // Show "Back to App" button only when running as PWA/webapp (standalone mode)
+      if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+        const backBtn = document.getElementById('back-btn');
+        if (backBtn) backBtn.style.display = 'inline-flex';
+      }
     };
   </script>
 </body>
