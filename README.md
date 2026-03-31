@@ -56,14 +56,17 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 **Reports**
 ![Reports](docs/screenshots/reports.png)
 
-**Phonebook**
-![Phonebook](docs/screenshots/phonebook.png)
+**Settings**
+![Settings](docs/screenshots/settings.png)
 
 **Users & Groups**
 ![Users & Groups](docs/screenshots/user-groups.png)
 
-**Settings**
-![Settings](docs/screenshots/settings.png)
+**Users & Groups — Permissions**
+![Users & Groups Permissions](docs/screenshots/user-groups_permissions.png)
+
+**Phonebook**
+![Phonebook](docs/screenshots/phonebook.png)
 
 **API Docs (Swagger)**
 ![API Docs](docs/screenshots/swagger.png)
