@@ -1,5 +1,5 @@
-﻿import { useEffect, useState, useCallback } from 'react'
-import { portsApi } from '../api'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
+import { portsApi, rulesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
 
@@ -167,7 +167,47 @@ function EditableLimitCell({ initialValue, onSave }) {
   )
 }
 
-function SimRow({ port, onPortUpdate }) {
+function RulesPopover({ rules }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  if (rules.length === 0) {
+    return <span className="text-gray-300 text-xs italic">—</span>
+  }
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+        title="Click to see rules using this SIM"
+      >
+        {rules.length} rule{rules.length !== 1 ? 's' : ''}
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-3 space-y-1.5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rules using this SIM</p>
+          {rules.map(r => (
+            <div key={r.id} className="flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+              <span className="text-xs text-gray-800 font-medium truncate">{r.name}</span>
+              {!r.enabled && <span className="text-[10px] text-gray-400 flex-shrink-0">disabled</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SimRow({ port, rules, onPortUpdate }) {
   const [toggling, setToggling] = useState(false)
 
   async function toggleBalanced() {
@@ -179,6 +219,14 @@ function SimRow({ port, onPortUpdate }) {
     } catch {}
     setToggling(false)
   }
+
+  // Rules that reference this specific port (match_type='port') or this device (match_type='device')
+  const matchingRules = rules.filter(r =>
+    r.conditions?.some(c =>
+      (c.match_type === 'port' && c.device_id === port.device_id && parseInt(c.match_value, 10) === port.port_number) ||
+      (c.match_type === 'device' && c.device_id === port.device_id)
+    )
+  )
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50">
@@ -230,19 +278,24 @@ function SimRow({ port, onPortUpdate }) {
           }
         </button>
       </td>
+      <td className="px-3 py-2">
+        <RulesPopover rules={matchingRules} />
+      </td>
     </tr>
   )
 }
 
 export default function SimMapping() {
   const [ports, setPorts]   = useState([])
+  const [rules, setRules]   = useState([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const all = await portsApi.getAll()
+      const [all, ruleList] = await Promise.all([portsApi.getAll(), rulesApi.getAll()])
       setPorts(all.filter(p => p.status === 'READY' || p.status === 'DOWN'))
+      setRules(ruleList)
     } catch {}
     setLoading(false)
   }, [])
@@ -288,7 +341,7 @@ export default function SimMapping() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-[580px] text-xs">
+          <table className="min-w-[700px] text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Device</th>
@@ -298,6 +351,7 @@ export default function SimMapping() {
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month (0 = no limit)">Limit/mo</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Include in balanced auto-routing pool">Balanced</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Forward rules using this SIM port">Rules</th>
               </tr>
             </thead>
             <tbody>
@@ -305,6 +359,7 @@ export default function SimMapping() {
                 <SimRow
                   key={`${port.device_id}-${port.port_number}`}
                   port={port}
+                  rules={rules}
                   onPortUpdate={handlePortUpdate}
                 />
               ))}
