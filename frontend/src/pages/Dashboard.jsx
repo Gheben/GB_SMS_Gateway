@@ -17,6 +17,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [portStats, setPortStats] = useState(null)
+
+  async function handleMessageClick(msg) {
+    try {
+      const full = await messagesApi.getById(msg.id)
+      setSelectedMessage(full)
+    } catch {
+      setSelectedMessage(msg)
+    }
+  }
   const [statsMonth, setStatsMonth] = useState(() => new Date().toISOString().slice(0, 7))
   const { can, user } = useAuth()
 
@@ -112,7 +121,7 @@ export default function Dashboard() {
       {/* Recent messages */}
       <div>
         <h3 className="text-lg font-semibold text-gray-700 mb-3">Recent messages</h3>
-        <MessageTable messages={recent} loading={loading} onDoubleClick={setSelectedMessage} />
+        <MessageTable messages={recent} loading={loading} onDoubleClick={handleMessageClick} />
         {recentTotal > recentShown && (
           <div className="mt-3 text-center">
             <button
