@@ -167,11 +167,12 @@ function safeUser(u) {
 
 function getAllUsers() {
   const db = getDb();
-  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, created_at, last_login FROM users ORDER BY created_at').all()
+  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, ldap_groups, created_at, last_login FROM users ORDER BY created_at').all()
     .map(u => ({
       ...u,
       permissions: JSON.parse(u.permissions || '{}'),
       allowed_ports: JSON.parse(u.allowed_ports || '[]'),
+      ldap_groups: JSON.parse(u.ldap_groups || '[]'),
       source: u.source || 'local',
       is_online: isOnline(u.id),
     }));
