@@ -147,7 +147,10 @@ export default function SendSMS() {
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Send SMS</h2>
+      <div className="flex items-center gap-3">
+        <Send size={22} className="text-blue-600" />
+        <h2 className="text-2xl font-bold text-gray-800">Send SMS</h2>
+      </div>
 
       {devices.length === 0 && !balancedMode && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-lg">

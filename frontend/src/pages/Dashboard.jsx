@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import StatCard from '../components/StatCard'
 import MessageTable from '../components/MessageTable'
 import MessageDetailModal from '../components/MessageDetailModal'
-import { MessageSquare, Send, AlertCircle, TrendingUp, Server, Smartphone } from 'lucide-react'
+import { MessageSquare, Send, AlertCircle, TrendingUp, Server, Smartphone, LayoutDashboard } from 'lucide-react'
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -82,7 +82,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+      <div className="flex items-center gap-3">
+        <LayoutDashboard size={22} className="text-blue-600" />
+        <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
-import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe, Clock, RefreshCw } from 'lucide-react'
+import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe, Clock, RefreshCw, Settings2 } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const DEFAULT_TEMPLATE = `<table style="font-family:Arial,sans-serif;max-width:600px;border-collapse:collapse">
@@ -262,7 +262,10 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
+      <div className="flex items-center gap-3">
+        <Settings2 size={22} className="text-blue-600" />
+        <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
+      </div>
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200">

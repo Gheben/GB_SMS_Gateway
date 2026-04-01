@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { reportApi, messagesApi } from '../api'
-import { CheckCircle, XCircle, Clock, RefreshCw, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, RefreshCw, Loader2, BarChart2 } from 'lucide-react'
 import MessageDetailModal from '../components/MessageDetailModal'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -91,7 +91,10 @@ export default function Report() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-gray-800">Report &amp; Log</h2>
+        <div className="flex items-center gap-3">
+          <BarChart2 size={22} className="text-blue-600" />
+          <h2 className="text-2xl font-bold text-gray-800">Report &amp; Log</h2>
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-gray-200 overflow-hidden">
             {DAYS_OPTIONS.map(d => (

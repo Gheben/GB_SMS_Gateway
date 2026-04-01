@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { portsApi, rulesApi, localGroupsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
@@ -169,11 +170,17 @@ function EditableLimitCell({ initialValue, onSave }) {
 
 function RulesPopover({ rules, localGroups }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef(null)
+  const panelRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
-    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    function handleClick(e) {
+      if (btnRef.current?.contains(e.target)) return
+      if (panelRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
@@ -182,17 +189,30 @@ function RulesPopover({ rules, localGroups }) {
     return <span className="text-gray-300 text-xs italic">—</span>
   }
 
+  function handleOpen() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 6, left: rect.left })
+    }
+    setOpen(v => !v)
+  }
+
   return (
-    <div className="relative inline-block" ref={ref}>
+    <>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors"
         title="Click to see rules using this SIM"
       >
         {rules.length} rule{rules.length !== 1 ? 's' : ''}
       </button>
-      {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-3 space-y-1.5">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="w-72 bg-white border border-gray-200 rounded-xl shadow-xl p-3 space-y-1.5"
+        >
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rules using this SIM</p>
           {rules.map(r => {
             const ldapGroups = r.allowed_groups || []
@@ -209,7 +229,7 @@ function RulesPopover({ rules, localGroups }) {
                 {allGroups.length > 0 && (
                   <div className="mt-1 ml-3.5 flex flex-wrap gap-1">
                     {allGroups.map(g => (
-                      <span key={g} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium truncate max-w-[180px]" title={g}>{g}</span>
+                      <span key={g} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium truncate max-w-[220px]" title={g}>{g}</span>
                     ))}
                   </div>
                 )}
@@ -219,9 +239,10 @@ function RulesPopover({ rules, localGroups }) {
               </div>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
 
@@ -361,14 +382,24 @@ export default function SimMapping() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-[700px] text-xs">
+          <table className="min-w-[810px] w-full table-fixed text-xs">
+            <colgroup>
+              <col className="w-36" />
+              <col className="w-14" />
+              <col className="w-20" />
+              <col className="w-28" />
+              <col className="w-36" />
+              <col className="w-24" />
+              <col className="w-24" />
+              <col className="w-20" />
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Device</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">Device</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Port</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Carrier</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">Carrier</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">SIM Number</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month (0 = no limit)">Limit/mo</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Include in balanced auto-routing pool">Balanced</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Forward rules using this SIM port">Rules</th>

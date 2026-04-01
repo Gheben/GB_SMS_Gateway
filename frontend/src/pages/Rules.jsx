@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { rulesApi, devicesApi, portsApi, ldapApi, localGroupsApi, phonebookApi } from '../api'
 import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
-import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play } from 'lucide-react'
+import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play, Filter } from 'lucide-react'
 
 const MATCH_TYPES = [
   { value: 'sender',        label: 'Exact sender' },
@@ -555,7 +555,10 @@ export default function Rules() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">SMS Forwarding Rules</h2>
+        <div className="flex items-center gap-3">
+          <Filter size={22} className="text-blue-600" />
+          <h2 className="text-2xl font-bold text-gray-800">SMS Forwarding Rules</h2>
+        </div>
         <div className="flex gap-2">
           <button onClick={() => setTestOpen(true)} className="btn-ghost flex items-center gap-2">
             <PlayCircle size={16} /> Test

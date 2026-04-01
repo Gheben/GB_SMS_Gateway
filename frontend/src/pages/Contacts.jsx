@@ -256,7 +256,10 @@ export default function Contacts() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Phonebook</h2>
+      <div className="flex items-center gap-3">
+        <BookOpen size={22} className="text-blue-600" />
+        <h2 className="text-2xl font-bold text-gray-800">Phonebook</h2>
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">

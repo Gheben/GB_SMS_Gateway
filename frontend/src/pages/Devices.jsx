@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { devicesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { Plus, Pencil, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wifi, WifiOff, Loader2, Server } from 'lucide-react'
 
 const EMPTY_FORM = { name: '', host: '', port: 5038, username: 'apiuser', password: 'apipass', enabled: true }
 
@@ -85,7 +85,10 @@ export default function Devices() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Yeastar Devices</h2>
+        <div className="flex items-center gap-3">
+          <Server size={22} className="text-blue-600" />
+          <h2 className="text-2xl font-bold text-gray-800">Yeastar Devices</h2>
+        </div>
         <button onClick={() => setModal('new')} className="btn-primary flex items-center gap-2">
           <Plus size={16} /> Add device
         </button>

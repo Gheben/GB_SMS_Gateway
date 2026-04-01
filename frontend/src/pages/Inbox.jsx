@@ -3,6 +3,7 @@ import { messagesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import MessageTable from '../components/MessageTable'
 import MessageDetailModal from '../components/MessageDetailModal'
+import { Inbox } from 'lucide-react'
 
 export default function Inbox() {
   const [messages, setMessages] = useState([])
@@ -39,7 +40,10 @@ export default function Inbox() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-2xl font-bold text-gray-800">Received SMS</h2>
+        <div className="flex items-center gap-3">
+          <Inbox size={22} className="text-blue-600" />
+          <h2 className="text-2xl font-bold text-gray-800">Received SMS</h2>
+        </div>
         <span className="text-sm text-gray-500">{total} messaggi</span>
       </div>
 
