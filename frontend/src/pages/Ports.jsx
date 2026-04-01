@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react'
-import { portsApi, rulesApi } from '../api'
+import { portsApi, rulesApi, localGroupsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
 
@@ -167,7 +167,7 @@ function EditableLimitCell({ initialValue, onSave }) {
   )
 }
 
-function RulesPopover({ rules }) {
+function RulesPopover({ rules, localGroups }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -194,20 +194,38 @@ function RulesPopover({ rules }) {
       {open && (
         <div className="absolute z-50 left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-3 space-y-1.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rules using this SIM</p>
-          {rules.map(r => (
-            <div key={r.id} className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span className="text-xs text-gray-800 font-medium truncate">{r.name}</span>
-              {!r.enabled && <span className="text-[10px] text-gray-400 flex-shrink-0">disabled</span>}
-            </div>
-          ))}
+          {rules.map(r => {
+            const ldapGroups = r.allowed_groups || []
+            const lgIds = r.allowed_local_groups || []
+            const lgNames = lgIds.map(id => localGroups.find(g => g.id === id)?.name || id)
+            const allGroups = [...ldapGroups, ...lgNames]
+            return (
+              <div key={r.id} className="pb-2 border-b border-gray-100 last:border-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-xs text-gray-800 font-medium truncate">{r.name}</span>
+                  {!r.enabled && <span className="text-[10px] text-gray-400 flex-shrink-0">disabled</span>}
+                </div>
+                {allGroups.length > 0 && (
+                  <div className="mt-1 ml-3.5 flex flex-wrap gap-1">
+                    {allGroups.map(g => (
+                      <span key={g} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium truncate max-w-[180px]" title={g}>{g}</span>
+                    ))}
+                  </div>
+                )}
+                {allGroups.length === 0 && (
+                  <span className="ml-3.5 text-[10px] text-gray-400 italic">all users</span>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-function SimRow({ port, rules, onPortUpdate }) {
+function SimRow({ port, rules, localGroups, onPortUpdate }) {
   const [toggling, setToggling] = useState(false)
 
   async function toggleBalanced() {
@@ -279,23 +297,25 @@ function SimRow({ port, rules, onPortUpdate }) {
         </button>
       </td>
       <td className="px-3 py-2">
-        <RulesPopover rules={matchingRules} />
+        <RulesPopover rules={matchingRules} localGroups={localGroups} />
       </td>
     </tr>
   )
 }
 
 export default function SimMapping() {
-  const [ports, setPorts]   = useState([])
-  const [rules, setRules]   = useState([])
-  const [loading, setLoading] = useState(true)
+  const [ports, setPorts]         = useState([])
+  const [rules, setRules]         = useState([])
+  const [localGroups, setLocalGroups] = useState([])
+  const [loading, setLoading]     = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [all, ruleList] = await Promise.all([portsApi.getAll(), rulesApi.getAll()])
+      const [all, ruleList, groupList] = await Promise.all([portsApi.getAll(), rulesApi.getAll(), localGroupsApi.getAll()])
       setPorts(all.filter(p => p.status === 'READY' || p.status === 'DOWN'))
       setRules(ruleList)
+      setLocalGroups(groupList)
     } catch {}
     setLoading(false)
   }, [])
@@ -360,6 +380,7 @@ export default function SimMapping() {
                   key={`${port.device_id}-${port.port_number}`}
                   port={port}
                   rules={rules}
+                  localGroups={localGroups}
                   onPortUpdate={handlePortUpdate}
                 />
               ))}
