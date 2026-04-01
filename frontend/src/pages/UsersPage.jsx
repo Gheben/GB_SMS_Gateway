@@ -528,7 +528,7 @@ function LocalUsersTab() {
     try {
       const [allUsers, ldapGroups] = await Promise.all([
         usersApi.getAll(),
-        usersApi.getGroups().catch(() => []),
+        ldapApi.getGroups().catch(() => []),
       ])
       setUsers(allUsers)
       setMappedGroupDns(ldapGroups.map(g => g.group_dn).filter(Boolean))
