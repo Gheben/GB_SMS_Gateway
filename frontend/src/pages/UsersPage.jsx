@@ -386,6 +386,16 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
   const deniedPerms  = ALL_PERMS.filter(p => !u.permissions?.[p.key])
   const hasFullAccess = u.role !== 'user'
 
+  // Extract CN= value from an LDAP DN, e.g. "CN=APP_GB_SMS,OU=..." → "APP_GB_SMS"
+  function extractCN(dn) {
+    const m = dn.match(/^CN=([^,]+)/i)
+    return m ? m[1] : dn
+  }
+
+  const ldapGroupNames = isLdap && Array.isArray(u.ldap_groups)
+    ? u.ldap_groups.map(extractCN)
+    : []
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -437,7 +447,11 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
               Permissions
-              {isLdap && <span className="ml-1 font-normal normal-case text-cyan-600">(from LDAP group mapping)</span>}
+              {isLdap && ldapGroupNames.length > 0 && (
+                <span className="ml-1 font-normal normal-case text-cyan-600">
+                  ({ldapGroupNames.join(', ')})
+                </span>
+              )}
             </p>
             {hasFullAccess ? (
               <div className="flex items-center gap-2 text-sm text-green-700 font-medium">
@@ -469,7 +483,7 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">LDAP Groups</p>
               <ul className="space-y-0.5">
                 {u.ldap_groups.map((g, i) => (
-                  <li key={i} className="text-xs font-mono text-gray-600 truncate" title={g}>{g}</li>
+                  <li key={i} className="text-xs text-gray-600 truncate" title={g}>{extractCN(g)}</li>
                 ))}
               </ul>
             </div>
