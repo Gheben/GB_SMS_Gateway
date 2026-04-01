@@ -372,7 +372,7 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
 
 /* ─── UserDetailModal ──────────────────────────────────────── */
 
-function UserDetailModal({ user: u, onClose, onEdit }) {
+function UserDetailModal({ user: u, onClose, onEdit, mappedGroupDns = [] }) {
   function formatDate(ts) {
     if (!ts) return '—'
     return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
@@ -392,9 +392,12 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
     return m ? m[1] : dn
   }
 
-  const ldapGroupNames = isLdap && Array.isArray(u.ldap_groups)
-    ? u.ldap_groups.map(extractCN)
+  // Only show groups that are actually configured in LDAP group_mappings
+  const mappedDnSet = new Set(mappedGroupDns.map(d => d.toLowerCase()))
+  const matchedGroups = isLdap && Array.isArray(u.ldap_groups)
+    ? u.ldap_groups.filter(g => mappedDnSet.has(g.toLowerCase()))
     : []
+  const ldapGroupNames = matchedGroups.map(extractCN)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -477,12 +480,12 @@ function UserDetailModal({ user: u, onClose, onEdit }) {
             )}
           </div>
 
-          {/* LDAP groups if present */}
-          {isLdap && Array.isArray(u.ldap_groups) && u.ldap_groups.length > 0 && (
+          {/* Matched LDAP groups (only configured mappings) */}
+          {isLdap && matchedGroups.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">LDAP Groups</p>
               <ul className="space-y-0.5">
-                {u.ldap_groups.map((g, i) => (
+                {matchedGroups.map((g, i) => (
                   <li key={i} className="text-xs text-gray-600 truncate" title={g}>{extractCN(g)}</li>
                 ))}
               </ul>
@@ -512,16 +515,24 @@ const PAGE_SIZE = 25
 
 function LocalUsersTab() {
   const { user: me } = useAuth()
-  const [users, setUsers]     = useState([])
-  const [loading, setLoading] = useState(true)
-  const [modal, setModal]     = useState(null)   // null | 'new' | user-obj
-  const [detail, setDetail]   = useState(null)   // user-obj for read-only detail modal
-  const [search, setSearch]   = useState('')
-  const [page, setPage]       = useState(1)
+  const [users, setUsers]               = useState([])
+  const [mappedGroupDns, setMappedGroupDns] = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [modal, setModal]               = useState(null)   // null | 'new' | user-obj
+  const [detail, setDetail]             = useState(null)   // user-obj for read-only detail modal
+  const [search, setSearch]             = useState('')
+  const [page, setPage]                 = useState(1)
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setUsers(await usersApi.getAll()) } catch {}
+    try {
+      const [allUsers, ldapGroups] = await Promise.all([
+        usersApi.getAll(),
+        usersApi.getGroups().catch(() => []),
+      ])
+      setUsers(allUsers)
+      setMappedGroupDns(ldapGroups.map(g => g.group_dn).filter(Boolean))
+    } catch {}
     setLoading(false)
   }, [])
 
@@ -693,6 +704,7 @@ function LocalUsersTab() {
           user={detail}
           onClose={() => setDetail(null)}
           onEdit={u => setModal(u)}
+          mappedGroupDns={mappedGroupDns}
         />
       )}
 
