@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'SMS Gateway API',
-    version: '1.0.0',
+    version: '1.1.0',
     description: `
 ## Authentication
 
@@ -83,8 +83,28 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           content:        { type: 'string', example: 'Hello world' },
           status:         { type: 'string', enum: ['received', 'pending', 'sent', 'failed'] },
           device_id:      { type: 'string', format: 'uuid' },
+          device_name:    { type: 'string', nullable: true, example: 'GSM-01', description: 'Human-friendly device name (joined from devices table)' },
           port:           { type: 'integer', example: 1 },
+          port_sim_number: { type: 'string', nullable: true, example: '+39012345678', description: 'Phone number of the SIM on this port (joined from ports table)' },
           created_at:     { type: 'string', format: 'date-time' },
+          dispatches: {
+            type: 'array',
+            description: 'Forwarding dispatch records for this message. Only returned by GET /messages/{id}, not by the paginated list.',
+            items: {
+              type: 'object',
+              properties: {
+                id:         { type: 'string', format: 'uuid' },
+                message_id: { type: 'string', format: 'uuid' },
+                rule_id:    { type: 'string', format: 'uuid' },
+                rule_name:  { type: 'string', example: 'Forward IT alerts' },
+                type:       { type: 'string', enum: ['email', 'webhook', 'sms'], example: 'email' },
+                target:     { type: 'string', example: 'admin@example.com' },
+                status:     { type: 'string', enum: ['sent', 'failed', 'pending'] },
+                error:      { type: 'string', nullable: true },
+                created_at: { type: 'string', format: 'date-time' },
+              },
+            },
+          },
         },
       },
       Device: {
@@ -166,12 +186,16 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Authentication'],
         summary: 'Get current authenticated user',
+        description: 'Returns both the token payload (as decoded from the JWT) and the live DB record for the authenticated user.',
         responses: {
           200: {
             description: 'Current user info',
             content: {
               'application/json': {
-                example: { id: 'uuid', username: 'sysadmin', role: 'superadmin', permissions: {} },
+                example: {
+                  token_payload: { id: 'uuid', username: 'sysadmin', role: 'superadmin', permissions: {} },
+                  db_record: { id: 'uuid', username: 'sysadmin', display_name: null, role: 'superadmin', permissions: {}, allowed_ports: [], source: 'local' },
+                },
               },
             },
           },
@@ -212,6 +236,152 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         security: [],
         responses: {
           302: { description: 'Redirect to Identity Provider' },
+        },
+      },
+    },
+
+    '/auth/saml/callback': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'SAML ACS — assertion consumer endpoint (IdP-facing)',
+        description:
+          'Receives the `SAMLResponse` form field posted by the IdP after a successful authentication. ' +
+          'Validates the assertion, upserts the SAML user (role resolved via LDAP group mappings), and ' +
+          'redirects the browser to `/saml-callback?token=<JWT>`.\n\n' +
+          '> This endpoint is called automatically by the browser/IdP redirect flow. You do **not** call it directly from the API.',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/x-www-form-urlencoded': {
+              schema: {
+                type: 'object',
+                required: ['SAMLResponse'],
+                properties: {
+                  SAMLResponse: { type: 'string', description: 'Base64-encoded SAML assertion posted by the IdP' },
+                  RelayState:   { type: 'string', description: 'Optional relay state parameter' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          302: { description: 'Redirect to /saml-callback?token=… on success, or /login?error=… on failure' },
+        },
+      },
+    },
+
+    '/auth/saml/logout': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'SP-initiated SAML logout',
+        description:
+          'Returns the IdP logout URL so the frontend can redirect the browser to the IdP SLO endpoint. ' +
+          'If `idp_slo_url` is not configured (or SAML is disabled), returns `{ logoutUrl: null }` — ' +
+          'the client should then perform a local-only logout.',
+        responses: {
+          200: {
+            description: 'IdP SLO URL or null',
+            content: {
+              'application/json': {
+                examples: {
+                  with_slo: { summary: 'IdP SLO configured', value: { logoutUrl: 'https://idp.example.com/saml/logout?SAMLRequest=...' } },
+                  no_slo:   { summary: 'No IdP SLO URL', value: { logoutUrl: null } },
+                },
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+        },
+      },
+    },
+
+    '/auth/saml/slo': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'IdP-initiated SAML SLO (IdP-facing)',
+        description:
+          'Receives an IdP-initiated `LogoutRequest` (HTTP-POST binding). Completes the SLO handshake and ' +
+          'redirects the browser to `/login?saml_logout=1`.\n\n' +
+          '> This endpoint is called by the IdP. You do **not** call it directly from the API.',
+        security: [],
+        requestBody: {
+          content: {
+            'application/x-www-form-urlencoded': {
+              schema: {
+                type: 'object',
+                properties: {
+                  SAMLRequest: { type: 'string', description: 'Base64-encoded LogoutRequest from the IdP' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          302: { description: 'Redirect to /login?saml_logout=1' },
+        },
+      },
+    },
+
+    '/auth/sso': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'Header-based SSO login (Authentik / reverse-proxy)',
+        description:
+          'Authenticates a user based on a trusted header injected by a reverse proxy (e.g. Authentik, Nginx, Traefik). ' +
+          'The header name is configured via the `SSO_HEADER` environment variable (default: `X-Remote-User`). ' +
+          'Only available when `SSO_ENABLED=true`.\n\n' +
+          '**Lookup order:**\n' +
+          '1. If a local user exists with the extracted username, a JWT is issued immediately.\n' +
+          '2. If LDAP is enabled, a service-account lookup is performed to resolve group memberships and permissions.\n' +
+          '3. If no user/group mapping is found, HTTP 403 is returned.\n\n' +
+          '> The gateway must **not** be publicly reachable on this endpoint — it must be behind an authenticated reverse proxy.',
+        security: [],
+        parameters: [
+          {
+            name: 'X-Remote-User',
+            in: 'header',
+            description: 'Username injected by the reverse proxy. The actual header name is determined by `SSO_HEADER` (env).',
+            schema: { type: 'string', example: 'john.doe@example.com' },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'SSO login successful',
+            content: {
+              'application/json': {
+                example: {
+                  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                  user: { id: 'uuid', username: 'john.doe', role: 'user', permissions: { inbox: true } },
+                },
+              },
+            },
+          },
+          401: { description: 'SSO header missing or username invalid' },
+          403: { description: 'User not authorized (no group mapping found)' },
+          404: { description: 'SSO is not enabled (`SSO_ENABLED` ≠ `true`)' },
+        },
+      },
+    },
+
+    '/auth/refresh-token': {
+      get: {
+        tags: ['Authentication'],
+        summary: 'Refresh JWT token',
+        description:
+          'Issues a fresh JWT using the role and permissions currently stored in the database (or resolved from LDAP group mappings for LDAP users). ' +
+          'The old token must still be valid. Use this endpoint after an admin changes a user\'s role or permissions so the UI can pick up the changes without a full re-login.',
+        responses: {
+          200: {
+            description: 'New JWT token',
+            content: {
+              'application/json': {
+                example: { token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+              },
+            },
+          },
+          401: { description: 'Unauthorized — current token is expired or invalid' },
+          404: { description: 'User no longer exists in the database' },
         },
       },
     },
@@ -282,6 +452,45 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
               },
             },
           },
+        },
+      },
+    },
+
+    '/messages/{id}': {
+      get: {
+        tags: ['Messages'],
+        summary: 'Get a single message by ID (includes forwarding dispatches)',
+        description:
+          'Returns the full message record enriched with:\n' +
+          '- `device_name` — friendly name of the originating device\n' +
+          '- `port_sim_number` — SIM phone number on the port\n' +
+          '- `sender_name` / `recipient_name` — display names from the phonebook\n' +
+          '- `dispatches` — array of forwarding dispatch records (email, webhook, SMS) tied to this message via matching rules\n\n' +
+          'The paginated `GET /messages` list does **not** include `dispatches`; use this endpoint when you need them.',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'Message UUID' },
+        ],
+        responses: {
+          200: {
+            description: 'Full message object',
+            content: {
+              'application/json': {
+                schema: { '$ref': '#/components/schemas/Message' },
+                example: {
+                  id: 'uuid', direction: 'inbound', sender: '+39012345678', recipient: null,
+                  sender_name: 'John Smith', recipient_name: null,
+                  content: 'Alert: CPU 95%', status: 'received',
+                  device_id: 'uuid', device_name: 'GSM-01', port: 2, port_sim_number: '+39087654321',
+                  created_at: '2026-03-01T10:00:00Z',
+                  dispatches: [
+                    { id: 'uuid', rule_name: 'Forward IT alerts', type: 'email', target: 'admin@example.com', status: 'sent', error: null, created_at: '2026-03-01T10:00:01Z' },
+                  ],
+                },
+              },
+            },
+          },
+          400: { description: 'Invalid UUID' },
+          404: { description: 'Message not found' },
         },
       },
     },
@@ -508,6 +717,37 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   operator:      { type: 'string',  example: 'Wind', description: 'Carrier / operator label. Pass empty string to clear.' },
                   balanced:      { type: 'boolean', description: 'Include this port in the balanced SIM pool (least-used-ratio routing).' },
                   monthly_limit: { type: 'integer', minimum: 0, description: 'Max outbound SMS per month for this SIM. 0 = no limit. Ports at or above limit are excluded from auto-routing.' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Ok' } } } },
+        },
+      },
+    },
+
+    '/ports/{device_id}/{port_number}/sim': {
+      put: {
+        tags: ['Ports'],
+        summary: 'Update SIM number only (legacy alias)',
+        description:
+          'Backward-compatible alias — updates **only** the `sim_number` field of the port.\n\n' +
+          '> Prefer `PUT /ports/{device_id}/{port_number}/info` for new integrations, which supports all metadata fields.',
+        parameters: [
+          { name: 'device_id',   in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'port_number', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sim_number'],
+                properties: {
+                  sim_number: { type: 'string', example: '+39012345678', description: 'Phone number of the SIM. Pass empty string to clear.' },
                 },
               },
             },
@@ -1139,6 +1379,53 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
         responses: {
           200: { description: '', content: { 'application/json': { example: { ok: true, message: 'LDAP connection successful' } } } },
           500: { description: 'Connection failed', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
+        },
+      },
+    },
+
+    '/users/ldap-groups': {
+      get: {
+        tags: ['Users (Admin)'],
+        summary: 'List configured LDAP group mappings',
+        description:
+          'Returns the LDAP group mappings that are currently saved in the LDAP settings (the same list visible in the LDAP tab). ' +
+          'Used by the forwarding rules editor to populate the group picker for the `allowed_groups` field.',
+        responses: {
+          200: {
+            description: 'Array of group DN → role mappings',
+            content: {
+              'application/json': {
+                example: [
+                  { group_dn: 'CN=ITAdmins,OU=Groups,DC=example,DC=com', role: 'admin' },
+                  { group_dn: 'CN=Helpdesk,OU=Groups,DC=example,DC=com', role: 'user' },
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+
+    '/users/local-groups': {
+      get: {
+        tags: ['Users (Admin)'],
+        summary: 'List local groups (simplified)',
+        description:
+          'Returns a lightweight list of all local groups (id, name, role). ' +
+          'Used by the forwarding rules editor to populate the group picker for the `allowed_local_groups` field. ' +
+          'For the full group objects including permissions and member_count, use `GET /groups`.',
+        responses: {
+          200: {
+            description: 'Array of local groups',
+            content: {
+              'application/json': {
+                example: [
+                  { id: 'uuid-1', name: 'IT Team', role: 'user' },
+                  { id: 'uuid-2', name: 'Managers', role: 'admin' },
+                ],
+              },
+            },
+          },
         },
       },
     },
