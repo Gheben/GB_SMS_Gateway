@@ -1,9 +1,8 @@
-﻿import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { portsApi, rulesApi, localGroupsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { Pencil, Check, X, Smartphone, Loader2, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
-
 function StatusBadge({ status }) {
   if (status === 'READY') return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />Active</span>
   if (status === 'DOWN')  return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />Unreg.</span>
@@ -168,80 +167,71 @@ function EditableLimitCell({ initialValue, onSave }) {
   )
 }
 
-function RulesPopover({ rules, localGroups }) {
-  const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
-  const btnRef = useRef(null)
-  const panelRef = useRef(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleClick(e) {
-      if (btnRef.current?.contains(e.target)) return
-      if (panelRef.current?.contains(e.target)) return
-      setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
-
-  if (rules.length === 0) {
-    return <span className="text-gray-300 text-xs italic">—</span>
-  }
-
-  function handleOpen() {
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 6, left: rect.left })
-    }
-    setOpen(v => !v)
-  }
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={handleOpen}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors"
-        title="Click to see rules using this SIM"
+function RulesModal({ rules, localGroups, onClose }) {
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+        onClick={e => e.stopPropagation()}
       >
-        {rules.length} rule{rules.length !== 1 ? 's' : ''}
-      </button>
-      {open && createPortal(
-        <div
-          ref={panelRef}
-          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
-          className="w-72 bg-white border border-gray-200 rounded-xl shadow-xl p-3 space-y-1.5"
-        >
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rules using this SIM</p>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-sm font-semibold text-gray-800">Rules using this SIM port</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-200 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
           {rules.map(r => {
             const ldapGroups = r.allowed_groups || []
             const lgIds = r.allowed_local_groups || []
             const lgNames = lgIds.map(id => localGroups.find(g => g.id === id)?.name || id)
             const allGroups = [...ldapGroups, ...lgNames]
             return (
-              <div key={r.id} className="pb-2 border-b border-gray-100 last:border-0 last:pb-0">
+              <div key={r.id} className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
                 <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  <span className="text-xs text-gray-800 font-medium truncate">{r.name}</span>
-                  {!r.enabled && <span className="text-[10px] text-gray-400 flex-shrink-0">disabled</span>}
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-sm text-gray-800 font-medium">{r.name}</span>
+                  {!r.enabled && <span className="text-xs text-gray-400">(disabled)</span>}
                 </div>
-                {allGroups.length > 0 && (
-                  <div className="mt-1 ml-3.5 flex flex-wrap gap-1">
+                {allGroups.length > 0 ? (
+                  <div className="mt-1.5 ml-4 flex flex-wrap gap-1">
                     {allGroups.map(g => (
-                      <span key={g} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium truncate max-w-[220px]" title={g}>{g}</span>
+                      <span key={g} className="text-[11px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100 font-medium" title={g}>{g}</span>
                     ))}
                   </div>
-                )}
-                {allGroups.length === 0 && (
-                  <span className="ml-3.5 text-[10px] text-gray-400 italic">all users</span>
+                ) : (
+                  <span className="ml-4 text-xs text-gray-400 italic">all users</span>
                 )}
               </div>
             )
           })}
-        </div>,
-        document.body
-      )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function RulesPopover({ rules, localGroups }) {
+  const [open, setOpen] = useState(false)
+
+  if (rules.length === 0) {
+    return <span className="text-gray-300 text-xs italic">—</span>
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+        title="Click to see rules using this SIM"
+      >
+        {rules.length} rule{rules.length !== 1 ? 's' : ''}
+      </button>
+      {open && <RulesModal rules={rules} localGroups={localGroups} onClose={() => setOpen(false)} />}
     </>
   )
 }
