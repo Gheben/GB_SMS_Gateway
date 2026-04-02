@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'SMS Gateway API',
-    version: '1.2.2',
+    version: '1.3.0',
     description: `
 ## Authentication
 
@@ -254,6 +254,12 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           'Receives the `SAMLResponse` form field posted by the IdP after a successful authentication. ' +
           'Validates the assertion, upserts the SAML user (role resolved via LDAP group mappings), and ' +
           'redirects the browser to `/saml-callback?token=<JWT>`.\n\n' +
+          '**Redirect outcomes:**\n' +
+          '- ✅ Success → `/saml-callback?token=<JWT>`\n' +
+          '- ⛔ `require_group_match=true` and user has no matching LDAP group → `/access-denied`\n' +
+          '- ❌ No profile returned by IdP → `/login?error=saml_no_profile`\n' +
+          '- ❌ No username in assertion → `/login?error=saml_no_username`\n' +
+          '- ❌ Unexpected error → `/login?error=saml_failed`\n\n' +
           '> This endpoint is called automatically by the browser/IdP redirect flow. You do **not** call it directly from the API.',
         security: [],
         requestBody: {
@@ -272,7 +278,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           },
         },
         responses: {
-          302: { description: 'Redirect to /saml-callback?token=… on success, or /login?error=… on failure' },
+          302: { description: 'Redirect to /saml-callback?token=… on success, /access-denied if require_group_match is true and no group matches, or /login?error=… on other failures' },
         },
       },
     },
@@ -422,6 +428,14 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Messages'],
         summary: 'List messages (paginated)',
+        description:
+          '**Visibility rules (non-admin users):**\n\n' +
+          'The result set is filtered based on the authenticated user\'s group memberships:\n\n' +
+          '- `superadmin` / `admin` — see all messages regardless of rule configuration.\n' +
+          '- Regular `user` — see only messages matched/dispatched by routing rules in which they are explicitly included ' +
+          'via an LDAP group or local group. Routing rules with **no groups assigned** are **admin-only** and are not ' +
+          'visible to regular users. Additionally, outbound messages sent directly by the user (via `POST /messages/send`) ' +
+          'are always visible to that user.',
         parameters: [
           { name: 'direction', in: 'query', schema: { type: 'string', enum: ['inbound', 'outbound'] } },
           { name: 'device_id', in: 'query', schema: { type: 'string', format: 'uuid' } },
