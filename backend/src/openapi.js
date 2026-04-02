@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'SMS Gateway API',
-    version: '1.1.0',
+    version: '1.2.0',
     description: `
 ## Authentication
 
@@ -66,6 +66,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           source:        { type: 'string', enum: ['local', 'ldap', 'saml'], description: '\'ldap\' and \'saml\' users are created automatically on first login' },
           permissions:   { type: 'object', example: { inbox: true, sent: true, rules: false } },
           allowed_ports: { type: 'array', items: { type: 'object', properties: { device_id: { type: 'string' }, port_number: { type: 'integer' } } }, description: 'Empty array = all ports allowed' },
+          ldap_groups:   { type: 'array', items: { type: 'string' }, nullable: true, description: 'Full LDAP DNs of the groups the user belongs to (e.g. ["CN=APP_GB_SMS,OU=Groups,DC=example,DC=com"]). Always an array (possibly empty) for LDAP users; empty array for local/SAML users.', example: ['CN=APP_GB_SMS,OU=Groups,DC=example,DC=com'] },
           created_at:    { type: 'string', format: 'date-time' },
           last_login:    { type: 'string', format: 'date-time', nullable: true, description: 'UTC timestamp of last successful login. Null if the user has never logged in.' },
           is_online:     { type: 'boolean', description: 'True if the user has made an authenticated request in the last 5 minutes (in-memory, resets on server restart).' },
@@ -1246,9 +1247,12 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           '- **`is_online`** — `true` when the user has sent at least one authenticated API request within the last **5 minutes**. Maintained in-memory; resets to `false` after a server restart.\n' +
           '- **`display_name`** — full name from LDAP/SAML (`null` for local users).\n' +
           '- **`source`** — `local`, `ldap`, or `saml`.\n' +
-          '- **`permissions`** — object with a key per feature (`dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`, `phonebook`), value `true`/`false`. For LDAP users, permissions are re-resolved from the current group mappings on every login; the `permissions` field returned here reflects the values stored at the time of the last login.\n\n' +
+          '- **`permissions`** — object with a key per feature (`dashboard`, `inbox`, `sent`, `send`, `report`, `devices`, `ports`, `rules`, `settings`, `users`, `api`, `phonebook`), value `true`/`false`. For LDAP users, permissions are re-resolved from the current group mappings on every login; the `permissions` field returned here reflects the values stored at the time of the last login.\n' +
+          '- **`ldap_groups`** — array of full LDAP DNs the user belongs to (e.g. `["CN=APP_GB_SMS,OU=Groups,DC=example,DC=com"]`). Always an array for LDAP users; empty array for local/SAML users. To find the **matched** group (the one with an active mapping), intersect this array with the DNs returned by `GET /users/ldap-groups`.\n\n' +
           'Admin and Super Admin users always have full access regardless of the `permissions` object content.\n\n' +
-          'The UI user list supports search (by username or display name), paginates at **25 rows per page**, and opens a read-only detail panel (double-click) showing the full permission grid with granted/denied status for every feature.',
+          'The UI separates users into two dedicated tabs:\n' +
+          '- **Local users** — `source = local` — supports create / edit / delete.\n' +
+          '- **LDAP users** — `source = ldap` — read-only; created automatically on first LDAP login. Permissions derive from group mappings. The "LDAP Group" column shows only the CN of groups that match a configured mapping.',
         responses: {
           200: { description: '', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/User' } } } } },
         },
