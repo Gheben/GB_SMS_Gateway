@@ -14,8 +14,21 @@ export default function LoginPage() {
   const [samlEnabled, setSamlEnabled] = useState(false)
   const [samlAutoRedirect, setSamlAutoRedirect] = useState(false)
 
-  // ?local=1 lets admins bypass auto-redirect and reach the local login form
-  const localMode = new URLSearchParams(location.search).has('local')
+  // ?local lets admins bypass auto-redirect and reach the local login form.
+  // Any other query param (e.g. ?error=saml_error, ?saml_logout=1) also
+  // suppresses the auto-redirect to avoid redirect loops after a failed
+  // SAML attempt or after logout.
+  const searchParams = new URLSearchParams(location.search)
+  const localMode = searchParams.has('local') || searchParams.size > 0
+
+  const SAML_ERROR_MESSAGES = {
+    saml_error: 'SSO configuration error — contact your administrator.',
+    saml_no_profile: 'SSO did not return a valid user profile.',
+    saml_no_username: 'SSO did not return a username.',
+    saml_failed: 'SSO authentication failed.',
+  }
+  const samlErrorCode = searchParams.get('error')
+  const samlErrorMsg = samlErrorCode ? (SAML_ERROR_MESSAGES[samlErrorCode] ?? `SSO error: ${samlErrorCode}`) : null
 
   useEffect(() => {
     fetch('/api/auth/saml/status')
@@ -24,7 +37,8 @@ export default function LoginPage() {
         setSamlEnabled(!!d.enabled)
         setSamlAutoRedirect(!!d.auto_redirect)
         // Auto-redirect to IdP when configured — unless the user explicitly
-        // requested the local login form via ?local
+        // requested the local login form via ?local, or there are other query
+        // params indicating a return from a previous SAML attempt / logout.
         if (d.enabled && d.auto_redirect && !localMode) {
           window.location.href = '/api/auth/saml/login'
         }
@@ -89,6 +103,12 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+
+          {samlErrorMsg && (
+            <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-3">
+              {samlErrorMsg}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
