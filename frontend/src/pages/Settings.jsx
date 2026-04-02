@@ -94,7 +94,8 @@ export default function Settings() {
 
   // SAML
   const [saml, setSaml] = useState({
-    enabled: false, auto_redirect: false, sp_base_url: window.location.origin, sp_entity_id: '',
+    enabled: false, auto_redirect: false, require_group_match: false,
+    sp_base_url: window.location.origin, sp_entity_id: '',
     idp_sso_url: '', idp_slo_url: '', idp_cert: '', username_attribute: '', display_name_attribute: 'displayName', default_role: 'user',
   })
   const [samlDirty, setSamlDirty]   = useState(false)
@@ -647,6 +648,20 @@ export default function Settings() {
               </select>
               <p className="text-xs text-gray-400 mt-1">The role can be changed individually in &ldquo;User management&rdquo; after the first login.</p>
             </div>
+
+            <label className="flex items-start gap-3 cursor-pointer bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <input type="checkbox" checked={!!saml.require_group_match}
+                onChange={e => { setSaml(s => ({ ...s, require_group_match: e.target.checked })); setSamlDirty(true) }}
+                className="w-4 h-4 accent-red-600 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-sm font-medium text-gray-700">Deny access if no group mapping matches</span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  When enabled, users authenticated by the IdP but not belonging to any mapped LDAP group
+                  are <strong>blocked</strong> and redirected to an &ldquo;access denied&rdquo; page.
+                  When disabled (default) they receive the <em>Default role</em> configured above.
+                </p>
+              </div>
+            </label>
 
             <div className="flex items-center gap-3 pt-1">
               <button type="button" onClick={handleSaveSaml} disabled={samlSaving || !samlDirty}

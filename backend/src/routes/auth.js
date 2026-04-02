@@ -274,6 +274,13 @@ router.post('/saml/callback', async (req, res) => {
         : { dashboard: true, inbox: true, sent: true }
     );
 
+    // Se require_group_match è abilitato e nessun gruppo dell'utente corrisponde
+    // ad una mappatura LDAP, nega l'accesso redirigendo alla pagina dedicata.
+    if (cfg.require_group_match && !ldapRole) {
+      logger.warn(`[SAML] Access denied for "${username}": authenticated by IdP but no LDAP group mapping matched (require_group_match=true)`);
+      return res.redirect('/access-denied');
+    }
+
     let dbUser = db.prepare(
       "SELECT * FROM users WHERE username = ? COLLATE NOCASE AND source = 'saml'"
     ).get(username);

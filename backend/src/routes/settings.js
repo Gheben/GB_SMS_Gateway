@@ -131,6 +131,7 @@ router.post('/saml', requireSuperAdmin, [
   body('username_attribute').optional({ checkFalsy: true }).isString().trim(),
   body('display_name_attribute').optional({ checkFalsy: true }).isString().trim(),
   body('default_role').optional({ checkFalsy: true }).isIn(['admin', 'user']),
+  body('require_group_match').optional({ checkFalsy: false }).isBoolean().toBoolean(),
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

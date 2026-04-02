@@ -12,6 +12,7 @@ import Rules from './pages/Rules'
 import Settings from './pages/Settings'
 import Report from './pages/Report'
 import LoginPage from './pages/LoginPage'
+import AccessDeniedPage from './pages/AccessDeniedPage'
 import UsersPage from './pages/UsersPage'
 import AuditLog from './pages/AuditLog'
 import Contacts from './pages/Contacts'
@@ -151,6 +152,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/access-denied" element={<AccessDeniedPage />} />
           <Route path="/saml-callback" element={<SamlCallback />} />
           <Route path="/*" element={<RequireLogin />} />
         </Routes>

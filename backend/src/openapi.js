@@ -1140,7 +1140,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             content: {
               'application/json': {
                 example: {
-                  enabled: true, auto_redirect: true, sp_base_url: 'https://sms.example.com',
+                  enabled: true, auto_redirect: true, require_group_match: false,
+                  sp_base_url: 'https://sms.example.com',
                   sp_entity_id: 'https://sms.example.com/api/auth/saml/metadata',
                   idp_sso_url: 'https://idp.example.com/saml/sso',
                   idp_cert: '-----BEGIN CERTIFICATE-----\n...',
@@ -1165,13 +1166,14 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 properties: {
                   enabled:                   { type: 'boolean' },
                   auto_redirect:             { type: 'boolean', default: false, description: 'When `true`, the login page automatically redirects to the IdP SSO URL without showing the local login form. Users can access local login by appending `?local` to the login URL.' },
+                  require_group_match:       { type: 'boolean', default: false, description: 'When `true`, users authenticated by the IdP but not belonging to any mapped LDAP group are denied access and redirected to `/access-denied`. When `false` (default) they receive the `default_role` role.' },
                   sp_base_url:               { type: 'string', example: 'https://sms.example.com' },
                   sp_entity_id:              { type: 'string' },
                   idp_sso_url:               { type: 'string' },
                   idp_cert:                  { type: 'string' },
                   username_attribute:        { type: 'string', default: 'uid' },
                   display_name_attribute:    { type: 'string', default: 'cn' },
-                  default_role:              { type: 'string', enum: ['admin', 'user'], default: 'user' },
+                  default_role:              { type: 'string', enum: ['admin', 'user'], default: 'user', description: 'Role assigned to SAML users when no LDAP group mapping matches (only effective when `require_group_match` is `false`).' },
                 },
               },
             },
