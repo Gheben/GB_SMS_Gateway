@@ -101,7 +101,9 @@ class MessageService {
       .filter(r => {
         const ldapGroups = JSON.parse(r.allowed_groups || '[]');
         const localGroups = JSON.parse(r.allowed_local_groups || '[]');
-        if (ldapGroups.length === 0 && localGroups.length === 0) return true;
+        // Rules with no groups assigned are visible to admins only (null path above).
+        // Regular users must be explicitly included via an LDAP or local group.
+        if (ldapGroups.length === 0 && localGroups.length === 0) return false;
         const ldapMatch = ldapGroups.length > 0 && (userGroups || []).some(g => ldapGroups.map(x => x.toLowerCase()).includes(g.toLowerCase()));
         const localMatch = localGroups.length > 0 && userLocalGroups.some(gId => localGroups.includes(gId));
         return ldapMatch || localMatch;
