@@ -4,6 +4,47 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
 /**
+ * Decode the Content field from a Yeastar AMI ReceivedSMS event.
+ *
+ * GSM-7 messages  → Yeastar URL-encodes the text as UTF-8 (standard %XX).
+ * UCS-2 messages  → Yeastar sends a hex-encoded UCS-2 Big-Endian byte string
+ *                   and signals this via DCS byte = 0x08 (bit 3-2 = 10 = UCS-2).
+ *
+ * @param {string} raw  - raw Content value from the AMI event
+ * @param {string} dcs  - Dcs field value (decimal string, may be empty)
+ * @returns {string}    - decoded Unicode text
+ */
+function _decodeSmsContent(raw, dcs) {
+  // Accept both decimal ('8') and hex ('0x08') DCS representations from firmware
+  const dcsNum = /^0x/i.test(dcs) ? parseInt(dcs, 16) : parseInt(dcs, 10);
+  // DCS bits 3-2 equal to 0b10 (0x08 when masked with 0x0C) → UCS-2 alphabet
+  if (!isNaN(dcsNum) && (dcsNum & 0x0C) === 0x08) {
+    try {
+      const buf = Buffer.from(raw, 'hex');
+      // Node.js uses UTF-16 LE natively; swap byte pairs to convert UCS-2 BE → LE
+      const le = Buffer.allocUnsafe(buf.length);
+      for (let i = 0; i + 1 < buf.length; i += 2) {
+        le[i] = buf[i + 1];
+        le[i + 1] = buf[i];
+      }
+      return le.toString('utf16le');
+    } catch (e) {
+      logger.warn(`UCS-2 hex decode failed (dcs=${dcs}): ${e.message} — raw: ${raw.slice(0, 60)}`);
+    }
+  }
+
+  // Standard: URL-encoded UTF-8
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, '%20'));
+  } catch (_e) {
+    // Fallback: some firmware versions percent-encode raw Latin-1 bytes
+    return raw.replace(/\+/g, ' ').replace(/%([0-9A-Fa-f]{2})/g, (_, h) =>
+      String.fromCharCode(parseInt(h, 16))
+    );
+  }
+}
+
+/**
  * YeastarConnector
  * Manages a persistent TCP connection to the Yeastar TG SMS API (port 5038).
  * Emits:
@@ -232,7 +273,9 @@ class YeastarConnector extends EventEmitter {
     }
 
     const raw = fields['Content'] || '';
-    const decoded = decodeURIComponent(raw.replace(/\+/g, '%20'));
+    const dcs = fields['Dcs'] || '';
+    logger.info(`[${this.host}] SMS part id=${id} index=${index}/${total} dcs=${dcs} raw_content=${raw.slice(0, 80)}`);
+    const decoded = _decodeSmsContent(raw, dcs);
     this._smsBuffer[id].parts[index] = decoded;
 
     // Check if all parts received
