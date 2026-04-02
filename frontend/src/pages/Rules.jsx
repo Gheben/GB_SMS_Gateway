@@ -4,12 +4,13 @@ import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
 import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play, Filter } from 'lucide-react'
 
 const MATCH_TYPES = [
-  { value: 'sender',        label: 'Exact sender' },
-  { value: 'sender_regex',  label: 'Sender (regex)' },
-  { value: 'content',       label: 'Text contains' },
-  { value: 'content_regex', label: 'Text (regex)' },
-  { value: 'device',        label: 'Specific device' },
-  { value: 'port',          label: 'Specific port' },
+  { value: 'sender',          label: 'Exact sender' },
+  { value: 'sender_contains', label: 'Sender contains' },
+  { value: 'sender_regex',    label: 'Sender (regex)' },
+  { value: 'content',         label: 'Text contains' },
+  { value: 'content_regex',   label: 'Text (regex)' },
+  { value: 'device',          label: 'Specific device' },
+  { value: 'port',            label: 'Specific port' },
 ]
 const ALL_MATCH_TYPES = [{ value: 'any', label: 'Any SMS (no filter)' }, ...MATCH_TYPES]
 

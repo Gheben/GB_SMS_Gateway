@@ -20,12 +20,13 @@ const { decrypt } = require('../utils/encryption');
  * and dispatches emails to the configured rule_targets.
  *
  * Rule match types:
- *   'any'            — always matches
- *   'sender'         — exact match on sender number
- *   'sender_regex'   — regex match on sender
- *   'content'        — case-insensitive substring match
- *   'content_regex'  — regex match on content
- *   'device'         — matches only messages from a specific device_id
+ *   'any'              — always matches
+ *   'sender'           — exact match on sender number
+ *   'sender_contains'  — case-insensitive substring match on sender
+ *   'sender_regex'     — regex match on sender
+ *   'content'          — case-insensitive substring match on content
+ *   'content_regex'    — regex match on content
+ *   'device'           — matches only messages from a specific device_id
  */
 class RoutingEngine {
   constructor() {
@@ -127,6 +128,8 @@ class RoutingEngine {
     switch (cond.match_type) {
       case 'any':    return true;
       case 'sender': return sms.sender === val;
+      case 'sender_contains':
+        return (sms.sender || '').toLowerCase().includes(val.toLowerCase());
       case 'sender_regex':
         try { return new RegExp(val, 'i').test(sms.sender || ''); } catch { return false; }
       case 'content':

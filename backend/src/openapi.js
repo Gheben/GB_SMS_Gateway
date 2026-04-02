@@ -792,8 +792,8 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                     items: {
                       type: 'object',
                       properties: {
-                        type:      { type: 'string', enum: ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device', 'port'],
-                                     description: '`any` — always matches. `sender` — exact phone number. `sender_regex` / `content_regex` — JS regex. `device` — matches a specific Yeastar device (requires `device_id`). `port` — matches a specific SIM port number (requires `match_value`; optionally also `device_id` to restrict to a specific device).' },
+                        type:      { type: 'string', enum: ['any', 'sender', 'sender_contains', 'sender_regex', 'content', 'content_regex', 'device', 'port'],
+                                     description: '`any` — always matches. `sender` — exact phone number. `sender_contains` — case-insensitive substring match on sender (e.g. `AppleID` matches `+Apple-ID-noreply`). `sender_regex` / `content_regex` — JS regex. `device` — matches a specific Yeastar device (requires `device_id`). `port` — matches a specific SIM port number (requires `match_value`; optionally also `device_id` to restrict to a specific device).' },
                         value:     { type: 'string', example: '+15551234567', description: 'For `port` conditions: the port number as a string (e.g. "3"). For `device` conditions: omit (use `device_id` instead).' },
                         device_id: { type: 'string', format: 'uuid', description: 'Required for `device` conditions; optional for `port` conditions (further restricts match to a specific device).' },
                       },

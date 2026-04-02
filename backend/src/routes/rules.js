@@ -7,7 +7,7 @@ const auditService = require('../services/auditService');
 
 const router = Router();
 
-const MATCH_TYPES = ['any', 'sender', 'sender_regex', 'content', 'content_regex', 'device', 'port'];
+const MATCH_TYPES = ['any', 'sender', 'sender_contains', 'sender_regex', 'content', 'content_regex', 'device', 'port'];
 const COND_OPERATORS = ['AND', 'OR'];
 
 function sanitize(req, res) {
