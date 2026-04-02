@@ -3,7 +3,7 @@ import { usersApi, ldapApi, localGroupsApi, portsApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import {
   Users, Plus, Pencil, Trash2, X, Shield, User, Loader2,
-  Server, CheckCircle, XCircle, UsersRound, UserPlus, UserMinus, Search,
+  Server, CheckCircle, XCircle, UsersRound, UserPlus, UserMinus, Search, Globe,
 } from 'lucide-react'
 
 const ALL_PERMS = [
@@ -515,23 +515,18 @@ const PAGE_SIZE = 25
 
 function LocalUsersTab() {
   const { user: me } = useAuth()
-  const [users, setUsers]               = useState([])
-  const [mappedGroupDns, setMappedGroupDns] = useState([])
-  const [loading, setLoading]           = useState(true)
-  const [modal, setModal]               = useState(null)   // null | 'new' | user-obj
-  const [detail, setDetail]             = useState(null)   // user-obj for read-only detail modal
-  const [search, setSearch]             = useState('')
-  const [page, setPage]                 = useState(1)
+  const [users, setUsers]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal]   = useState(null)   // null | 'new' | user-obj
+  const [detail, setDetail] = useState(null)   // user-obj for read-only detail modal
+  const [search, setSearch] = useState('')
+  const [page, setPage]     = useState(1)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [allUsers, ldapGroups] = await Promise.all([
-        usersApi.getAll(),
-        ldapApi.getGroups().catch(() => []),
-      ])
-      setUsers(allUsers)
-      setMappedGroupDns(ldapGroups.map(g => g.group_dn).filter(Boolean))
+      const all = await usersApi.getAll()
+      setUsers(all.filter(u => u.source !== 'ldap'))
     } catch {}
     setLoading(false)
   }, [])
@@ -608,7 +603,6 @@ function LocalUsersTab() {
           </thead>
           <tbody>
             {paginated.map(u => {
-              const isLdap = u.source === 'ldap'
               return (
                 <tr
                   key={u.id}
@@ -637,12 +631,10 @@ function LocalUsersTab() {
                   <td className="px-4 py-3"><SourceBadge source={u.source || 'local'} /></td>
                   <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {isLdap
-                      ? <span className="italic text-cyan-600">From LDAP mapping</span>
-                      : u.role !== 'user'
-                        ? <span className="italic">Full access</span>
-                        : ALL_PERMS.filter(p => u.permissions?.[p.key]).map(p => p.label).join(', ') ||
-                          <span className="italic text-gray-400">No permissions</span>
+                    {u.role !== 'user'
+                      ? <span className="italic">Full access</span>
+                      : ALL_PERMS.filter(p => u.permissions?.[p.key]).map(p => p.label).join(', ') ||
+                        <span className="italic text-gray-400">No permissions</span>
                     }
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
@@ -651,11 +643,9 @@ function LocalUsersTab() {
                   <td className="px-4 py-3">
                     {u.role !== 'superadmin' && (
                       <div className="flex items-center gap-2 justify-end">
-                        {!isLdap && (
-                          <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 p-1" title="Edit">
-                            <Pencil size={15} />
-                          </button>
-                        )}
+                        <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 p-1" title="Edit">
+                          <Pencil size={15} />
+                        </button>
                         {u.id !== me?.id && (
                           <button onClick={() => handleDelete(u)} className="text-gray-400 hover:text-red-600 p-1" title="Delete">
                             <Trash2 size={15} />
@@ -694,17 +684,11 @@ function LocalUsersTab() {
         </div>
       )}
 
-      <p className="text-xs text-gray-400 px-1">
-        LDAP users appear in this list automatically after their first login with domain credentials.
-        Their permissions are updated on every login based on the configured group mapping.
-      </p>
-
       {detail && (
         <UserDetailModal
           user={detail}
           onClose={() => setDetail(null)}
           onEdit={u => setModal(u)}
-          mappedGroupDns={mappedGroupDns}
         />
       )}
 
@@ -713,6 +697,195 @@ function LocalUsersTab() {
           user={modal === 'new' ? null : modal}
           onClose={() => setModal(null)}
           onSaved={load}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ─── LdapUsersTab ──────────────────────────────────────────── */
+
+function LdapUsersTab() {
+  const { user: me } = useAuth()
+  const [users, setUsers]                   = useState([])
+  const [mappedGroupDns, setMappedGroupDns] = useState([])
+  const [loading, setLoading]               = useState(true)
+  const [detail, setDetail]                 = useState(null)
+  const [search, setSearch]                 = useState('')
+  const [page, setPage]                     = useState(1)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [allUsers, ldapGroups] = await Promise.all([
+        usersApi.getAll(),
+        ldapApi.getGroups().catch(() => []),
+      ])
+      setUsers(allUsers.filter(u => u.source === 'ldap'))
+      setMappedGroupDns(ldapGroups.map(g => g.group_dn).filter(Boolean))
+    } catch {}
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+  useEffect(() => { setPage(1) }, [search])
+
+  async function handleDelete(u) {
+    if (!confirm(`Remove LDAP user "${u.username}" from the local database?`)) return
+    try {
+      await usersApi.remove(u.id)
+      load()
+    } catch (err) {
+      alert(err.response?.data?.error || 'Delete error')
+    }
+  }
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase()
+    return !q ||
+      u.username.toLowerCase().includes(q) ||
+      (u.display_name || '').toLowerCase().includes(q)
+  })
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function formatLastLogin(ts) {
+    if (!ts) return '—'
+    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
+      month: '2-digit', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  }
+
+  if (loading) return (
+    <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
+      <Loader2 size={18} className="animate-spin" /> Loading...
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search LDAP users…"
+            className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="min-w-[680px] text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-6"></th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Display Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400 italic">
+                  No LDAP users yet — they appear automatically after their first login.
+                </td>
+              </tr>
+            )}
+            {paginated.map(u => {
+              const mappedDnSet = new Set(mappedGroupDns.map(d => d.toLowerCase()))
+              const matchedCNs = (u.ldap_groups || [])
+                .filter(g => mappedDnSet.has(g.toLowerCase()))
+                .map(g => g.match(/^CN=([^,]+)/i)?.[1] ?? g)
+              return (
+                <tr
+                  key={u.id}
+                  className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer select-none"
+                  onDoubleClick={() => setDetail(u)}
+                  title="Double-click for details"
+                >
+                  <td className="px-3 py-3 text-center">
+                    <span
+                      title={u.is_online ? 'Online' : 'Offline'}
+                      className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        u.is_online ? 'bg-green-400' : 'bg-gray-300'
+                      }`}
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <User size={15} className="text-gray-400" />
+                      {u.username}
+                      {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(you)</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-sm">
+                    {u.display_name && u.display_name !== u.username
+                      ? u.display_name
+                      : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
+                  <td className="px-4 py-3 text-xs text-cyan-700">
+                    {matchedCNs.length > 0
+                      ? matchedCNs.join(', ')
+                      : <span className="text-gray-300 italic">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    {formatLastLogin(u.last_login)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.id !== me?.id && (
+                      <button onClick={() => handleDelete(u)} className="text-gray-400 hover:text-red-600 p-1" title="Remove from DB">
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>{filtered.length} user{filtered.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">
+              ‹ Prev
+            </button>
+            <span className="px-3 py-1 text-xs">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">
+              Next ›
+            </button>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 px-1">
+        LDAP users appear automatically after their first login with domain credentials.
+        Their permissions are updated on every login based on the configured group mapping.
+      </p>
+
+      {detail && (
+        <UserDetailModal
+          user={detail}
+          onClose={() => setDetail(null)}
+          mappedGroupDns={mappedGroupDns}
         />
       )}
     </div>
@@ -1430,9 +1603,10 @@ function LocalGroupsTab() {
 }
 
 const ALL_TABS = [
-  { key: 'local',  label: 'Local users',            Icon: Users,        superadminOnly: false },
-  { key: 'groups', label: 'Local groups',            Icon: UsersRound,   superadminOnly: false },
-  { key: 'ldap',   label: 'LDAP / Active Directory', Icon: Server,       superadminOnly: false },
+  { key: 'local',       label: 'Local users',            Icon: Users,      superadminOnly: false },
+  { key: 'groups',      label: 'Local groups',            Icon: UsersRound, superadminOnly: false },
+  { key: 'ldap-users',  label: 'LDAP users',              Icon: Globe,      superadminOnly: false },
+  { key: 'ldap',        label: 'LDAP / Active Directory', Icon: Server,     superadminOnly: false },
 ]
 
 export default function UsersPage() {
@@ -1461,9 +1635,10 @@ export default function UsersPage() {
         ))}
       </div>
 
-      {tab === 'local'  && <LocalUsersTab />}
-      {tab === 'ldap'   && <LdapSettingsTab />}
-      {tab === 'groups' && <LocalGroupsTab />}
+      {tab === 'local'       && <LocalUsersTab />}
+      {tab === 'ldap-users'  && <LdapUsersTab />}
+      {tab === 'ldap'        && <LdapSettingsTab />}
+      {tab === 'groups'      && <LocalGroupsTab />}
     </div>
   )
 }
