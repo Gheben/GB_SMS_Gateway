@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'SMS Gateway API',
-    version: '1.2.0',
+    version: '1.2.1',
     description: `
 ## Authentication
 
@@ -81,7 +81,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
           recipient:      { type: 'string', example: '+39087654321' },
           sender_name:    { type: 'string', nullable: true, example: 'John Smith', description: 'Display name from phonebook (inbound messages)' },
           recipient_name: { type: 'string', nullable: true, example: 'Jane Doe', description: 'Display name from phonebook (outbound messages)' },
-          content:        { type: 'string', example: 'Hello world' },
+          content:        { type: 'string', example: 'Hello world', description: 'Full Unicode text of the SMS message (UTF-8). Inbound messages are decoded server-side regardless of the original encoding used by the carrier or sender (GSM-7, UCS-2, 8-bit). Accented characters (è, à, ü, ñ…), non-Latin scripts, and emoji (😀, ❤️…) are preserved as-is.' },
           status:         { type: 'string', enum: ['received', 'pending', 'sent', 'failed'] },
           device_id:      { type: 'string', format: 'uuid' },
           device_name:    { type: 'string', nullable: true, example: 'GSM-01', description: 'Human-friendly device name (joined from devices table)' },
@@ -531,7 +531,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                     ],
                   },
                   recipient: { type: 'string', example: '+39012345678', description: 'Recipient phone number. Digits only with optional `+` prefix (spaces, dashes, and parentheses are stripped automatically). Use `GET /api/phonebook` to retrieve contacts from the phonebook.' },
-                  message:   { type: 'string', minLength: 1, maxLength: 1024, example: 'Hello from API!' },
+                  message:   { type: 'string', minLength: 1, maxLength: 1024, example: 'Hello from API!', description: 'SMS text to send. Full Unicode text (UTF-8) is supported: accented characters, non-Latin scripts, and emoji are all accepted. The Yeastar firmware selects GSM-7 or UCS-2 encoding automatically depending on the characters used.' },
                 },
               },
               examples: {

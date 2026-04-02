@@ -4,40 +4,106 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
 /**
+ * Heuristic: returns true if `s` looks like a hex-encoded UCS-2 string even
+ * when no DCS field was provided by the firmware.
+ *
+ * Criteria:
+ *  - All hex digits, length divisible by 4 (≥4 chars = at least 1 UCS-2 pair)
+ *  - More than half of the sampled 2-byte pairs have a null (0x00) high byte,
+ *    which is characteristic of BMP characters (Latin, Cyrillic, Greek, CJK…)
+ */
+function _looksLikeUcs2Hex(s) {
+  if (s.length < 4 || s.length % 4 !== 0) return false;
+  if (!/^[0-9A-Fa-f]+$/.test(s)) return false;
+  const sample = Math.min(Math.floor(s.length / 4), 12); // check up to 12 chars
+  let nullHighBytes = 0;
+  for (let i = 0; i < sample * 4; i += 4) {
+    if (s[i] === '0' && s[i + 1] === '0') nullHighBytes++;
+  }
+  return nullHighBytes / sample > 0.5;
+}
+
+/**
  * Decode the Content field from a Yeastar AMI ReceivedSMS event.
  *
- * GSM-7 messages  → Yeastar URL-encodes the text as UTF-8 (standard %XX).
- * UCS-2 messages  → Yeastar sends a hex-encoded UCS-2 Big-Endian byte string
- *                   and signals this via DCS byte = 0x08 (bit 3-2 = 10 = UCS-2).
+ * GSM DCS alphabet bits (bits 3-2 of the DCS byte):
+ *   0 (0x00) → GSM-7 default  — Yeastar URL-encodes as UTF-8 (%XX)
+ *   1 (0x04) → 8-bit data     — Yeastar hex-encodes raw bytes; decoded as ISO-8859-1
+ *   2 (0x08) → UCS-2          — Yeastar hex-encodes UCS-2 Big-Endian pairs
+ *                                Covers full BMP (è, à, ü, €, ™ …) and emoji
+ *                                encoded as UTF-16 surrogate pairs (😀 = D83D DE00).
+ *
+ * Additionally, if the DCS field is absent/empty but Content matches the UCS-2 hex
+ * heuristic (all-hex, even length, many null high bytes), UCS-2 decoding is tried
+ * automatically to stay robust across different firmware versions.
+ *
+ * BOM handling:
+ *   FEFF prefix → UCS-2 BE BOM (stripped; byte pairs already big-endian)
+ *   FFFE prefix → UCS-2 LE BOM (stripped; no byte swap needed)
  *
  * @param {string} raw  - raw Content value from the AMI event
- * @param {string} dcs  - Dcs field value (decimal string, may be empty)
- * @returns {string}    - decoded Unicode text
+ * @param {string} dcs  - Dcs field value (decimal or "0x…" hex string, may be empty)
+ * @returns {string}    - decoded Unicode text (UTF-8 / JavaScript string)
  */
 function _decodeSmsContent(raw, dcs) {
   // Accept both decimal ('8') and hex ('0x08') DCS representations from firmware
   const dcsNum = /^0x/i.test(dcs) ? parseInt(dcs, 16) : parseInt(dcs, 10);
-  // DCS bits 3-2 equal to 0b10 (0x08 when masked with 0x0C) → UCS-2 alphabet
-  if (!isNaN(dcsNum) && (dcsNum & 0x0C) === 0x08) {
+  // Bits 3-2 of the DCS byte indicate the character set alphabet:
+  //   >> 2: 0 = GSM-7,  1 = 8-bit,  2 = UCS-2,  3 = reserved
+  const dcsAlphabet = isNaN(dcsNum) ? -1 : (dcsNum & 0x0C) >> 2;
+
+  // ── UCS-2 (alphabet = 2, or heuristic when DCS is absent) ─────────────────
+  // Covers accented characters (è à ü ñ …), Arabic/Greek/Cyrillic scripts,
+  // CJK ideographs, and emoji encoded as UTF-16 surrogate pairs.
+  if (dcsAlphabet === 2 || (dcsAlphabet === -1 && _looksLikeUcs2Hex(raw))) {
+    if (dcsAlphabet === -1) {
+      logger.info(`[SMS decode] No DCS but Content matches UCS-2 hex heuristic — trying UCS-2`);
+    }
     try {
-      const buf = Buffer.from(raw, 'hex');
-      // Node.js uses UTF-16 LE natively; swap byte pairs to convert UCS-2 BE → LE
+      let hexStr = raw;
+      let littleEndian = false;
+
+      // Strip BOM and detect byte order
+      if (/^FEFF/i.test(hexStr)) {
+        hexStr = hexStr.slice(4); // BE BOM — pairs already big-endian, swap below
+      } else if (/^FFFE/i.test(hexStr)) {
+        hexStr = hexStr.slice(4); // LE BOM — pairs already little-endian, no swap
+        littleEndian = true;
+      }
+
+      const buf = Buffer.from(hexStr, 'hex');
+      if (littleEndian) {
+        // Already UTF-16 LE — decode directly
+        return buf.toString('utf16le');
+      }
+      // UCS-2 BE → UTF-16 LE: swap every pair of bytes
       const le = Buffer.allocUnsafe(buf.length);
       for (let i = 0; i + 1 < buf.length; i += 2) {
-        le[i] = buf[i + 1];
+        le[i]     = buf[i + 1];
         le[i + 1] = buf[i];
       }
       return le.toString('utf16le');
     } catch (e) {
-      logger.warn(`UCS-2 hex decode failed (dcs=${dcs}): ${e.message} — raw: ${raw.slice(0, 60)}`);
+      logger.warn(`[SMS decode] UCS-2 hex decode failed (dcs=${dcs}): ${e.message} — raw: ${raw.slice(0, 60)}`);
     }
   }
 
-  // Standard: URL-encoded UTF-8
+  // ── 8-bit data (alphabet = 1) ──────────────────────────────────────────────
+  // Used by some carriers for binary payloads (WAP push, MMS notifications…).
+  // Yeastar hex-encodes the raw bytes; ISO-8859-1 is the most common interpretation.
+  if (dcsAlphabet === 1) {
+    try {
+      return Buffer.from(raw, 'hex').toString('latin1');
+    } catch (e) {
+      logger.warn(`[SMS decode] 8-bit hex decode failed (dcs=${dcs}): ${e.message} — raw: ${raw.slice(0, 60)}`);
+    }
+  }
+
+  // ── GSM-7 default / URL-encoded UTF-8 ─────────────────────────────────────
   try {
     return decodeURIComponent(raw.replace(/\+/g, '%20'));
   } catch (_e) {
-    // Fallback: some firmware versions percent-encode raw Latin-1 bytes
+    // Fallback: some firmware versions percent-encode raw Latin-1 bytes instead of UTF-8
     return raw.replace(/\+/g, ' ').replace(/%([0-9A-Fa-f]{2})/g, (_, h) =>
       String.fromCharCode(parseInt(h, 16))
     );
