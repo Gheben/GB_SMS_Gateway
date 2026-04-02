@@ -157,9 +157,10 @@ router.get('/saml/status', (req, res) => {
   try {
     const cfg = samlService.getSamlConfig();
     const enabled = !!(cfg?.enabled && cfg?.idp_sso_url && cfg?.idp_cert);
-    res.json({ enabled });
+    const auto_redirect = !!(enabled && cfg?.auto_redirect);
+    res.json({ enabled, auto_redirect });
   } catch {
-    res.json({ enabled: false });
+    res.json({ enabled: false, auto_redirect: false });
   }
 });
 

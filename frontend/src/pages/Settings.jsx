@@ -94,7 +94,7 @@ export default function Settings() {
 
   // SAML
   const [saml, setSaml] = useState({
-    enabled: false, sp_base_url: window.location.origin, sp_entity_id: '',
+    enabled: false, auto_redirect: false, sp_base_url: window.location.origin, sp_entity_id: '',
     idp_sso_url: '', idp_slo_url: '', idp_cert: '', username_attribute: '', display_name_attribute: 'displayName', default_role: 'user',
   })
   const [samlDirty, setSamlDirty]   = useState(false)
@@ -511,10 +511,26 @@ export default function Settings() {
 
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={saml.enabled}
-                onChange={e => { setSaml(s => ({ ...s, enabled: e.target.checked })); setSamlDirty(true) }}
+                onChange={e => { setSaml(s => ({ ...s, enabled: e.target.checked, auto_redirect: e.target.checked ? s.auto_redirect : false })); setSamlDirty(true) }}
                 className="w-4 h-4 accent-blue-600" />
               <span className="text-sm font-medium text-gray-700">Enable SAML 2.0 authentication</span>
             </label>
+
+            {saml.enabled && (
+              <label className="flex items-start gap-3 cursor-pointer bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <input type="checkbox" checked={!!saml.auto_redirect}
+                  onChange={e => { setSaml(s => ({ ...s, auto_redirect: e.target.checked })); setSamlDirty(true) }}
+                  className="w-4 h-4 accent-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Automatic redirect to SSO (auto-redirect)</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    When enabled, visiting the login page redirects the browser directly to the Identity Provider (NetScaler)
+                    without showing the local login form. Users with an active SSO session will be logged in transparently.
+                    Local login remains accessible at <code className="bg-blue-100 px-1 rounded">/login?local</code>.
+                  </p>
+                </div>
+              </label>
+            )}
 
             {/* Info da comunicare al tecnico IdP */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">

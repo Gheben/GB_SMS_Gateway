@@ -209,11 +209,16 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       get: {
         tags: ['Authentication'],
         summary: 'Check if SAML SSO is configured and enabled',
+        description:
+          'Returns the current SAML availability for the login page.\n\n' +
+          '- `enabled` — SAML is fully configured and active.\n' +
+          '- `auto_redirect` — when `true`, the login page will automatically redirect the browser to the IdP SSO URL without showing the login form. ' +
+          'Users can bypass this by appending `?local` to the login URL (`/login?local`) to reach the local username/password form.',
         security: [],
         responses: {
           200: {
             description: '',
-            content: { 'application/json': { example: { enabled: true } } },
+            content: { 'application/json': { example: { enabled: true, auto_redirect: true } } },
           },
         },
       },
@@ -1135,7 +1140,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
             content: {
               'application/json': {
                 example: {
-                  enabled: true, sp_base_url: 'https://sms.example.com',
+                  enabled: true, auto_redirect: true, sp_base_url: 'https://sms.example.com',
                   sp_entity_id: 'https://sms.example.com/api/auth/saml/metadata',
                   idp_sso_url: 'https://idp.example.com/saml/sso',
                   idp_cert: '-----BEGIN CERTIFICATE-----\n...',
@@ -1159,6 +1164,7 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                 required: ['enabled', 'sp_base_url', 'idp_sso_url', 'idp_cert'],
                 properties: {
                   enabled:                   { type: 'boolean' },
+                  auto_redirect:             { type: 'boolean', default: false, description: 'When `true`, the login page automatically redirects to the IdP SSO URL without showing the local login form. Users can access local login by appending `?local` to the login URL.' },
                   sp_base_url:               { type: 'string', example: 'https://sms.example.com' },
                   sp_entity_id:              { type: 'string' },
                   idp_sso_url:               { type: 'string' },

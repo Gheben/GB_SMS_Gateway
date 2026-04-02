@@ -1,23 +1,36 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Coffee } from 'lucide-react'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [samlEnabled, setSamlEnabled] = useState(false)
+  const [samlAutoRedirect, setSamlAutoRedirect] = useState(false)
+
+  // ?local=1 lets admins bypass auto-redirect and reach the local login form
+  const localMode = new URLSearchParams(location.search).has('local')
 
   useEffect(() => {
     fetch('/api/auth/saml/status')
       .then(r => r.json())
-      .then(d => setSamlEnabled(!!d.enabled))
+      .then(d => {
+        setSamlEnabled(!!d.enabled)
+        setSamlAutoRedirect(!!d.auto_redirect)
+        // Auto-redirect to IdP when configured — unless the user explicitly
+        // requested the local login form via ?local
+        if (d.enabled && d.auto_redirect && !localMode) {
+          window.location.href = '/api/auth/saml/login'
+        }
+      })
       .catch(() => {})
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -103,6 +116,15 @@ export default function LoginPage() {
                 Sign in with corporate SSO (SAML)
               </a>
             </>
+          )}
+
+          {/* When auto-redirect is active and the user is in local-bypass mode,
+              show a hint so they know how they got here */}
+          {samlAutoRedirect && localMode && (
+            <p className="text-center text-xs text-gray-400">
+              Local login mode{' '}—{' '}
+              <a href="/login" className="text-blue-500 hover:underline">back to SSO</a>
+            </p>
           )}
         </form>
       </div>

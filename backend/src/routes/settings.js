@@ -122,6 +122,7 @@ router.get('/saml', requireSuperAdmin, (req, res) => {
 // POST /api/settings/saml — solo superadmin
 router.post('/saml', requireSuperAdmin, [
   body('enabled').isBoolean().toBoolean(),
+  body('auto_redirect').optional({ checkFalsy: false }).isBoolean().toBoolean(),
   body('sp_base_url').optional({ checkFalsy: true }).isString().trim(),
   body('sp_entity_id').optional({ checkFalsy: true }).isString().trim(),
   body('idp_sso_url').optional({ checkFalsy: true }).isString().trim(),
