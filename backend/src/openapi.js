@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'SMS Gateway API',
-    version: '1.2.1',
+    version: '1.2.2',
     description: `
 ## Authentication
 
@@ -773,6 +773,21 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       post: {
         tags: ['Rules'],
         summary: 'Create a forwarding rule',
+        description:
+          'Creates a new forwarding rule. Inbound SMS messages are evaluated against all enabled rules sorted by `priority` (ascending).\n\n' +
+          '**Condition types** (`conditions[].type`):\n\n' +
+          '| Type | Match logic | `value` required |\n' +
+          '|------|-------------|------------------|\n' +
+          '| `any` | Always matches — no filter | No |\n' +
+          '| `sender` | Exact sender phone number or alphanumeric name | Yes |\n' +
+          '| `sender_contains` | Case-insensitive substring match on sender (e.g. `Apple` matches `Apple-Pay-noreply`) | Yes |\n' +
+          '| `sender_regex` | JS regex against sender (flags: `i`) | Yes |\n' +
+          '| `content` | Case-insensitive substring match on message text | Yes |\n' +
+          '| `content_regex` | JS regex against message text (flags: `i`) | Yes |\n' +
+          '| `device` | Specific Yeastar device — requires `device_id` | No |\n' +
+          '| `port` | Specific SIM port number — requires `value` (port 1–16); optionally also `device_id` | Yes |\n\n' +
+          '**Condition operators**: `AND` (all conditions must match) or `OR` (at least one condition must match).\n\n' +
+          '**`stop_on_match`**: if `true`, no further rules are evaluated once this rule matches.',
         requestBody: {
           required: true,
           content: {
@@ -820,6 +835,32 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
                   allowed_local_groups: { type: 'array', items: { type: 'string', format: 'uuid' }, description: 'Local group IDs that can see this rule' },
                   webhook_url:    { type: 'string', format: 'uri', nullable: true, example: 'http://myserver.internal/hook', description: 'Optional HTTP webhook URL (host must be in the whitelist)' },
                   webhook_method: { type: 'string', enum: ['POST', 'GET', 'PUT'], default: 'POST' },
+                },
+              },
+              examples: {
+                sender_exact: {
+                  summary: 'Exact sender match',
+                  value: { name: 'Apple alerts', conditions: [{ type: 'sender', value: 'Apple' }], targets: [{ type: 'email', value: 'admin@example.com' }] },
+                },
+                sender_contains: {
+                  summary: 'Sender contains substring (e.g. any Apple sender)',
+                  value: { name: 'Apple (any)', conditions: [{ type: 'sender_contains', value: 'Apple' }], targets: [{ type: 'email', value: 'admin@example.com' }] },
+                },
+                sender_regex: {
+                  summary: 'Sender regex',
+                  value: { name: 'IT alerts', conditions: [{ type: 'sender_regex', value: '^\\+39' }], targets: [{ type: 'email', value: 'admin@example.com' }] },
+                },
+                content_contains: {
+                  summary: 'Content substring match',
+                  value: { name: 'OTP codes', conditions: [{ type: 'content', value: 'codice' }], targets: [{ type: 'email', value: 'admin@example.com' }] },
+                },
+                multi_condition_and: {
+                  summary: 'Multiple conditions (AND)',
+                  value: { name: 'Apple OTP', condition_operator: 'AND', conditions: [{ type: 'sender_contains', value: 'Apple' }, { type: 'content', value: 'codice' }], targets: [{ type: 'email', value: 'admin@example.com' }] },
+                },
+                auto_forward_sms: {
+                  summary: 'Auto-forward to another phone number',
+                  value: { name: 'Forward all', conditions: [{ type: 'any' }], sms_targets: ['+39012345678'] },
                 },
               },
             },
