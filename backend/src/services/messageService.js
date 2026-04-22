@@ -24,6 +24,20 @@ function normalizeRecvtime(rt) {
 class MessageService {
   saveInbound(smsEvent) {
     const db = getDb();
+
+    // Deduplication: Yeastar replays pending SMS events on every reconnect.
+    // If we already have a message with the same gsm_id from the same device,
+    // skip the insert and return the existing id to avoid duplicates.
+    if (smsEvent.id && smsEvent.deviceId) {
+      const existing = db.prepare(
+        `SELECT id FROM messages WHERE gsm_id = ? AND device_id = ? AND direction = 'inbound' LIMIT 1`
+      ).get(smsEvent.id, smsEvent.deviceId);
+      if (existing) {
+        logger.debug(`Inbound SMS deduplicated: gsm_id=${smsEvent.id} device=${smsEvent.deviceId} — already stored as ${existing.id}`);
+        return existing.id;
+      }
+    }
+
     const id = uuidv4();
     // Lookup SIM phone number for this port to store as recipient
     const portRow = smsEvent.deviceId && smsEvent.port

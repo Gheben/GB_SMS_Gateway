@@ -7,3 +7,6 @@ test-*.js
 logs/
 *.db
 *.log
+
+# Documentazione XWiki (non inclusa nel repository)
+docs-xwiki/
