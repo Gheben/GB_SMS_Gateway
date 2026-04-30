@@ -39,7 +39,7 @@ function createSamlInstance(cfg) {
     callbackUrl,
     entryPoint:               cfg.idp_sso_url,
     issuer,
-    cert:                     normalizeCert(cfg.idp_cert),
+    idpCert:                  normalizeCert(cfg.idp_cert),  // node-saml v5: renamed from 'cert'
     wantAuthnResponseSigned:  false,
     wantAssertionsSigned:     false,
     disableRequestedAuthnContext: true,
