@@ -215,6 +215,9 @@ router.post('/saml/callback', async (req, res) => {
           } else {
             logger.error(`[SAML] ${sigErr.message} — nessun certificato nell'XML della risposta`);
           }
+            // Also log a snippet of the XML to help diagnose structure
+          logger.error(`[SAML] XML snippet (first 1500 chars): ${xml.substring(0, 1500)}`);
+          logger.error(`[SAML] XML snippet (1500-3000): ${xml.substring(1500, 3000)}`);
         } catch { logger.error(`[SAML] ${sigErr.message}`); }
       } else {
         logger.error(`[SAML] ${sigErr.message}`);
