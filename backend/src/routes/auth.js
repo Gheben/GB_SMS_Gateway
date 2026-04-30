@@ -199,7 +199,28 @@ router.post('/saml/callback', async (req, res) => {
     const cfg = samlService.getSamlConfig();
     if (!cfg?.enabled) return res.status(404).json({ error: 'SAML non configurato o non abilitato' });
     const saml = samlService.createSamlInstance(cfg);
-    const { profile } = await saml.validatePostResponseAsync(req.body);
+    let profile;
+    try {
+      ({ profile } = await saml.validatePostResponseAsync(req.body));
+    } catch (sigErr) {
+      // On signature/cert error: extract and log the certificate embedded in the
+      // SAMLResponse so the admin can copy the correct cert into settings.
+      if (req.body?.SAMLResponse) {
+        try {
+          const xml = Buffer.from(req.body.SAMLResponse, 'base64').toString('utf8');
+          const certMatch = xml.match(/<(?:[^:>]+:)?X509Certificate[^>]*>\s*([A-Za-z0-9+/=\s]+?)\s*<\/(?:[^:>]+:)?X509Certificate>/);
+          if (certMatch) {
+            const cert = certMatch[1].replace(/\s+/g, '');
+            logger.error(`[SAML] ${sigErr.message} — certificato nella risposta IdP (incollalo in Settings):\n-----BEGIN CERTIFICATE-----\n${cert.match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----`);
+          } else {
+            logger.error(`[SAML] ${sigErr.message} — nessun certificato nell'XML della risposta`);
+          }
+        } catch { logger.error(`[SAML] ${sigErr.message}`); }
+      } else {
+        logger.error(`[SAML] ${sigErr.message}`);
+      }
+      return res.redirect('/login?error=saml_failed');
+    }
     if (!profile) {
       logger.warn('[SAML] validatePostResponseAsync: nessun profilo restituito');
       return res.redirect('/login?error=saml_no_profile');
