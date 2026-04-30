@@ -25,7 +25,7 @@ function normalizeCert(cert) {
   const stripped = cert.replace(/-----BEGIN CERTIFICATE-----/g, '')
     .replace(/-----END CERTIFICATE-----/g, '')
     .replace(/\s+/g, '');
-  return stripped;
+  return stripped || null;  // prevent returning empty string (would cause "idpCert is required")
 }
 
 function createSamlInstance(cfg) {
@@ -80,4 +80,4 @@ function getMetadataXml(cfg) {
   return saml.generateServiceProviderMetadata(null, null);
 }
 
-module.exports = { getSamlConfig, saveSamlConfig, createSamlInstance, getMetadataXml, getLogoutUrlAsync };
+module.exports = { getSamlConfig, saveSamlConfig, createSamlInstance, getMetadataXml, getLogoutUrlAsync, normalizeCert };

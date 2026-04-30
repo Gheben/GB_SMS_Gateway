@@ -156,7 +156,8 @@ router.get('/refresh-token', requireAuth, (req, res) => {
 router.get('/saml/status', (req, res) => {
   try {
     const cfg = samlService.getSamlConfig();
-    const enabled = !!(cfg?.enabled && cfg?.idp_sso_url && cfg?.idp_cert);
+    const certOk = !!(cfg?.idp_cert && samlService.normalizeCert(cfg.idp_cert));
+    const enabled = !!(cfg?.enabled && cfg?.idp_sso_url && certOk);
     const auto_redirect = !!(enabled && cfg?.auto_redirect);
     res.json({ enabled, auto_redirect });
   } catch {
