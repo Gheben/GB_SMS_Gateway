@@ -67,7 +67,7 @@ async function getLogoutUrlAsync(cfg, nameID, nameIDFormat, sessionIndex) {
     sessionIndex: sessionIndex || undefined,
   };
   try {
-    const { context: url } = await saml.getLogoutUrlAsync(user, '', {});
+    const url = await saml.getLogoutUrlAsync(user, '', {});  // node-saml v5: returns string, not { context }
     return url;
   } catch {
     // Fallback: redirect diretto all'URL SLO dell'IdP (compatibile con NetScaler /cgi/tmlogout)

@@ -185,7 +185,7 @@ router.get('/saml/login', async (req, res) => {
     const cfg = samlService.getSamlConfig();
     if (!cfg?.enabled) return res.status(404).json({ error: 'SAML non configurato o non abilitato' });
     const saml = samlService.createSamlInstance(cfg);
-    const { context: loginUrl } = await saml.getAuthorizeUrlAsync('', req.hostname, {});
+    const loginUrl = await saml.getAuthorizeUrlAsync('', req.hostname, {});  // node-saml v5: returns string, not { context }
     res.redirect(loginUrl);
   } catch (err) {
     logger.error(`[SAML] login redirect error: ${err.message}`);
