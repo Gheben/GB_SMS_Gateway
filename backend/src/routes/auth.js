@@ -371,15 +371,12 @@ router.post('/saml/logout', requireAuth, async (req, res) => {
     if (!cfg?.enabled || !cfg?.idp_slo_url) {
       return res.json({ logoutUrl: null });
     }
-    const { saml_name_id, saml_name_id_format, saml_session_index } = req.user;
-    const logoutUrl = await samlService.getLogoutUrlAsync(
-      cfg,
-      saml_name_id,
-      saml_name_id_format,
-      saml_session_index
-    );
+    // NetScaler /cgi/tmlogout is a native logout endpoint, not a real SAML SLO
+    // endpoint. Sending a SAMLRequest query parameter causes it to fail with
+    // "Parsing of presented Assertion failed". Use the raw SLO URL directly.
+    const logoutUrl = cfg.idp_slo_url || null;
     auditService.log(req.user.sub, req.user.username, 'auth:saml_logout', 'user', req.user.sub, null, req.ip);
-    res.json({ logoutUrl: logoutUrl || null });
+    res.json({ logoutUrl });
   } catch (err) {
     logger.error(`[SAML] SLO error: ${err.message}`);
     res.json({ logoutUrl: null });
