@@ -332,7 +332,6 @@ router.post('/saml/callback', async (req, res) => {
         dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
         logger.info(`[SAML] Nuovo utente SAML creato: "${username}" con ruolo "${finalRole}" (da ${ldapRole ? 'mapping LDAP' : 'default config'})`);
       }
-    }
     } else {
       // Aggiorna displayName e, se i gruppi LDAP sono attivi, aggiorna anche il ruolo ad ogni login
       if (ldapRole) {
