@@ -39,7 +39,11 @@ export default function LoginPage() {
         // Auto-redirect to IdP when configured — unless the user explicitly
         // requested the local login form via ?local, or there are other query
         // params indicating a return from a previous SAML attempt / logout.
-        if (d.enabled && d.auto_redirect && !localMode) {
+        // Suppress auto_redirect if the user just completed a SAML SLO
+        // (NetScaler may redirect back without ?local in the URL).
+        const justLoggedOut = sessionStorage.getItem('saml_just_logged_out')
+        sessionStorage.removeItem('saml_just_logged_out')
+        if (d.enabled && d.auto_redirect && !localMode && !justLoggedOut) {
           window.location.href = '/api/auth/saml/login'
         }
       })

@@ -392,15 +392,20 @@ router.post('/saml/logout', requireAuth, async (req, res) => {
 router.post('/saml/slo', async (req, res) => {
   try {
     const cfg = samlService.getSamlConfig();
-    if (!cfg?.enabled) return res.redirect('/login');
-    // Per NetScaler /cgi/tmlogout il SLO è semplice: basta redirezionare a /login.
-    // node-saml può anche validare il LogoutRequest in ingresso se necessario.
-    logger.info('[SAML] IdP-initiated SLO received');
-    res.redirect('/login?saml_logout=1');
+    if (!cfg?.enabled) return res.redirect('/login?local');
+    logger.info('[SAML] IdP-initiated SLO received (POST)');
+    res.redirect('/login?local');
   } catch (err) {
     logger.error(`[SAML] IdP SLO error: ${err.message}`);
-    res.redirect('/login');
+    res.redirect('/login?local');
   }
+});
+
+// GET /api/auth/saml/slo — SP-initiated SLO response (NetScaler redirect binding)
+// NetScaler may return here via GET after processing our LogoutRequest.
+router.get('/saml/slo', (req, res) => {
+  logger.info('[SAML] SLO callback received (GET)');
+  res.redirect('/login?local');
 });
 
 module.exports = router;

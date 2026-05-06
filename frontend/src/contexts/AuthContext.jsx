@@ -92,11 +92,12 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('jwt_user')
     setUser(null)
     if (samlRedirect) {
+      // Mark that we just did a SAML logout so LoginPage suppresses
+      // auto_redirect when the browser returns from the IdP SLO endpoint.
+      // sessionStorage survives same-tab navigation.
+      sessionStorage.setItem('saml_just_logged_out', '1')
       window.location.href = samlRedirect
     } else {
-      // Always go to /login?local after logout so that SAML auto-redirect
-      // (if enabled) does not immediately trigger a new login flow and
-      // cause an infinite redirect loop.
       window.location.href = '/login?local'
     }
   }, [user])
