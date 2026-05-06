@@ -311,13 +311,28 @@ router.post('/saml/callback', async (req, res) => {
     ).get(username);
 
     if (!dbUser) {
-      const id = uuidv4();
-      db.prepare(
-        `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name)
-         VALUES (?, ?, '', ?, ?, 'saml', ?)`
-      ).run(id, username, finalRole, JSON.stringify(finalPerms), displayName);
-      dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-      logger.info(`[SAML] Nuovo utente SAML creato: "${username}" con ruolo "${finalRole}" (da ${ldapRole ? 'mapping LDAP' : 'default config'})`);
+      // Check if a local/ldap user with the same username already exists.
+      // If so, migrate it to SAML source instead of creating a duplicate.
+      const existingUser = db.prepare(
+        'SELECT * FROM users WHERE username = ? COLLATE NOCASE'
+      ).get(username);
+
+      if (existingUser) {
+        db.prepare(
+          `UPDATE users SET source='saml', display_name=?, role=?, permissions=?, password_hash='', updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, finalRole, JSON.stringify(finalPerms), existingUser.id);
+        dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(existingUser.id);
+        logger.info(`[SAML] Utente esistente "${username}" (source=${existingUser.source}) migrato a SAML con ruolo "${finalRole}"`);
+      } else {
+        const id = uuidv4();
+        db.prepare(
+          `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name)
+           VALUES (?, ?, '', ?, ?, 'saml', ?)`
+        ).run(id, username, finalRole, JSON.stringify(finalPerms), displayName);
+        dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+        logger.info(`[SAML] Nuovo utente SAML creato: "${username}" con ruolo "${finalRole}" (da ${ldapRole ? 'mapping LDAP' : 'default config'})`);
+      }
+    }
     } else {
       // Aggiorna displayName e, se i gruppi LDAP sono attivi, aggiorna anche il ruolo ad ogni login
       if (ldapRole) {
