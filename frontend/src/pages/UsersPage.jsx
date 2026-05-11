@@ -791,6 +791,7 @@ function LdapUsersTab() {
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Display Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
               <th className="px-4 py-3" />
@@ -799,7 +800,7 @@ function LdapUsersTab() {
           <tbody>
             {paginated.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400 italic">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400 italic">
                   No LDAP users yet — they appear automatically after their first login.
                 </td>
               </tr>
@@ -837,6 +838,7 @@ function LdapUsersTab() {
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
+                  <td className="px-4 py-3"><SourceBadge source={u.source} /></td>
                   <td className="px-4 py-3 text-xs text-cyan-700">
                     {matchedCNs.length > 0
                       ? matchedCNs.join(', ')
