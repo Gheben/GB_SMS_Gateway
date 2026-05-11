@@ -531,7 +531,7 @@ function LocalUsersTab() {
     setLoading(true)
     try {
       const all = await usersApi.getAll()
-      setUsers(all.filter(u => u.source !== 'ldap'))
+      setUsers(all.filter(u => u.source !== 'ldap' && u.source !== 'saml'))
     } catch {}
     setLoading(false)
   }, [])
@@ -726,7 +726,7 @@ function LdapUsersTab() {
         usersApi.getAll(),
         ldapApi.getGroups().catch(() => []),
       ])
-      setUsers(allUsers.filter(u => u.source === 'ldap'))
+      setUsers(allUsers.filter(u => u.source === 'ldap' || u.source === 'saml'))
       setMappedGroupDns(ldapGroups.map(g => g.group_dn).filter(Boolean))
     } catch {}
     setLoading(false)
