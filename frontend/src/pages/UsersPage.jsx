@@ -33,6 +33,11 @@ function SourceBadge({ source }) {
       <Server size={10} />LDAP
     </span>
   )
+  if (source === 'saml') return (
+    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-medium inline-flex items-center gap-1">
+      <Globe size={10} />SAML
+    </span>
+  )
   return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 font-medium">Local</span>
 }
 
@@ -381,7 +386,7 @@ function UserDetailModal({ user: u, onClose, onEdit, mappedGroupDns = [] }) {
     })
   }
 
-  const isLdap = u.source === 'ldap'
+  const isLdap = u.source === 'ldap' || u.source === 'saml'
   const grantedPerms = ALL_PERMS.filter(p => u.permissions?.[p.key])
   const deniedPerms  = ALL_PERMS.filter(p => !u.permissions?.[p.key])
   const hasFullAccess = u.role !== 'user'
