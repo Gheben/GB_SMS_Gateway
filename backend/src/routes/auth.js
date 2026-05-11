@@ -346,6 +346,8 @@ router.post('/saml/callback', async (req, res) => {
       dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(dbUser.id);
     }
 
+    db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(dbUser.id);
+
     const permissions  = JSON.parse(dbUser.permissions  || '{}');
     const allowed_ports = JSON.parse(dbUser.allowed_ports || '[]');
     const token = authService.signJwt({ ...dbUser, permissions, allowed_ports }, {
