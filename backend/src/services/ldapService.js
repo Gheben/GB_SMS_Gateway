@@ -418,6 +418,7 @@ async function authenticate(username, password) {
     logger.info(`[LDAP] All resolved groups (${allGroups.length}): ${allGroups.slice(0, 5).join('; ')}${allGroups.length > 5 ? '...' : ''}`);
 
     const avatarPhotoDataUrl = normalizeThumbnailPhotoDataUrl(entry.thumbnailphoto);
+    logger.info(`[LDAP] thumbnailPhoto for "${bareUsername}": raw type=${typeof entry.thumbnailphoto}, raw=${entry.thumbnailphoto == null ? 'null' : (Buffer.isBuffer(entry.thumbnailphoto) ? `Buffer(${entry.thumbnailphoto.length})` : String(entry.thumbnailphoto).substring(0, 40))}, dataUrl=${avatarPhotoDataUrl ? `OK len=${avatarPhotoDataUrl.length}` : 'null'}`);
     return {
       dn:                userDN,
       username:          entry.samaccountname || entry.cn || bareUsername,
@@ -492,7 +493,7 @@ async function lookupUser(username) {
     const users = await ldapSearch(svcClient, _baseDn(cfg), {
       scope: 'sub',
       filter: userFilter,
-      attributes: ['dn', 'sAMAccountName', 'cn', 'displayName', 'mail', 'memberOf'],
+      attributes: ['dn', 'sAMAccountName', 'cn', 'displayName', 'mail', 'memberOf', 'thumbnailPhoto'],
       sizeLimit: 1,
     });
     if (!users.length) return null;
@@ -501,6 +502,7 @@ async function lookupUser(username) {
     const userDN = entry.dn || entry.objectName;
     const directGroups = [].concat(entry.memberOf || []);
     const allGroups    = await getAllGroupsForUser(svcClient, cfg, userDN, directGroups);
+    const avatarPhotoDataUrl = normalizeThumbnailPhotoDataUrl(entry.thumbnailphoto);
 
     return {
       dn:          userDN,
@@ -508,6 +510,7 @@ async function lookupUser(username) {
       displayName: entry.displayname    || entry.cn || username,
       email:       entry.mail || null,
       groups:      allGroups,
+      avatarPhotoDataUrl,
     };
   } catch (err) {
     logger.warn(`[LDAP] LookupUser error for "${username}": ${err.message}`);

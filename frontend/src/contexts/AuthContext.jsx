@@ -49,16 +49,23 @@ export function AuthProvider({ children }) {
   /** Aggiorna il token in background e sincronizza i permessi nella UI */
   const refreshUser = useCallback(async () => {
     try {
-      const { token } = await authApi.refreshToken()
+      const { token, avatar_photo_data_url } = await authApi.refreshToken()
       localStorage.setItem('jwt_token', token)
       const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-      setUser(prev => prev ? {
-        ...prev,
-        role: payload.role,
-        permissions: payload.permissions || {},
-        allowed_ports: payload.allowed_ports || [],
-        displayName: payload.displayName || prev.displayName,
-      } : prev)
+      setUser(prev => {
+        if (!prev) return prev
+        const updated = {
+          ...prev,
+          role: payload.role,
+          permissions: payload.permissions || {},
+          allowed_ports: payload.allowed_ports || [],
+          displayName: payload.displayName || prev.displayName,
+          avatar_photo_data_url: avatar_photo_data_url !== undefined ? avatar_photo_data_url : prev.avatar_photo_data_url,
+        }
+        // Aggiorna anche localStorage così la prossima sessione parte con avatar
+        localStorage.setItem('jwt_user', JSON.stringify(updated))
+        return updated
+      })
     } catch (err) {
       // Se il token è scaduto, facciamo un logout pulito senza hard-redirect
       if (err.response?.status === 401) {

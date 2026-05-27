@@ -135,7 +135,7 @@ router.get('/refresh-token', requireAuth, (req, res) => {
   // (per LDAP: ri-risolti dai group_mappings correnti; per local: letti dal DB).
   // Leggiamo solo display_name dal DB perché non è in req.user.
   const dbUser = getDb().prepare(
-    'SELECT display_name FROM users WHERE id = ?'
+    'SELECT display_name, avatar_photo_data_url FROM users WHERE id = ?'
   ).get(req.user.id);
   if (!dbUser) return res.status(404).json({ error: 'Utente non trovato' });
   const { signJwt } = require('../services/authService');
@@ -147,7 +147,7 @@ router.get('/refresh-token', requireAuth, (req, res) => {
     permissions: req.user.permissions,
     allowed_ports: req.user.allowed_ports,
   });
-  res.json({ token });
+  res.json({ token, avatar_photo_data_url: dbUser.avatar_photo_data_url || null });
 });
 
 // ── SAML 2.0 routes ─────────────────────────────────────────────────────────
@@ -257,6 +257,7 @@ router.post('/saml/callback', async (req, res) => {
     // si fa un lookup LDAP con il service account.
     let ldapRole = null;
     let ldapPerms = null;
+    let ldapAvatarDataUrl = null;
     try {
       // 1. Prova gruppi dal profilo SAML (attributo standard memberOf o simili)
       const rawGroups = profile['memberOf'] || profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] || [];
@@ -265,16 +266,20 @@ router.post('/saml/callback', async (req, res) => {
       // 2. Prova lookup LDAP con service account (se LDAP configurato e abilitato)
       let allGroups = samlGroups;
       const ldapResult = await ldapService.lookupUser(username);
-      if (ldapResult?.groups?.length) {
-        // Unisce i gruppi SAML e LDAP (rimuove duplicati, case-insensitive)
-        const seen = new Set(samlGroups.map(g => g.toLowerCase()));
-        for (const g of ldapResult.groups) {
-          if (!seen.has(g.toLowerCase())) { allGroups.push(g); seen.add(g.toLowerCase()); }
+      if (ldapResult) {
+        if (ldapResult.groups?.length) {
+          // Unisce i gruppi SAML e LDAP (rimuove duplicati, case-insensitive)
+          const seen = new Set(samlGroups.map(g => g.toLowerCase()));
+          for (const g of ldapResult.groups) {
+            if (!seen.has(g.toLowerCase())) { allGroups.push(g); seen.add(g.toLowerCase()); }
+          }
         }
         // Aggiorna displayName da LDAP se non già ottenuto da SAML
         if (!profile[displayNameAttr] && ldapResult.displayName) {
           displayName = ldapResult.displayName;
         }
+        // Recupera avatar AD
+        if (ldapResult.avatarPhotoDataUrl) ldapAvatarDataUrl = ldapResult.avatarPhotoDataUrl;
       }
 
       if (allGroups.length) {
@@ -319,16 +324,16 @@ router.post('/saml/callback', async (req, res) => {
 
       if (existingUser) {
         db.prepare(
-          `UPDATE users SET source='saml', display_name=?, role=?, permissions=?, password_hash='', updated_at=datetime('now') WHERE id=?`
-        ).run(displayName, finalRole, JSON.stringify(finalPerms), existingUser.id);
+          `UPDATE users SET source='saml', display_name=?, role=?, permissions=?, password_hash='', avatar_photo_data_url=?, updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, finalRole, JSON.stringify(finalPerms), ldapAvatarDataUrl, existingUser.id);
         dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(existingUser.id);
         logger.info(`[SAML] Utente esistente "${username}" (source=${existingUser.source}) migrato a SAML con ruolo "${finalRole}"`);
       } else {
         const id = uuidv4();
         db.prepare(
-          `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name)
-           VALUES (?, ?, '', ?, ?, 'saml', ?)`
-        ).run(id, username, finalRole, JSON.stringify(finalPerms), displayName);
+          `INSERT INTO users (id, username, password_hash, role, permissions, source, display_name, avatar_photo_data_url)
+           VALUES (?, ?, '', ?, ?, 'saml', ?, ?)`
+        ).run(id, username, finalRole, JSON.stringify(finalPerms), displayName, ldapAvatarDataUrl);
         dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
         logger.info(`[SAML] Nuovo utente SAML creato: "${username}" con ruolo "${finalRole}" (da ${ldapRole ? 'mapping LDAP' : 'default config'})`);
       }
@@ -336,12 +341,12 @@ router.post('/saml/callback', async (req, res) => {
       // Aggiorna displayName e, se i gruppi LDAP sono attivi, aggiorna anche il ruolo ad ogni login
       if (ldapRole) {
         db.prepare(
-          `UPDATE users SET display_name=?, role=?, permissions=?, updated_at=datetime('now') WHERE id=?`
-        ).run(displayName, finalRole, JSON.stringify(finalPerms), dbUser.id);
+          `UPDATE users SET display_name=?, role=?, permissions=?, avatar_photo_data_url=?, updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, finalRole, JSON.stringify(finalPerms), ldapAvatarDataUrl, dbUser.id);
       } else {
         db.prepare(
-          `UPDATE users SET display_name=?, updated_at=datetime('now') WHERE id=?`
-        ).run(displayName, dbUser.id);
+          `UPDATE users SET display_name=?, avatar_photo_data_url=?, updated_at=datetime('now') WHERE id=?`
+        ).run(displayName, ldapAvatarDataUrl, dbUser.id);
       }
       dbUser = db.prepare('SELECT * FROM users WHERE id = ?').get(dbUser.id);
     }
