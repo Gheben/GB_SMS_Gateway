@@ -17,15 +17,15 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-[600px] w-full divide-y divide-gray-200 text-sm">
+      <table className="w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">Type</th>
             <th className="px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">From / To</th>
-            <th className="px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
+            <th className="hidden sm:table-cell px-4 py-3 pr-6 text-left font-medium text-gray-500 uppercase tracking-wider">SIM</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Message</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th className="hidden sm:table-cell px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">
@@ -47,18 +47,18 @@ export default function MessageTable({ messages, loading, onDoubleClick }) {
                   ? (msg.sender_name || msg.sender)
                   : (msg.recipient_name || msg.recipient)}
               </td>
-              <td className="px-4 py-3 pr-6 text-gray-500">
+              <td className="hidden sm:table-cell px-4 py-3 pr-6 text-gray-500">
                 {msg.port_sim_number
                   ? <span className="font-mono">{msg.port_sim_number}</span>
                   : msg.port ? `Port ${msg.port}` : '—'}
               </td>
-              <td className="px-4 py-3 truncate text-gray-800 max-w-[200px]" title={msg.content}>
+              <td className="px-4 py-3 truncate text-gray-800 max-w-[160px] sm:max-w-[200px]" title={msg.content}>
                 {msg.content}
               </td>
               <td className="px-4 py-3">
                 <span className={`badge-${msg.status}`}>{msg.status}</span>
               </td>
-              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+              <td className="hidden sm:table-cell px-4 py-3 text-gray-500 whitespace-nowrap">
                 {format(new Date(msg.created_at + (msg.created_at.endsWith('Z') ? '' : 'Z')), 'MM/dd/yyyy HH:mm', { locale: enUS })}
               </td>
             </tr>

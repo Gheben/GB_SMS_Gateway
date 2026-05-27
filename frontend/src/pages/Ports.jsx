@@ -262,7 +262,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
       <td className="px-3 py-2 text-xs text-gray-700 font-medium whitespace-nowrap">{port.device_name}</td>
       <td className="px-3 py-2 text-xs text-gray-800 font-mono whitespace-nowrap">T{port.port_number}</td>
       <td className="px-3 py-2 whitespace-nowrap"><StatusBadge status={port.status} /></td>
-      <td className="px-3 py-2">
+      <td className="hidden sm:table-cell px-3 py-2">
         <EditableCell
           initialValue={port.operator}
           placeholder="e.g. Wind"
@@ -272,7 +272,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
           }}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="hidden sm:table-cell px-3 py-2">
         <EditableCell
           initialValue={port.sim_number}
           placeholder="+39..."
@@ -283,7 +283,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
           }}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="hidden md:table-cell px-3 py-2">
         <EditableLimitCell
           initialValue={port.monthly_limit}
           onSave={async monthly_limit => {
@@ -292,7 +292,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
           }}
         />
       </td>
-      <td className="px-3 py-2 whitespace-nowrap">
+      <td className="hidden md:table-cell px-3 py-2 whitespace-nowrap">
         <button
           onClick={toggleBalanced}
           disabled={toggling}
@@ -307,7 +307,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
           }
         </button>
       </td>
-      <td className="px-3 py-2">
+      <td className="hidden lg:table-cell px-3 py-2">
         <RulesPopover rules={matchingRules} localGroups={localGroups} />
       </td>
     </tr>
@@ -372,27 +372,17 @@ export default function SimMapping() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="min-w-[810px] w-full table-fixed text-xs">
-            <colgroup>
-              <col className="w-36" />
-              <col className="w-14" />
-              <col className="w-20" />
-              <col className="w-28" />
-              <col className="w-36" />
-              <col className="w-24" />
-              <col className="w-24" />
-              <col className="w-20" />
-            </colgroup>
+          <table className="w-full text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">Device</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Device</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Port</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">Carrier</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider truncate">SIM Number</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month (0 = no limit)">Limit/mo</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Include in balanced auto-routing pool">Balanced</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Forward rules using this SIM port">Rules</th>
+                <th className="hidden sm:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">Carrier</th>
+                <th className="hidden sm:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider">SIM Number</th>
+                <th className="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Max outbound SMS per month (0 = no limit)">Limit/mo</th>
+                <th className="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Include in balanced auto-routing pool">Balanced</th>
+                <th className="hidden lg:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wider" title="Forward rules using this SIM port">Rules</th>
               </tr>
             </thead>
             <tbody>

@@ -158,16 +158,16 @@ export default function Dashboard() {
             </select>
           </div>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <table className="min-w-[560px] w-full text-sm">
+            <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <tr>
                   <th className="px-4 py-3 text-left">Device</th>
-                  <th className="px-4 py-3 text-left">Port</th>
-                  <th className="px-4 py-3 text-left">SIM / Operator</th>
-                  <th className="px-4 py-3 text-center">Balanced</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left">Port</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left">SIM / Operator</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-center">Balanced</th>
                   <th className="px-4 py-3 text-right">Sent</th>
-                  <th className="px-4 py-3 text-right">Limit</th>
-                  <th className="px-4 py-3 text-left w-36">Usage</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-right">Limit</th>
+                  <th className="px-4 py-3 text-left">Usage</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -179,17 +179,17 @@ export default function Dashboard() {
                     ? activePorts.map(p => (
                     <tr key={`${p.device_id}-${p.port_number}`} className="hover:bg-gray-50">
                       <td className="px-4 py-2 font-medium text-gray-800">{p.device_name}</td>
-                      <td className="px-4 py-2 text-gray-600">{p.port_number}</td>
-                      <td className="px-4 py-2 text-gray-500">
+                      <td className="hidden sm:table-cell px-4 py-2 text-gray-600">{p.port_number}</td>
+                      <td className="hidden sm:table-cell px-4 py-2 text-gray-500">
                         {[p.operator, p.sim_number].filter(Boolean).join(' · ') || '—'}
                       </td>
-                      <td className="px-4 py-2 text-center">
+                      <td className="hidden md:table-cell px-4 py-2 text-center">
                         {p.balanced
                           ? <span className="inline-block bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Yes</span>
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-2 text-right font-semibold text-gray-800">{p.sent_count}</td>
-                      <td className="px-4 py-2 text-right text-gray-500">
+                      <td className="hidden md:table-cell px-4 py-2 text-right text-gray-500">
                         {p.monthly_limit > 0 ? p.monthly_limit : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-2">

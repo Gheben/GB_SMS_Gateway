@@ -196,7 +196,7 @@ export default function AuditLog() {
           <div className="text-center py-12 text-gray-400">No entries found.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[460px] w-full text-sm">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Date/Time</th>

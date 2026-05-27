@@ -226,17 +226,17 @@ export default function Report() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="min-w-[700px] w-full text-sm">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">
                         <th className="pb-2 pr-4 font-medium">SMS received at</th>
                         <th className="pb-2 pr-4 font-medium">Sender</th>
                         <th className="pb-2 pr-4 font-medium">Text</th>
-                        <th className="pb-2 pr-4 font-medium">Device</th>
-                        <th className="pb-2 pr-4 font-medium">Rule</th>
-                        <th className="pb-2 pr-4 font-medium">To</th>
+                        <th className="hidden sm:table-cell pb-2 pr-4 font-medium">Device</th>
+                        <th className="hidden sm:table-cell pb-2 pr-4 font-medium">Rule</th>
+                        <th className="hidden sm:table-cell pb-2 pr-4 font-medium">To</th>
                         <th className="pb-2 pr-4 font-medium">Status</th>
-                        <th className="pb-2 font-medium">Sent at</th>
+                        <th className="hidden md:table-cell pb-2 font-medium">Sent at</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -250,14 +250,14 @@ export default function Report() {
                         >
                           <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">{fmtDate(r.received_at || r.created_at)}</td>
                           <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">{r.sender || '—'}</td>
-                          <td className="py-2 pr-4 text-gray-700 max-w-[180px] truncate" title={r.content}>{r.content}</td>
-                          <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">{r.device_name || '—'}</td>
-                          <td className="py-2 pr-4">
+                          <td className="py-2 pr-4 text-gray-700 max-w-[140px] sm:max-w-[180px] truncate" title={r.content}>{r.content}</td>
+                          <td className="hidden sm:table-cell py-2 pr-4 text-gray-500 whitespace-nowrap">{r.device_name || '—'}</td>
+                          <td className="hidden sm:table-cell py-2 pr-4">
                             <span className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">{r.rule_name || '—'}</span>
                           </td>
-                          <td className="py-2 pr-4 text-gray-600 text-xs">{r.email}</td>
+                          <td className="hidden sm:table-cell py-2 pr-4 text-gray-600 text-xs">{r.email}</td>
                           <td className="py-2 pr-4"><StatusBadge status={r.status} /></td>
-                          <td className="py-2 text-gray-400 text-xs whitespace-nowrap">{fmtDate(r.sent_at)}</td>
+                          <td className="hidden md:table-cell py-2 text-gray-400 text-xs whitespace-nowrap">{fmtDate(r.sent_at)}</td>
                         </tr>
                       ))}
                     </tbody>

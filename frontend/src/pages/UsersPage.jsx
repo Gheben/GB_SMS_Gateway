@@ -604,15 +604,15 @@ function LocalUsersTab() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="min-w-[680px] text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-6"></th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -646,16 +646,16 @@ function LocalUsersTab() {
                       {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(you)</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><SourceBadge source={u.source || 'local'} /></td>
+                  <td className="hidden sm:table-cell px-4 py-3"><SourceBadge source={u.source || 'local'} /></td>
                   <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="hidden md:table-cell px-4 py-3 text-gray-500 text-xs">
                     {u.role !== 'user'
                       ? <span className="italic">Full access</span>
                       : ALL_PERMS.filter(p => u.permissions?.[p.key]).map(p => p.label).join(', ') ||
                         <span className="italic text-gray-400">No permissions</span>
                     }
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                     {formatLastLogin(u.last_login)}
                   </td>
                   <td className="px-4 py-3">
@@ -797,16 +797,16 @@ function LdapUsersTab() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="min-w-[680px] text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-6"></th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Display Name</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Display Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Source</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -848,19 +848,19 @@ function LdapUsersTab() {
                       {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(you)</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-sm">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-500 text-sm">
                     {u.display_name && u.display_name !== u.username
                       ? u.display_name
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                  <td className="px-4 py-3"><SourceBadge source={u.source} /></td>
-                  <td className="px-4 py-3 text-xs text-cyan-700">
+                  <td className="hidden md:table-cell px-4 py-3"><SourceBadge source={u.source} /></td>
+                  <td className="hidden md:table-cell px-4 py-3 text-xs text-cyan-700">
                     {matchedCNs.length > 0
                       ? matchedCNs.join(', ')
                       : <span className="text-gray-300 italic">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                  <td className="hidden sm:table-cell px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                     {formatLastLogin(u.last_login)}
                   </td>
                   <td className="px-4 py-3">
@@ -1213,12 +1213,12 @@ function LdapSettingsTab() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-            <table className="min-w-[500px] text-sm">
+            <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LDAP Group (DN)</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -1229,7 +1229,7 @@ function LdapSettingsTab() {
                       <span className="block truncate" title={m.group_dn}>{m.group_dn}</span>
                     </td>
                     <td className="px-4 py-3"><RoleBadge role={m.role} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td className="hidden sm:table-cell px-4 py-3 text-xs text-gray-500">
                       {m.role === 'admin'
                         ? <span className="italic">Full access</span>
                         : ALL_PERMS.filter(p => m.permissions?.[p.key]).map(p => p.label).join(', ') ||
