@@ -7,6 +7,6 @@ test-*.js
 logs/
 *.db
 *.log
-
+test*.ps1
 # Documentazione XWiki (non inclusa nel repository)
 docs-xwiki/

@@ -416,9 +416,19 @@ function UserDetailModal({ user: u, onClose, onEdit, mappedGroupDns = [] }) {
                 u.is_online ? 'bg-green-400' : 'bg-gray-300'
               }`}
             />
-            {u.role === 'superadmin'
-              ? <Shield size={16} className="text-purple-500" />
-              : <User size={16} className="text-gray-400" />}
+            {u.avatar_photo_data_url ? (
+              <img
+                src={u.avatar_photo_data_url}
+                alt={u.display_name || u.username}
+                className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+            ) : (
+              u.role === 'superadmin'
+                ? <Shield size={16} className="text-purple-500" />
+                : <User size={16} className="text-gray-400" />
+            )}
             <h2 className="font-semibold text-gray-800">{u.username}</h2>
             {u.display_name && u.display_name !== u.username && (
               <span className="text-sm text-gray-400">{u.display_name}</span>
@@ -625,7 +635,10 @@ function LocalUsersTab() {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-800">
                     <div className="flex items-center gap-2">
-                      {u.role === 'superadmin' ? <Shield size={15} className="text-purple-500" /> : <User size={15} className="text-gray-400" />}
+                      {u.avatar_photo_data_url
+                        ? <img src={u.avatar_photo_data_url} alt={u.display_name || u.username} className="w-6 h-6 rounded-full object-cover border border-gray-200 flex-shrink-0" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        : (u.role === 'superadmin' ? <Shield size={15} className="text-purple-500" /> : <User size={15} className="text-gray-400" />)
+                      }
                       {u.username}
                       {u.display_name && u.display_name !== u.username && (
                         <span className="text-xs text-gray-400 font-normal">{u.display_name}</span>
@@ -827,7 +840,10 @@ function LdapUsersTab() {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-800">
                     <div className="flex items-center gap-2">
-                      <User size={15} className="text-gray-400" />
+                      {u.avatar_photo_data_url
+                        ? <img src={u.avatar_photo_data_url} alt={u.display_name || u.username} className="w-6 h-6 rounded-full object-cover border border-gray-200 flex-shrink-0" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        : <User size={15} className="text-gray-400" />
+                      }
                       {u.username}
                       {u.id === me?.id && <span className="text-xs text-blue-500 font-normal">(you)</span>}
                     </div>

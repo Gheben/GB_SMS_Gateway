@@ -155,14 +155,25 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
         {/* User footer + logout */}
         <div className={`${cl ? 'px-1' : 'px-3'} py-3 border-t border-gray-700 space-y-1`}>
           {user && !cl && (
-            <div className="px-3 py-1.5 min-w-0">
-              <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
-                title={user.displayName || user.username}>
-                {user.displayName || user.username}
-              </p>
-              <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
-                {user.username} &middot; {user.role}
-              </p>
+            <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
+              {user.avatar_photo_data_url ? (
+                <img
+                  src={user.avatar_photo_data_url}
+                  alt={user.displayName || user.username}
+                  className="w-7 h-7 rounded-full object-cover border border-gray-700 flex-shrink-0"
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
+                  title={user.displayName || user.username}>
+                  {user.displayName || user.username}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+                  {user.username} &middot; {user.role}
+                </p>
+              </div>
             </div>
           )}
           <button

@@ -19,6 +19,75 @@ function normalizePhone(raw) {
   return String(raw || '').replace(/[\s\-().]/g, '');
 }
 
+/* ─── Avatar / thumbnailPhoto helpers ────────────────────────── */
+
+function detectImageMime(buffer) {
+  if (!buffer || buffer.length < 4) return null;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+      buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a) return 'image/png';
+  if (buffer.length >= 6 && buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38 &&
+      (buffer[4] === 0x37 || buffer[4] === 0x39) && buffer[5] === 0x61) return 'image/gif';
+  if (buffer.length >= 12 && buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return 'image/webp';
+  return null;
+}
+
+function toBufferMaybe(value) {
+  if (!value) return null;
+  if (Buffer.isBuffer(value)) return value;
+  if (Array.isArray(value) && value.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) return Buffer.from(value);
+  if (value?.type === 'Buffer' && Array.isArray(value?.data)) return Buffer.from(value.data);
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  return null;
+}
+
+function normalizeThumbnailPhotoDataUrl(raw) {
+  if (!raw) return null;
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  if (!first) return null;
+  if (typeof first === 'string' && first.startsWith('data:image/')) return first;
+  let buffer = toBufferMaybe(first);
+  if (typeof first === 'string') {
+    const value = first.trim();
+    if (!value) return null;
+    const base64Decoded = Buffer.from(value, 'base64');
+    if (base64Decoded.length > 0 && detectImageMime(base64Decoded)) buffer = base64Decoded;
+    if (!buffer || buffer.length === 0 || !detectImageMime(buffer)) {
+      const binaryDecoded = Buffer.from(value, 'latin1');
+      if (binaryDecoded.length > 0 && detectImageMime(binaryDecoded)) buffer = binaryDecoded;
+    }
+  }
+  if (!buffer || buffer.length === 0) return null;
+  if (buffer.length > 200 * 1024) return null; // max 200 KB
+  const mime = detectImageMime(buffer);
+  if (!mime) return null;
+  return `data:${mime};base64,${buffer.toString('base64')}`;
+}
+
+function extractRawAttributeFromSearchEntry(entry, attrName) {
+  const attr = String(attrName || '').trim().toLowerCase();
+  if (!attr) return null;
+  const candidates = [entry?.attributes, entry?.raw?.attributes, entry?.pojo?.attributes];
+  for (const attrs of candidates) {
+    if (!Array.isArray(attrs)) continue;
+    for (const a of attrs) {
+      const type = String(a?.type || a?.name || '').trim().toLowerCase();
+      if (type !== attr) continue;
+      const values = [
+        ...(Array.isArray(a?.buffers) ? a.buffers : []),
+        ...(Array.isArray(a?.vals)    ? a.vals    : []),
+        ...(Array.isArray(a?.values)  ? a.values  : []),
+      ];
+      for (const v of values) {
+        const buf = toBufferMaybe(v);
+        if (buf && buf.length > 0) return buf;
+      }
+    }
+  }
+  return null;
+}
+
 /* ─── Settings CRUD ─────────────────────────────────────────── */
 
 function getLdapSettings() {
@@ -123,6 +192,9 @@ function normalizeEntry(e) {
     for (const k of Object.keys(e.object)) obj[k.toLowerCase()] = e.object[k];
   }
   if (!obj.dn && e.objectName) obj.dn = String(e.objectName);
+  // Extract raw binary for thumbnailPhoto (ldapjs may strip buffer data from .values)
+  const rawThumb = extractRawAttributeFromSearchEntry(e, 'thumbnailPhoto');
+  if (rawThumb) obj.thumbnailphoto = rawThumb;
   return obj;
 }
 
@@ -315,7 +387,7 @@ async function authenticate(username, password) {
     const users = await ldapSearch(svcClient, _baseDn(cfg), {
       scope: 'sub',
       filter: userFilter,
-      attributes: ['dn', 'sAMAccountName', 'cn', 'displayName', 'mail', 'memberOf'],
+      attributes: ['dn', 'sAMAccountName', 'cn', 'displayName', 'mail', 'memberOf', 'thumbnailPhoto'],
       sizeLimit: 1,
     });
     if (!users.length) {
@@ -345,12 +417,14 @@ async function authenticate(username, password) {
     const allGroups    = await getAllGroupsForUser(svcClient, cfg, userDN, directGroups);
     logger.info(`[LDAP] All resolved groups (${allGroups.length}): ${allGroups.slice(0, 5).join('; ')}${allGroups.length > 5 ? '...' : ''}`);
 
+    const avatarPhotoDataUrl = normalizeThumbnailPhotoDataUrl(entry.thumbnailphoto);
     return {
-      dn:          userDN,
-      username:    entry.samaccountname || entry.cn || bareUsername,
-      displayName: entry.displayname    || entry.cn || bareUsername,
-      email:       entry.mail || null,
-      groups:      allGroups,
+      dn:                userDN,
+      username:          entry.samaccountname || entry.cn || bareUsername,
+      displayName:       entry.displayname    || entry.cn || bareUsername,
+      email:             entry.mail || null,
+      groups:            allGroups,
+      avatarPhotoDataUrl,
     };
   } catch (err) {
     logger.warn(`[LDAP] Authenticate error for "${username}": ${err.message}`);

@@ -132,14 +132,14 @@ async function login(username, password) {
   if (!ldapUser) {
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO users (id, username, password_hash, role, permissions, allowed_ports, source, ldap_dn, display_name, ldap_groups)
-      VALUES (?, ?, '', ?, ?, ?, 'ldap', ?, ?, ?)
-    `).run(id, ldapResult.username, role, JSON.stringify(permissions), JSON.stringify(resolvedPorts || []), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []));
+      INSERT INTO users (id, username, password_hash, role, permissions, allowed_ports, source, ldap_dn, display_name, ldap_groups, avatar_photo_data_url)
+      VALUES (?, ?, '', ?, ?, ?, 'ldap', ?, ?, ?, ?)
+    `).run(id, ldapResult.username, role, JSON.stringify(permissions), JSON.stringify(resolvedPorts || []), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []), ldapResult.avatarPhotoDataUrl || null);
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   } else {
     db.prepare(`
-      UPDATE users SET role=?, permissions=?, allowed_ports=?, ldap_dn=?, display_name=?, ldap_groups=?, updated_at=datetime('now') WHERE id=?
-    `).run(role, JSON.stringify(permissions), JSON.stringify(resolvedPorts || []), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []), ldapUser.id);
+      UPDATE users SET role=?, permissions=?, allowed_ports=?, ldap_dn=?, display_name=?, ldap_groups=?, avatar_photo_data_url=?, updated_at=datetime('now') WHERE id=?
+    `).run(role, JSON.stringify(permissions), JSON.stringify(resolvedPorts || []), ldapResult.dn || null, ldapResult.displayName || null, JSON.stringify(ldapResult.groups || []), ldapResult.avatarPhotoDataUrl || null, ldapUser.id);
     ldapUser = db.prepare('SELECT * FROM users WHERE id = ?').get(ldapUser.id);
   }
 
@@ -162,12 +162,13 @@ function safeUser(u) {
     source: u.source || 'local',
     groups: u.groups || [],
     allowed_ports,
+    avatar_photo_data_url: u.avatar_photo_data_url || null,
   };
 }
 
 function getAllUsers() {
   const db = getDb();
-  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, ldap_groups, created_at, last_login FROM users ORDER BY created_at').all()
+  return db.prepare('SELECT id, username, display_name, role, permissions, allowed_ports, source, ldap_groups, created_at, last_login, avatar_photo_data_url FROM users ORDER BY created_at').all()
     .map(u => ({
       ...u,
       permissions: JSON.parse(u.permissions || '{}'),

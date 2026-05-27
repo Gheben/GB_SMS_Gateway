@@ -148,6 +148,7 @@ function initSchema() {
   try { db.exec(`ALTER TABLE routing_rules ADD COLUMN allowed_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN ldap_groups TEXT NOT NULL DEFAULT '[]'`); } catch (_) { /* already exists */ }
   try { db.exec(`ALTER TABLE users ADD COLUMN last_login TEXT`); } catch (_) { /* already exists */ }
+  try { db.exec(`ALTER TABLE users ADD COLUMN avatar_photo_data_url TEXT`); } catch (_) { /* already exists */ }
 
   // Local groups tables
   db.exec(`
