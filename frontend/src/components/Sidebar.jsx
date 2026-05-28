@@ -38,6 +38,12 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
   // Collapse only applies on desktop; mobile drawer always shows full width + labels
   const cl = collapsed && isDesktop
 
+  // Compute 1-2 letter initials from display name or username
+  const getInitials = (name) => {
+    const p = (name || '?').trim().split(/\s+/).filter(w => /^[a-zA-Z]/.test(w))
+    return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?'
+  }
+
   const isVisible = link => {
     if (link.divider) return false
     if (link.perm && !can(link.perm)) return false
@@ -157,7 +163,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
           {/* Collapsed: show only avatar/initials, centered */}
           {user && cl && (
             <div className="flex justify-center py-1" title={`${user.displayName || user.username} · ${user.role}`}>
-              {user.avatar_photo_data_url ? (
+              {user.source !== 'local' && user.avatar_photo_data_url ? (
                 <img
                   src={user.avatar_photo_data_url}
                   alt={user.displayName || user.username}
@@ -168,7 +174,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
-                    {((n) => { const p = n.trim().split(/\s+/).filter(w => /^[a-zA-Z]/.test(w)); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
+                    {getInitials(user.displayName || user.username)}
                   </span>
                 </div>
               )}
@@ -177,7 +183,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
           {/* Expanded: full user info */}
           {user && !cl && (
             <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
-              {user.avatar_photo_data_url ? (
+              {user.source !== 'local' && user.avatar_photo_data_url ? (
                 <img
                   src={user.avatar_photo_data_url}
                   alt={user.displayName || user.username}
@@ -188,7 +194,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
-                    {((n) => { const p = n.trim().split(/\s+/).filter(w => /^[a-zA-Z]/.test(w)); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
+                    {getInitials(user.displayName || user.username)}
                   </span>
                 </div>
               )}
