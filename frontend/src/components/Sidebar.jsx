@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen, Notebook, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Send, Radio, Server, GitBranch, Settings, BarChart2, X, Smartphone, Users, LogOut, ClipboardList, BookOpen, Notebook, ChevronLeft, ChevronRight, UserCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const links = [
@@ -154,6 +154,27 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
 
         {/* User footer + logout */}
         <div className={`${cl ? 'px-1' : 'px-3'} py-3 border-t border-gray-700 space-y-1`}>
+          {/* Collapsed: show only avatar/initials, centered */}
+          {user && cl && (
+            <div className="flex justify-center py-1" title={`${user.displayName || user.username} · ${user.role}`}>
+              {user.avatar_photo_data_url ? (
+                <img
+                  src={user.avatar_photo_data_url}
+                  alt={user.displayName || user.username}
+                  className="w-7 h-7 rounded-full object-cover border border-gray-700 flex-shrink-0"
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[11px] font-semibold text-gray-300 uppercase leading-none">
+                    {(user.displayName || user.username || '?').charAt(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Expanded: full user info */}
           {user && !cl && (
             <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
               {user.avatar_photo_data_url ? (
