@@ -5,6 +5,7 @@ const deviceManager = require('../services/deviceManager');
 const logger = require('../utils/logger');
 const auditService = require('../services/auditService');
 const { getDb } = require('../db/database');
+const { requireAdmin } = require('../middleware/authMiddleware');
 
 const router = Router();
 
@@ -198,6 +199,29 @@ router.post('/send', [
     logger.error(`Send SMS error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
+});
+
+// DELETE /api/messages — bulk delete (admin + superadmin only)
+router.delete('/', requireAdmin, [
+  body('ids').isArray({ min: 1 }).withMessage('ids must be a non-empty array'),
+  body('ids.*').isUUID().withMessage('each id must be a valid UUID'),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { ids } = req.body;
+  const db = getDb();
+  const placeholders = ids.map(() => '?').join(',');
+
+  // Delete cascade-dependent rows first
+  db.prepare(`DELETE FROM dispatches WHERE message_id IN (${placeholders})`).run(...ids);
+  db.prepare(`DELETE FROM message_rule_matches WHERE message_id IN (${placeholders})`).run(...ids);
+  const result = db.prepare(`DELETE FROM messages WHERE id IN (${placeholders})`).run(...ids);
+
+  logger.info(`[messages] Bulk delete: ${result.changes} messages deleted by user ${req.user.username}`);
+  auditService.log(req.user.id, req.user.username, 'messages:bulk_delete', 'messages', null,
+    `Deleted ${result.changes} messages (ids: ${ids.slice(0, 5).join(', ')}${ids.length > 5 ? '...' : ''})`, req.ip);
+  res.json({ deleted: result.changes });
 });
 
 module.exports = router;

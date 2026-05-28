@@ -605,6 +605,30 @@ setInterval(() => {
   }
 }, MS_PER_DAY);
 
+// Automatic message purge: every 24h delete messages older than MESSAGE_RETENTION_DAYS (default 365)
+setInterval(() => {
+  try {
+    const { getSetting, getDb } = require('./db/database');
+    const retentionDays = parseInt(getSetting('MESSAGE_RETENTION_DAYS', '365'), 10);
+    if (!retentionDays || retentionDays <= 0) return;
+    const db = getDb();
+    // Delete cascade-dependent rows first, then messages
+    db.prepare(`DELETE FROM dispatches WHERE message_id IN (
+      SELECT id FROM messages WHERE created_at < datetime('now', '-' || ? || ' days')
+    )`).run(retentionDays);
+    db.prepare(`DELETE FROM message_rule_matches WHERE message_id IN (
+      SELECT id FROM messages WHERE created_at < datetime('now', '-' || ? || ' days')
+    )`).run(retentionDays);
+    const result = db.prepare(
+      `DELETE FROM messages WHERE created_at < datetime('now', '-' || ? || ' days')`
+    ).run(retentionDays);
+    if (result.changes > 0)
+      logger.info(`[messages] Auto-purge: removed ${result.changes} messages older than ${retentionDays} days`);
+  } catch (err) {
+    logger.error('[messages] Auto-purge failed:', err.message);
+  }
+}, MS_PER_DAY);
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('Shutting down...');

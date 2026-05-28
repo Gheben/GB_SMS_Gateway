@@ -70,10 +70,11 @@ export const auditApi = {
 
 
 export const messagesApi = {
-  getAll:   (params) => api.get('/messages', { params }).then(r => r.data),
-  getById:  (id) => api.get(`/messages/${id}`).then(r => r.data),
-  getStats: () => api.get('/messages/stats').then(r => r.data),
-  send:     (data) => api.post('/messages/send', data).then(r => r.data),
+  getAll:     (params) => api.get('/messages', { params }).then(r => r.data),
+  getById:    (id) => api.get(`/messages/${id}`).then(r => r.data),
+  getStats:   () => api.get('/messages/stats').then(r => r.data),
+  send:       (data) => api.post('/messages/send', data).then(r => r.data),
+  deleteMany: (ids) => api.delete('/messages', { data: { ids } }).then(r => r.data),
 }
 
 export const portsApi = {
@@ -103,20 +104,22 @@ export const rulesApi = {
 }
 
 export const settingsApi = {
-  getSmtp:       () => api.get('/settings/smtp').then(r => r.data),
-  saveSmtp:      (data) => api.post('/settings/smtp', data).then(r => r.data),
-  testSmtp:      (to) => api.post('/settings/smtp/test', { to }).then(r => r.data),
-  getTemplate:   () => api.get('/settings/email-template').then(r => r.data),
-  saveTemplate:  (template) => api.post('/settings/email-template', { template }).then(r => r.data),
-  getSubject:    () => api.get('/settings/email-subject').then(r => r.data),
-  saveSubject:   (subject) => api.post('/settings/email-subject', { subject }).then(r => r.data),
-  getSaml:       () => api.get('/settings/saml').then(r => r.data),
-  saveSaml:      (data) => api.post('/settings/saml', data).then(r => r.data),
-  getWebhook:    () => api.get('/settings/webhook').then(r => r.data),
-  saveWebhook:   (data) => api.post('/settings/webhook', data).then(r => r.data),
-  getNtp:        () => api.get('/settings/ntp').then(r => r.data),
-  saveNtp:       (data) => api.post('/settings/ntp', data).then(r => r.data),
-  syncNtp:       () => api.post('/settings/ntp/sync').then(r => r.data),
+  getSmtp:              () => api.get('/settings/smtp').then(r => r.data),
+  saveSmtp:             (data) => api.post('/settings/smtp', data).then(r => r.data),
+  testSmtp:             (to) => api.post('/settings/smtp/test', { to }).then(r => r.data),
+  getTemplate:          () => api.get('/settings/email-template').then(r => r.data),
+  saveTemplate:         (template) => api.post('/settings/email-template', { template }).then(r => r.data),
+  getSubject:           () => api.get('/settings/email-subject').then(r => r.data),
+  saveSubject:          (subject) => api.post('/settings/email-subject', { subject }).then(r => r.data),
+  getSaml:              () => api.get('/settings/saml').then(r => r.data),
+  saveSaml:             (data) => api.post('/settings/saml', data).then(r => r.data),
+  getWebhook:           () => api.get('/settings/webhook').then(r => r.data),
+  saveWebhook:          (data) => api.post('/settings/webhook', data).then(r => r.data),
+  getNtp:               () => api.get('/settings/ntp').then(r => r.data),
+  saveNtp:              (data) => api.post('/settings/ntp', data).then(r => r.data),
+  syncNtp:              () => api.post('/settings/ntp/sync').then(r => r.data),
+  getMessageSettings:   () => api.get('/settings/messages').then(r => r.data),
+  saveMessageSettings:  (data) => api.post('/settings/messages', data).then(r => r.data),
 }
 
 export const reportApi = {

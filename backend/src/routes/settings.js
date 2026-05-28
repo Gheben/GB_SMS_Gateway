@@ -247,5 +247,26 @@ router.post('/ntp/sync', requireAdmin, async (req, res) => {
   });
 });
 
+// GET /api/settings/messages — message retention settings
+router.get('/messages', (req, res) => {
+  res.json({
+    retention_days: parseInt(getSetting('MESSAGE_RETENTION_DAYS', '365'), 10),
+  });
+});
+
+// POST /api/settings/messages — save message retention settings
+router.post('/messages', requireAdmin, [
+  body('retention_days').isInt({ min: 1, max: 9999 }).withMessage('retention_days must be an integer between 1 and 9999'),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { retention_days } = req.body;
+  setSettings({ MESSAGE_RETENTION_DAYS: String(retention_days) });
+  auditService.log(req.user?.id, req.user?.username || 'system', 'settings:messages_update', 'settings', null,
+    `Message retention set to ${retention_days} days`, req.ip);
+  res.json({ ok: true });
+});
+
 module.exports = router;
 

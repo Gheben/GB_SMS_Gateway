@@ -116,6 +116,12 @@ export default function Settings() {
   const [ntpSyncing, setNtpSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
 
+  // Message Retention
+  const [retentionDays, setRetentionDays]     = useState(365)
+  const [retentionDirty, setRetentionDirty]   = useState(false)
+  const [retentionSaving, setRetentionSaving] = useState(false)
+  const [retentionResult, setRetentionResult] = useState(null)
+
   useEffect(() => {
     Promise.all([
       settingsApi.getSmtp(),
@@ -124,7 +130,8 @@ export default function Settings() {
       isSuperAdmin ? settingsApi.getSaml() : Promise.resolve(null),
       settingsApi.getWebhook(),
       isAdmin ? settingsApi.getNtp() : Promise.resolve(null),
-    ]).then(([smtpData, tplData, subjData, samlData, webhookData, ntpData]) => {
+      isAdmin ? settingsApi.getMessageSettings() : Promise.resolve(null),
+    ]).then(([smtpData, tplData, subjData, samlData, webhookData, ntpData, msgData]) => {
         setSmtp(s => ({ ...s, ...smtpData, pass: '' }))
         setTestEmail(smtpData.user || '')
         setTemplate(tplData.template || DEFAULT_TEMPLATE)
@@ -132,6 +139,7 @@ export default function Settings() {
         if (samlData) setSaml(s => ({ ...s, ...samlData }))
         if (webhookData) setWebhookHosts(webhookData.allowed_hosts || '')
         if (ntpData) setNtp(n => ({ ...n, ...ntpData }))
+        if (msgData) setRetentionDays(msgData.retention_days || 365)
         setLoading(false)
       }).catch(() => setLoading(false))
   }, [])
@@ -235,6 +243,19 @@ export default function Settings() {
       setNtpResult({ success: false, message: err.response?.data?.error || 'Error saving settings.' })
     } finally {
       setNtpSaving(false)
+    }
+  }
+
+  async function handleSaveRetention() {
+    setRetentionSaving(true); setRetentionResult(null)
+    try {
+      await settingsApi.saveMessageSettings({ retention_days: retentionDays })
+      setRetentionDirty(false)
+      setRetentionResult({ success: true, message: `Message retention set to ${retentionDays} days.` })
+    } catch (err) {
+      setRetentionResult({ success: false, message: err.response?.data?.error || 'Error saving retention settings.' })
+    } finally {
+      setRetentionSaving(false)
     }
   }
 
@@ -808,6 +829,49 @@ export default function Settings() {
               </p>
             </div>
           </section>
+
+          {/* Message Retention */}
+          {isAdmin && (
+            <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+              <div>
+                <h3 className="text-base font-semibold text-gray-700">Message Retention</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Messages (sent and received) older than the specified number of days are automatically deleted every 24 hours.
+                </p>
+              </div>
+
+              <div className="max-w-xs">
+                <label className="label">Retention period (days)</label>
+                <input
+                  type="number" min="1" max="9999" className="input"
+                  value={retentionDays}
+                  onChange={e => {
+                    setRetentionDays(parseInt(e.target.value, 10) || 365)
+                    setRetentionDirty(true)
+                    setRetentionResult(null)
+                  }}
+                />
+                <p className="text-xs text-gray-400 mt-1">Default: 365 days. Set to 9999 to keep messages indefinitely.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={handleSaveRetention} disabled={retentionSaving || !retentionDirty}
+                  className="btn-primary flex items-center gap-2">
+                  {retentionSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {retentionSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+
+              {retentionResult && (
+                <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
+                  retentionResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+                }`}>
+                  {retentionResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                  {retentionResult.message}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       )}
     </div>

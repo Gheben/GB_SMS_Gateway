@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { messagesApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
+import { useAuth } from '../contexts/AuthContext'
 import MessageTable from '../components/MessageTable'
 import MessageDetailModal from '../components/MessageDetailModal'
 import { Send } from 'lucide-react'
 
 export default function Sent() {
+  const { user } = useAuth()
+  const canDelete = user?.role === 'superadmin' || user?.role === 'admin'
   const [messages, setMessages] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -55,7 +58,8 @@ export default function Sent() {
         className="w-full max-w-sm border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      <MessageTable messages={messages} loading={loading} onDoubleClick={handleDoubleClick} />
+      <MessageTable messages={messages} loading={loading} onDoubleClick={handleDoubleClick}
+        canDelete={canDelete} onDeleted={load} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm text-gray-500">
