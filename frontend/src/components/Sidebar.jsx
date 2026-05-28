@@ -168,13 +168,13 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
-                    {((n) => { const p = n.trim().split(/\s+/); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
+                    {((n) => { const p = n.trim().split(/\s+/).filter(w => /^[a-zA-Z]/.test(w)); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
                   </span>
                 </div>
               )}
             </div>
           )}
-          {/* Expanded: full user info */}
+          {/* Expanded: full user info */
           {user && !cl && (
             <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
               {user.avatar_photo_data_url ? (
@@ -188,7 +188,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
-                    {((n) => { const p = n.trim().split(/\s+/); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
+                    {((n) => { const p = n.trim().split(/\s+/).filter(w => /^[a-zA-Z]/.test(w)); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
                   </span>
                 </div>
               )}
