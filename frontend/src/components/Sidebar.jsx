@@ -185,7 +185,13 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
                   loading="lazy"
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
-              ) : null}
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
+                    {((n) => { const p = n.trim().split(/\s+/); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
+                  </span>
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
                   title={user.displayName || user.username}>
