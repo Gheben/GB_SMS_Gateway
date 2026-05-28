@@ -556,6 +556,7 @@ GB-SMS-Gateway/
 - `GET /api/messages/stats` — Statistics (received_today, sent_today, total_inbound, failed)
 - `GET /api/messages/:id` — Message detail
 - `POST /api/messages/send` — Send SMS (`port` = integer **or** `"auto"` for balanced routing; returns **HTTP 429** if the monthly limit of the selected port has been reached)
+- `DELETE /api/messages` — **Bulk delete messages** *(admin/superadmin only)* — body: `{ "ids": ["uuid1", "uuid2", ...] }` — cascades to `dispatches` and `message_rule_matches`
 
 ### Devices
 - `GET /api/devices` — List devices with connection status
@@ -581,6 +582,11 @@ GB-SMS-Gateway/
 - `GET/POST /api/settings/email-subject` — Custom email subject
 - `GET/POST /api/settings/saml` — SAML 2.0 configuration *(superadmin only)*
 - `GET/POST /api/settings/webhook` — Webhook allowed-hosts whitelist (hostname, `*.domain`, CIDR)
+- `GET /api/settings/ntp` — NTP server + timezone *(admin/superadmin)*
+- `POST /api/settings/ntp` — Save NTP server + timezone *(admin/superadmin)*
+- `POST /api/settings/ntp/sync` — Query NTP server and return clock offset *(admin/superadmin)*
+- `GET /api/settings/messages` — Message retention period in days *(admin/superadmin)*
+- `POST /api/settings/messages` — Save message retention period *(admin/superadmin)* — body: `{ "retention_days": 365 }`
 
 ### Users and groups
 - `GET/POST /api/users` — List / create users
@@ -706,6 +712,18 @@ docker compose up -d
 ---
 
 ## 📝 Changelog
+
+### v1.5.0 (May 2026)
+- ✅ Feat: Bulk delete messages from Inbox and Sent pages (admin + superadmin only)
+  - Checkbox column with select-all support
+  - Confirmation dialog before delete
+  - Cascades to `dispatches` and `message_rule_matches` tables
+- ✅ Feat: Message retention setting in Settings → System (admin+)
+  - Configurable retention period in days (default 365)
+  - Auto-purge job runs every 24 h and deletes messages older than the configured threshold
+- ✅ UI: All pages use responsive tables (full-width, columns collapse on mobile/tablet)
+- ✅ API: `DELETE /api/messages` — bulk delete (body: `{ ids: [...] }`)
+- ✅ API: `GET/POST /api/settings/messages` — read/write message retention period
 
 ### v1.4.0 (March 2026)
 - ✅ Feat: NTP server + timezone configuration in Settings → System (admin+)
