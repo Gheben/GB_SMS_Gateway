@@ -183,20 +183,22 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
           {/* Expanded: full user info */}
           {user && !cl && (
             <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
-              {user.source !== 'local' && user.avatar_photo_data_url ? (
-                <img
-                  src={user.avatar_photo_data_url}
-                  alt={user.displayName || user.username}
-                  className="w-7 h-7 rounded-full object-cover border border-gray-700 flex-shrink-0"
-                  loading="lazy"
-                  onError={(e) => { e.currentTarget.style.display = 'none' }}
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
-                    {getInitials(user.displayName || user.username)}
-                  </span>
-                </div>
+              {user.source !== 'local' && (
+                user.avatar_photo_data_url ? (
+                  <img
+                    src={user.avatar_photo_data_url}
+                    alt={user.displayName || user.username}
+                    className="w-7 h-7 rounded-full object-cover border border-gray-700 flex-shrink-0"
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
+                      {getInitials(user.displayName || user.username)}
+                    </span>
+                  </div>
+                )
               )}
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-200 truncate leading-tight"
