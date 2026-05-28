@@ -174,7 +174,7 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
               )}
             </div>
           )}
-          {/* Expanded: full user info */
+          {/* Expanded: full user info */}
           {user && !cl && (
             <div className="px-3 py-1.5 min-w-0 flex items-center gap-2">
               {user.avatar_photo_data_url ? (
