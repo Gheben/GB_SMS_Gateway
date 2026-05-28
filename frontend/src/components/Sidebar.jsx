@@ -167,8 +167,8 @@ export default function Sidebar({ connectedCount, totalCount, open, onClose, onL
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-semibold text-gray-300 uppercase leading-none">
-                    {(user.displayName || user.username || '?').charAt(0)}
+                  <span className="text-[10px] font-semibold text-gray-300 uppercase leading-none tracking-tight">
+                    {((n) => { const p = n.trim().split(/\s+/); return p.length >= 2 ? p[0][0] + p[p.length - 1][0] : p[0]?.[0] || '?' })(user.displayName || user.username || '?')}
                   </span>
                 </div>
               )}
