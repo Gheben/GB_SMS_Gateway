@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.6.7",
+    "axios": "^1.18.0",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.323.0",
     "react": "^18.2.0",
