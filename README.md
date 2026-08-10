@@ -9,6 +9,16 @@
 
 ---
 
+## 💶 Support the project
+
+If you find this project useful, buy me a coffee! ☕
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-guidoballau-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/guidoballau)
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=8RF28JBPLYASN)
+
+⭐ If you like the project, leave a star! ⭐
+
+---
 ## 📋 Description
 
 **GB SMS Gateway** is a complete system for managing and monitoring SMS messages received and sent through **Yeastar TG1600** GSM gateways. It provides real-time message viewing, automatic email forwarding rules, and user management with local, LDAP/Active Directory, and SSO authentication.
