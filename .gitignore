@@ -1,0 +1,12 @@
+# Git ignore
+node_modules/
+dist/
+.env
+data/
+test-*.js
+logs/
+*.db
+*.log
+test*.ps1
+# Documentazione XWiki (non inclusa nel repository)
+docs-xwiki/

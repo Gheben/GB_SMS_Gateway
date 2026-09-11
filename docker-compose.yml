@@ -1,0 +1,77 @@
+version: '3.9'
+
+# Persistent data: bind mounts to local host folders (e.g. Synology).
+# To migrate to another server, just copy the ./data and ./logs folders
+# along with this docker-compose.yml.
+#
+# Host disk layout:
+#   /volume1/docker/smsgateway/
+#   ├── docker-compose.yml
+#   ├── .env
+#   ├── data/
+#   │   └── smsgateway.db    ← SQLite database (backup = copy this file)
+#   └── logs/
+#       └── app.log
+
+services:
+
+  # Creates the ./data and ./logs folders on the host before the backend starts.
+  # Required on Synology where Docker does not automatically create bind-mount folders.
+  init-dirs:
+    image: alpine
+    command: sh -c "mkdir -p /host/data /host/logs"
+    volumes:
+      - type: bind
+        source: .
+        target: /host
+    restart: "no"
+
+  backend:
+    depends_on:
+      init-dirs:
+        condition: service_completed_successfully
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smsgateway-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=4673
+      - DB_PATH=/app/data/smsgateway.db
+      - LOG_FILE=/app/logs/app.log
+      # ENCRYPTION_SECRET — MUST match the value used when LDAP/SMTP settings were saved.
+      # Set it in .env (recommended) or directly here.
+      # If different from the environment where settings were configured,
+      # LDAP and SMTP passwords will fail to decrypt → re-enter them in the UI.
+      # - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+      # SSO via reverse proxy (Authentik, NetScaler ADC, etc.)
+      # Uncomment and set in .env or directly here:
+      # - SSO_ENABLED=true
+      # - SSO_HEADER=X-Remote-User
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - smsgateway-net
+    # Expose only internally — frontend nginx proxies to it
+    expose:
+      - "4673"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smsgateway-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-4674}:80"
+    depends_on:
+      - backend
+    networks:
+      - smsgateway-net
+
+networks:
+  smsgateway-net:
+    driver: bridge
