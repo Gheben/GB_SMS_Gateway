@@ -262,11 +262,13 @@ router.post('/saml/callback', async (req, res) => {
       // 1. Prova gruppi dal profilo SAML (attributo standard memberOf o simili)
       const rawGroups = profile['memberOf'] || profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] || [];
       const samlGroups = Array.isArray(rawGroups) ? rawGroups : (rawGroups ? [rawGroups] : []);
+      logger.info(`[SAML] "${username}": ${samlGroups.length} gruppo/i ricevuti dall'IdP nell'assertion`);
 
       // 2. Prova lookup LDAP con service account (se LDAP configurato e abilitato)
-      let allGroups = samlGroups;
+      let allGroups = [...samlGroups];
       const ldapResult = await ldapService.lookupUser(username);
       if (ldapResult) {
+        logger.info(`[SAML] "${username}": trovato in LDAP (DN=${ldapResult.dn}), ${ldapResult.groups?.length || 0} gruppo/i risolti (diretti+annidati)`);
         if (ldapResult.groups?.length) {
           // Unisce i gruppi SAML e LDAP (rimuove duplicati, case-insensitive)
           const seen = new Set(samlGroups.map(g => g.toLowerCase()));
@@ -280,8 +282,11 @@ router.post('/saml/callback', async (req, res) => {
         }
         // Recupera avatar AD
         if (ldapResult.avatarPhotoDataUrl) ldapAvatarDataUrl = ldapResult.avatarPhotoDataUrl;
+      } else {
+        logger.warn(`[SAML] "${username}": lookup LDAP non ha trovato l'utente nella directory (utente non presente, LDAP non raggiungibile/non configurato, o service account senza permessi)`);
       }
 
+      logger.info(`[SAML] "${username}": ${allGroups.length} gruppo/i totali (IdP+LDAP) da valutare per il mapping ruoli`);
       if (allGroups.length) {
         const permResult = ldapService.resolvePermissions(allGroups);
         if (permResult) {
