@@ -305,6 +305,17 @@ async function bfsNestedGroups(client, seedDNs) {
 }
 
 /**
+ * Extracts the domain root suffix (DC=...,DC=...) from a full DN.
+ * Used to scope group-chain searches to the whole domain, since the
+ * admin-configured base DN (meant for finding user accounts) may not cover
+ * the OU(s) where application/security groups actually live.
+ */
+function domainRootFromDn(dn) {
+  const m = String(dn || '').match(/(?:^|,)\s*(DC=.+)$/i);
+  return m ? m[1] : null;
+}
+
+/**
  * Resolves all groups (including nested) the user belongs to.
  * In AD mode uses LDAP_MATCHING_RULE_IN_CHAIN (automatic recursion by the DC),
  * then always runs a BFS pass as a safety net — the matching rule alone can
@@ -312,12 +323,15 @@ async function bfsNestedGroups(client, seedDNs) {
  */
 async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
   const combined = new Set(directGroups);
+  // Search groups from the domain root, not the (possibly narrower) configured
+  // user base DN — group OUs are frequently outside the users' base DN.
+  const domainRoot = domainRootFromDn(userDN) || _baseDn(cfg);
 
   if (cfg.ad_mode !== false) {
     // Strategy 1: global AD chain search for all groups the user belongs to
     try {
       const filter = `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`;
-      const entries = await ldapSearch(client, _baseDn(cfg), {
+      const entries = await ldapSearch(client, domainRoot, {
         scope: 'sub',
         filter,
         attributes: ['dn'],
@@ -329,29 +343,29 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
       logger.warn(`[LDAP] AD chain search failed: ${err.message}, falling back to targeted query`);
     }
 
-    // Strategy 2: single OR-combined query over all configured group mappings.
-    // Searches from baseDN with (|(distinguishedName=DN1 & member:OID:=userDN)(DN2 & ...)...).
-    // Results are bounded to at most N entries (number of mappings) — size limit is never hit.
+    // Strategy 2: direct per-mapping check — queries each configured group's own
+    // DN with scope=base, so it works regardless of where the group lives in the
+    // tree (it does NOT depend on the configured LDAP base DN covering that OU).
     const mappings = cfg.group_mappings || [];
     if (mappings.length) {
-      try {
-        const parts = mappings.map(m =>
-          `(&(distinguishedName=${escapeLdap(m.group_dn)})(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)}))`
-        );
-        const filter = parts.length === 1 ? parts[0] : `(|${parts.join('')})`;
-        const entries = await ldapSearch(client, _baseDn(cfg), {
-          scope: 'sub',
-          filter,
-          attributes: ['dn'],
-          sizeLimit: mappings.length + 1,
-        });
-        const matched = entries.map(e => e.dn || e.objectName).filter(Boolean);
-        if (matched.length) {
-          logger.info(`[LDAP] Single targeted query: user is transitive member of ${matched.length} configured group(s)`);
-          matched.forEach(dn => combined.add(dn));
+      const checks = mappings.map(async m => {
+        try {
+          const entries = await ldapSearch(client, m.group_dn, {
+            scope: 'base',
+            filter: `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`,
+            attributes: ['dn'],
+            sizeLimit: 1,
+          });
+          return entries.length ? (entries[0].dn || m.group_dn) : null;
+        } catch (err) {
+          logger.warn(`[LDAP] Verifica diretta mapping "${m.group_dn}" fallita: ${err.message}`);
+          return null;
         }
-      } catch (err) {
-        logger.warn(`[LDAP] Single targeted query failed: ${err.message}`);
+      });
+      const matched = (await Promise.all(checks)).filter(Boolean);
+      if (matched.length) {
+        logger.info(`[LDAP] Verifica diretta: utente membro (anche annidato) di ${matched.length} gruppo/i mappato/i`);
+        matched.forEach(dn => combined.add(dn));
       }
     }
   }
