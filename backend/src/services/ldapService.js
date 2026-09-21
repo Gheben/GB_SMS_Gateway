@@ -317,57 +317,59 @@ function domainRootFromDn(dn) {
 
 /**
  * Resolves all groups (including nested) the user belongs to.
- * In AD mode uses LDAP_MATCHING_RULE_IN_CHAIN (automatic recursion by the DC),
- * then always runs a BFS pass as a safety net — the matching rule alone can
- * miss nested memberships that cross domains/trusts in a multi-domain forest.
+ * Always attempts LDAP_MATCHING_RULE_IN_CHAIN (AD-specific extended match) —
+ * on a non-AD server this simply yields zero extra matches (no regression),
+ * so it is NOT gated behind the "ad_mode" setting: that toggle previously
+ * skipped this entirely, silently breaking group resolution on deployments
+ * where it was left unchecked even though the directory is genuinely AD.
+ * A BFS pass always runs too, as a safety net for memberships the matching
+ * rule queries miss (e.g. cross-domain trusts).
  */
 async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
   const combined = new Set(directGroups);
   // Search groups from the domain root, not the (possibly narrower) configured
   // user base DN — group OUs are frequently outside the users' base DN.
   const domainRoot = domainRootFromDn(userDN) || _baseDn(cfg);
+  logger.info(`[LDAP] Risoluzione gruppi per "${userDN}": ${directGroups.length} gruppo/i diretto/i, domainRoot="${domainRoot}", ad_mode=${cfg.ad_mode !== false}`);
 
-  if (cfg.ad_mode !== false) {
-    // Strategy 1: global AD chain search for all groups the user belongs to
-    try {
-      const filter = `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`;
-      const entries = await ldapSearch(client, domainRoot, {
-        scope: 'sub',
-        filter,
-        attributes: ['dn'],
-        sizeLimit: 500,
-      });
-      const dns = entries.map(e => e.dn || e.objectName).filter(Boolean);
-      dns.forEach(dn => combined.add(dn));
-    } catch (err) {
-      logger.warn(`[LDAP] AD chain search failed: ${err.message}, falling back to targeted query`);
-    }
+  // Strategy 1: global AD chain search for all groups the user belongs to
+  try {
+    const filter = `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`;
+    const entries = await ldapSearch(client, domainRoot, {
+      scope: 'sub',
+      filter,
+      attributes: ['dn'],
+      sizeLimit: 500,
+    });
+    const dns = entries.map(e => e.dn || e.objectName).filter(Boolean);
+    logger.info(`[LDAP] AD chain search: ${dns.length} gruppo/i trovato/i`);
+    dns.forEach(dn => combined.add(dn));
+  } catch (err) {
+    logger.warn(`[LDAP] AD chain search failed: ${err.message}`);
+  }
 
-    // Strategy 2: direct per-mapping check — queries each configured group's own
-    // DN with scope=base, so it works regardless of where the group lives in the
-    // tree (it does NOT depend on the configured LDAP base DN covering that OU).
-    const mappings = cfg.group_mappings || [];
-    if (mappings.length) {
-      const checks = mappings.map(async m => {
-        try {
-          const entries = await ldapSearch(client, m.group_dn, {
-            scope: 'base',
-            filter: `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`,
-            attributes: ['dn'],
-            sizeLimit: 1,
-          });
-          return entries.length ? (entries[0].dn || m.group_dn) : null;
-        } catch (err) {
-          logger.warn(`[LDAP] Verifica diretta mapping "${m.group_dn}" fallita: ${err.message}`);
-          return null;
-        }
-      });
-      const matched = (await Promise.all(checks)).filter(Boolean);
-      if (matched.length) {
-        logger.info(`[LDAP] Verifica diretta: utente membro (anche annidato) di ${matched.length} gruppo/i mappato/i`);
-        matched.forEach(dn => combined.add(dn));
+  // Strategy 2: direct per-mapping check — queries each configured group's own
+  // DN with scope=base, so it works regardless of where the group lives in the
+  // tree (it does NOT depend on the configured LDAP base DN covering that OU).
+  const mappings = cfg.group_mappings || [];
+  if (mappings.length) {
+    const checks = mappings.map(async m => {
+      try {
+        const entries = await ldapSearch(client, m.group_dn, {
+          scope: 'base',
+          filter: `(member:1.2.840.113556.1.4.1941:=${escapeLdap(userDN)})`,
+          attributes: ['dn'],
+          sizeLimit: 1,
+        });
+        return entries.length ? (entries[0].dn || m.group_dn) : null;
+      } catch (err) {
+        logger.warn(`[LDAP] Verifica diretta mapping "${m.group_dn}" fallita: ${err.message}`);
+        return null;
       }
-    }
+    });
+    const matched = (await Promise.all(checks)).filter(Boolean);
+    logger.info(`[LDAP] Verifica diretta: ${matched.length}/${mappings.length} gruppo/i mappato/i corrispondente/i`);
+    matched.forEach(dn => combined.add(dn));
   }
 
   // Strategy 3: BFS — always run as a safety net (not just as a fallback), so
