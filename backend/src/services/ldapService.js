@@ -274,6 +274,21 @@ function escapeLdap(s) {
   );
 }
 
+/**
+ * Normalizes a DN string for equality comparison: unescapes both hex (\XX)
+ * and literal-char (\+) escape styles into their plain character, collapses
+ * whitespace around RDN separators, and lowercases. Needed because the same
+ * directory object can be represented with different (but equivalent) escape
+ * styles depending on the source (raw LDAP attribute value vs parsed entry DN),
+ * which breaks naive string equality even though it's the same object.
+ */
+function normalizeDn(dn) {
+  const unescaped = String(dn || '').trim().replace(/\\([0-9a-fA-F]{2}|.)/g, (_, g1) =>
+    /^[0-9a-fA-F]{2}$/.test(g1) ? String.fromCharCode(parseInt(g1, 16)) : g1
+  );
+  return unescaped.replace(/\s*,\s*/g, ',').toLowerCase();
+}
+
 /* ─── Group resolution ───────────────────────────────────────── */
 
 /**
@@ -362,9 +377,10 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
           sizeLimit: 1,
         });
         if (entries.length) return entries[0].dn || m.group_dn;
-        // Diagnostic-only: no match via extended match — read the group's raw
-        // (non-recursive) member list to tell apart "user really isn't a member"
-        // from "service account can't read this group's member attribute".
+        // Fallback: the extended match found nothing, but AD's DN comparison can
+        // still miss a match if something upstream is off — cross-check against
+        // the group's own raw (non-recursive) member list using normalized DN
+        // equality (handles \XX vs literal-char escape differences).
         try {
           const raw = await ldapSearch(client, m.group_dn, {
             scope: 'base',
@@ -373,8 +389,10 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
             sizeLimit: 1,
           });
           const rawMembers = [].concat(raw[0]?.member || []);
-          const directHit = rawMembers.some(dn => dn.toLowerCase() === userDN.toLowerCase());
+          const normalizedUserDn = normalizeDn(userDN);
+          const directHit = rawMembers.some(dn => normalizeDn(dn) === normalizedUserDn);
           logger.info(`[LDAP] "${m.group_dn}": ${rawMembers.length} membro/i diretto/i letto/i, utente presente direttamente=${directHit}`);
+          if (directHit) return m.group_dn;
         } catch (rawErr) {
           logger.warn(`[LDAP] Lettura member "${m.group_dn}" fallita: ${rawErr.message}`);
         }
@@ -498,13 +516,13 @@ function resolvePermissions(groups) {
     return null;
   }
 
-  const groupSet = new Set(groups.map(g => g.toLowerCase()));
+  const groupSet = new Set(groups.map(g => normalizeDn(g)));
   let role   = null;
   let merged = {};
   let mergedPorts = [];
 
   for (const m of cfg.group_mappings) {
-    if (!groupSet.has(m.group_dn.toLowerCase())) continue;
+    if (!groupSet.has(normalizeDn(m.group_dn))) continue;
     if (m.role === 'admin') return { role: 'admin', permissions: {}, allowed_ports: [] };
     role = 'user';
     // Merge permissions (union — if user matches multiple groups, all sections are granted)
