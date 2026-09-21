@@ -21,6 +21,16 @@ const ALL_PERMS = [
   { key: 'phonebook', label: 'Phonebook access' },
 ]
 
+// Normalizes a DN for equality comparison: unescapes both hex (\XX) and
+// literal-char (\+) escape styles into their plain character, so the same
+// directory object isn't missed just because it's represented differently.
+function normalizeDn(dn) {
+  const unescaped = String(dn || '').trim().replace(/\\([0-9a-fA-F]{2}|.)/g, (_, g1) =>
+    /^[0-9a-fA-F]{2}$/.test(g1) ? String.fromCharCode(parseInt(g1, 16)) : g1
+  )
+  return unescaped.replace(/\s*,\s*/g, ',').toLowerCase()
+}
+
 function RoleBadge({ role }) {
   if (role === 'superadmin') return <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">Super Admin</span>
   if (role === 'admin')      return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Admin</span>
@@ -398,9 +408,9 @@ function UserDetailModal({ user: u, onClose, onEdit, mappedGroupDns = [] }) {
   }
 
   // Only show groups that are actually configured in LDAP group_mappings
-  const mappedDnSet = new Set(mappedGroupDns.map(d => d.toLowerCase()))
+  const mappedDnSet = new Set(mappedGroupDns.map(d => normalizeDn(d)))
   const matchedGroups = isLdap && Array.isArray(u.ldap_groups)
-    ? u.ldap_groups.filter(g => mappedDnSet.has(g.toLowerCase()))
+    ? u.ldap_groups.filter(g => mappedDnSet.has(normalizeDn(g)))
     : []
   const ldapGroupNames = matchedGroups.map(extractCN)
 
@@ -819,9 +829,9 @@ function LdapUsersTab() {
               </tr>
             )}
             {paginated.map(u => {
-              const mappedDnSet = new Set(mappedGroupDns.map(d => d.toLowerCase()))
+              const mappedDnSet = new Set(mappedGroupDns.map(d => normalizeDn(d)))
               const matchedCNs = (u.ldap_groups || [])
-                .filter(g => mappedDnSet.has(g.toLowerCase()))
+                .filter(g => mappedDnSet.has(normalizeDn(g)))
                 .map(g => g.match(/^CN=([^,]+)/i)?.[1] ?? g)
               return (
                 <tr
