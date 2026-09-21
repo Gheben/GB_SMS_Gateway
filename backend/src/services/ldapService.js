@@ -361,7 +361,24 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
           attributes: ['dn'],
           sizeLimit: 1,
         });
-        return entries.length ? (entries[0].dn || m.group_dn) : null;
+        if (entries.length) return entries[0].dn || m.group_dn;
+        // Diagnostic-only: no match via extended match — read the group's raw
+        // (non-recursive) member list to tell apart "user really isn't a member"
+        // from "service account can't read this group's member attribute".
+        try {
+          const raw = await ldapSearch(client, m.group_dn, {
+            scope: 'base',
+            filter: '(objectClass=*)',
+            attributes: ['member'],
+            sizeLimit: 1,
+          });
+          const rawMembers = [].concat(raw[0]?.member || []);
+          const directHit = rawMembers.some(dn => dn.toLowerCase() === userDN.toLowerCase());
+          logger.info(`[LDAP] "${m.group_dn}": ${rawMembers.length} membro/i diretto/i letto/i, utente presente direttamente=${directHit}`);
+        } catch (rawErr) {
+          logger.warn(`[LDAP] Lettura member "${m.group_dn}" fallita: ${rawErr.message}`);
+        }
+        return null;
       } catch (err) {
         logger.warn(`[LDAP] Verifica diretta mapping "${m.group_dn}" fallita: ${err.message}`);
         return null;
