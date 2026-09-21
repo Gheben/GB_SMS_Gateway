@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { rulesApi, devicesApi, portsApi, ldapApi, localGroupsApi, phonebookApi } from '../api'
 import PhonebookAutocomplete from '../components/PhonebookAutocomplete'
-import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play, Filter } from 'lucide-react'
+import { Plus, Pencil, Trash2, PlayCircle, X, Users, UsersRound, Loader2, Copy, Pause, Play, Filter, Search } from 'lucide-react'
 
 const MATCH_TYPES = [
   { value: 'sender',          label: 'Exact sender' },
@@ -492,6 +492,7 @@ export default function Rules() {
   const [modal, setModal] = useState(null)
   const [testOpen, setTestOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -547,6 +548,17 @@ export default function Rules() {
     }).join(sep)
   }
 
+  const filteredRules = rules.filter(rule => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return (
+      rule.name.toLowerCase().includes(q) ||
+      matchLabel(rule).toLowerCase().includes(q) ||
+      rule.targets?.some(t => t.email.toLowerCase().includes(q)) ||
+      rule.sms_targets?.some(s => s.toLowerCase().includes(q))
+    )
+  })
+
   if (loading) return (
     <div className="flex justify-center items-center py-16 text-gray-400 gap-2">
       <Loader2 size={18} className="animate-spin" /> Loading...
@@ -574,8 +586,18 @@ export default function Rules() {
         Rules are evaluated in priority order (higher = first). If "Stop on match" is active, subsequent rules are not checked.
       </p>
 
+      <div className="relative max-w-sm">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search rules by name, condition, recipient…"
+          className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+
       <div className="space-y-3">
-        {rules.map(rule => (
+        {filteredRules.map(rule => (
           <div key={rule.id} className={`bg-white border rounded-xl p-4 ${!rule.enabled ? 'opacity-50' : 'border-gray-200'}`}>
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -617,6 +639,9 @@ export default function Rules() {
         ))}
         {rules.length === 0 && (
           <p className="text-center py-12 text-gray-400">No rules configured. Create one to start receiving SMS via email.</p>
+        )}
+        {rules.length > 0 && filteredRules.length === 0 && (
+          <p className="text-center py-12 text-gray-400">No rules match your search.</p>
         )}
       </div>
 

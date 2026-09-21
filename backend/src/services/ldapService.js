@@ -277,11 +277,42 @@ function escapeLdap(s) {
 /* ─── Group resolution ───────────────────────────────────────── */
 
 /**
+ * BFS over each group's memberOf attribute, starting from a set of seed DNs.
+ * Used both as a fallback (non-AD mode) and as a safety net after the AD chain
+ * queries, since LDAP_MATCHING_RULE_IN_CHAIN does not reliably cover nested
+ * groups that live across domains/trusts in a multi-domain forest.
+ */
+async function bfsNestedGroups(client, seedDNs) {
+  const visited = new Set(seedDNs);
+  const queue   = [...seedDNs];
+  while (queue.length) {
+    const gDN = queue.shift();
+    try {
+      const entries = await ldapSearch(client, gDN, {
+        scope: 'base',
+        filter: '(objectClass=*)',
+        attributes: ['memberOf'],
+        sizeLimit: 1,
+      });
+      [].concat(entries[0]?.memberOf || []).forEach(dn => {
+        if (!visited.has(dn)) { visited.add(dn); queue.push(dn); }
+      });
+    } catch (err) {
+      logger.warn(`[LDAP] BFS: impossibile leggere memberOf di "${gDN}": ${err.message}`);
+    }
+  }
+  return [...visited];
+}
+
+/**
  * Resolves all groups (including nested) the user belongs to.
- * In AD mode uses LDAP_MATCHING_RULE_IN_CHAIN (automatic recursion by the DC).
- * Otherwise falls back to BFS over each group's memberOf attribute.
+ * In AD mode uses LDAP_MATCHING_RULE_IN_CHAIN (automatic recursion by the DC),
+ * then always runs a BFS pass as a safety net — the matching rule alone can
+ * miss nested memberships that cross domains/trusts in a multi-domain forest.
  */
 async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
+  const combined = new Set(directGroups);
+
   if (cfg.ad_mode !== false) {
     // Strategy 1: global AD chain search for all groups the user belongs to
     try {
@@ -293,7 +324,7 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
         sizeLimit: 500,
       });
       const dns = entries.map(e => e.dn || e.objectName).filter(Boolean);
-      if (dns.length) return dns;
+      dns.forEach(dn => combined.add(dn));
     } catch (err) {
       logger.warn(`[LDAP] AD chain search failed: ${err.message}, falling back to targeted query`);
     }
@@ -317,32 +348,20 @@ async function getAllGroupsForUser(client, cfg, userDN, directGroups) {
         const matched = entries.map(e => e.dn || e.objectName).filter(Boolean);
         if (matched.length) {
           logger.info(`[LDAP] Single targeted query: user is transitive member of ${matched.length} configured group(s)`);
-          return [...new Set([...directGroups, ...matched])];
+          matched.forEach(dn => combined.add(dn));
         }
       } catch (err) {
-        logger.warn(`[LDAP] Single targeted query failed: ${err.message}, falling back to BFS`);
+        logger.warn(`[LDAP] Single targeted query failed: ${err.message}`);
       }
     }
   }
 
-  // Strategy 3: BFS fallback (non-AD mode or when all AD strategies fail)
-  const visited = new Set(directGroups);
-  const queue   = [...directGroups];
-  while (queue.length) {
-    const gDN = queue.shift();
-    try {
-      const entries = await ldapSearch(client, gDN, {
-        scope: 'base',
-        filter: '(objectClass=*)',
-        attributes: ['memberOf'],
-        sizeLimit: 1,
-      });
-      [].concat(entries[0]?.memberOf || []).forEach(dn => {
-        if (!visited.has(dn)) { visited.add(dn); queue.push(dn); }
-      });
-    } catch {}
-  }
-  return [...visited];
+  // Strategy 3: BFS — always run as a safety net (not just as a fallback), so
+  // nested memberships missed by the AD matching-rule queries are still found.
+  const bfsResult = await bfsNestedGroups(client, [...combined]);
+  bfsResult.forEach(dn => combined.add(dn));
+
+  return [...combined];
 }
 
 /* ─── Public API ─────────────────────────────────────────────── */
@@ -476,13 +495,17 @@ function resolvePermissions(groups) {
 
 /**
  * Looks up a user via service account without verifying their password.
- * Used for SSO flows where the upstream proxy has already authenticated the user.
+ * Used for SSO/SAML flows where the upstream proxy/IdP has already authenticated
+ * the user, to resolve group membership (including nested) via our own AD query.
+ * Intentionally does NOT require cfg.enabled: that toggle only gates interactive
+ * LDAP password login — background lookups must keep working even when it's off,
+ * since SAML-only deployments still rely on this for nested group resolution.
  * Returns { dn, username, displayName, email, groups } or null.
  */
 async function lookupUser(username) {
   if (!ldap) return null;
   const cfg = getLdapSettings();
-  if (!cfg?.enabled || (!cfg.host && !cfg.ldap_server)) return null;
+  if (!cfg || (!cfg.host && !cfg.ldap_server)) return null;
 
   const svcClient = makeClient(cfg);
   try {
