@@ -624,6 +624,25 @@ The token is valid for the duration set in \`JWT_EXPIRES_IN\` (default **8 hours
       },
     },
 
+    '/devices/outages': {
+      get: {
+        tags: ['Devices'],
+        summary: 'List device downtime periods',
+        description: 'Periods in which a device was not connected to the gateway (or the gateway was stopped). Inbound SMS received in these windows may be missing. `ended_at` is null while the outage is ongoing; `reason` is `connection` or `gateway`.',
+        parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', default: 7, minimum: 1, maximum: 90 } }],
+        responses: {
+          200: {
+            description: '',
+            content: {
+              'application/json': {
+                example: [{ id: 1, device_id: 'uuid', device_name: 'Yeastar S100', started_at: '2026-10-26T16:17:53.000Z', ended_at: null, reason: 'connection' }],
+              },
+            },
+          },
+        },
+      },
+    },
+
     '/devices/{id}': {
       get: {
         tags: ['Devices'],

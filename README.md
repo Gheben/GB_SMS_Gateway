@@ -29,7 +29,7 @@ Ideal for organizations using Yeastar GSM gateways that want to centralize SMS r
 
 ### ✨ Key Features
 
-- 📊 **Real-time Dashboard** — Daily statistics: SMS received, sent, failed; device connection status; SIM monthly usage with per-SIM limit progress bars
+- 📊 **Real-time Dashboard** — Daily statistics: SMS received, sent, failed; device connection status and downtime alerts; SIM monthly usage with per-SIM limit progress bars
 - 📥 **SMS Inbox** — All inbound SMS with search, filter, and preview
 - 📤 **Sent SMS** — Outbound message history with delivery status
 - ✉️ **Send SMS** — Manual send form with device and SIM port selection, or **balanced auto-routing**
@@ -294,6 +294,7 @@ Displays:
 - Daily statistics: SMS received, sent, total inbound, failed
 - Latest received messages
 - Yeastar device connection status
+- **Device downtime** panel (last 7 days): periods in which a device was disconnected or the gateway was stopped (e.g. a restart), with start, end and duration. The Yeastar TG API only pushes new SMS and cannot return messages received while offline, so check the SMS history in the device web UI for these windows. Also available via `GET /api/devices/outages`.
 
 ### 2. Inbox and Sent SMS
 - **Inbox**: all received SMS, searchable by sender, text, device
