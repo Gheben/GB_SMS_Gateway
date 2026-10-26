@@ -1,6 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Tailwind 4 changed the default border color to currentColor; keep the v3 look */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 body {
   @apply bg-gray-50 text-gray-900;
@@ -13,7 +19,7 @@ svg:focus, svg *:focus {
 
 @layer components {
   .input {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500;
   }
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1;

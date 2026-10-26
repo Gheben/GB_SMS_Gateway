@@ -592,7 +592,7 @@ export default function Rules() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search rules by name, condition, recipient…"
-          className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-400"
         />
       </div>
 

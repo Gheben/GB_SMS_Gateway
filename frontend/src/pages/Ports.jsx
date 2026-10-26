@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { portsApi, rulesApi, localGroupsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -56,7 +56,7 @@ function EditableCell({ initialValue, onSave, placeholder, mono = false }) {
         <div className="flex items-center gap-1">
           <input
             autoFocus
-            className={`text-xs border border-blue-300 rounded px-1.5 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
+            className={`text-xs border border-blue-300 rounded px-1.5 py-1 w-32 focus:outline-hidden focus:ring-1 focus:ring-blue-400 ${mono ? 'font-mono' : ''}`}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') cancel() }}
@@ -136,7 +136,7 @@ function EditableLimitCell({ initialValue, onSave }) {
             type="number"
             min="0"
             step="1"
-            className="text-xs border border-blue-300 rounded px-1.5 py-1 w-16 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="text-xs border border-blue-300 rounded px-1.5 py-1 w-16 text-right focus:outline-hidden focus:ring-1 focus:ring-blue-400"
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') cancel() }}
@@ -297,7 +297,7 @@ function SimRow({ port, rules, localGroups, onPortUpdate }) {
           onClick={toggleBalanced}
           disabled={toggling}
           title={port.balanced ? 'Remove from balanced pool' : 'Add to balanced pool'}
-          className="flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none"
+          className="flex items-center gap-1 text-xs font-medium transition-colors focus:outline-hidden"
         >
           {toggling
             ? <Loader2 size={15} className="animate-spin text-gray-400" />

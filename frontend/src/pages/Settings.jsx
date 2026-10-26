@@ -490,7 +490,7 @@ export default function Settings() {
                 }}
               />
             ) : (
-              <textarea className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+              <textarea className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-y"
                 rows={18} value={template} spellCheck={false}
                 onChange={e => { setTemplate(e.target.value); setTemplateDirty(true); setTemplateResult(null) }} />
             )}

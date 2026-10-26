@@ -206,8 +206,8 @@ CORS_ORIGIN=*           # or: http://192.168.1.50:4674
 
 # ─── Authentication ─────────────────────────────────────────────────
 SUPERADMIN_USERNAME=sysadmin
-SUPERADMIN_PASSWORD=Password!          # Change in production!
-JWT_SECRET=change-with-long-random-string
+SUPERADMIN_PASSWORD=                   # Required on first start; set a strong password
+JWT_SECRET=                            # Required: long random string (openssl rand -hex 64)
 JWT_EXPIRES_IN=8h                      # e.g. 8h, 1d, 7d
 
 # ─── Frontend (Docker only) ─────────────────────────────────────────
@@ -216,6 +216,7 @@ FRONTEND_PORT=4674
 # ─── SSO via proxy (optional) ─────────────────────────────────────
 # SSO_ENABLED=true
 # SSO_HEADER=X-Remote-User
+# SSO_SHARED_SECRET=                   # Required with SSO_ENABLED; the proxy must send it as X-SSO-Proxy-Secret
 
 # ─── Timezone (optional — can also be set via UI → Settings → System) ────────
 # TZ=Europe/Rome         # IANA timezone identifier (initial default only)
@@ -246,7 +247,7 @@ Configurable from the UI → **User management → LDAP / Active Directory**:
 ### SSO (Authentik / NetScaler ADC / Nginx)
 If `SSO_ENABLED=true`, the frontend automatically attempts `GET /api/auth/sso` on startup.
 
-The proxy authenticates the user, adds the header `X-Remote-User: john.smith` to each request.
+The proxy authenticates the user, adds the header `X-Remote-User: john.smith` to each request, **and** the shared secret in the header `X-SSO-Proxy-Secret` (value of `SSO_SHARED_SECRET`). Requests without the correct secret are rejected, so a client cannot forge the identity header.
 The backend reads the username, resolves it via LDAP (if configured), and returns a JWT without requiring a password.
 
 > ℹ️ Enabling `SSO_ENABLED=true` **does not disable** manual login — both mechanisms coexist.

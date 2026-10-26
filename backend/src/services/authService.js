@@ -5,8 +5,20 @@ const { getDb } = require('../db/database');
 const logger = require('../utils/logger');
 const ldapService = require('./ldapService');
 
-const JWT_SECRET  = process.env.JWT_SECRET  || 'changeme-insecure-default';
 const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '8h';
+
+// Un segreto assente o di esempio è noto a chiunque: non lo si usa mai per firmare.
+// Si usa un segreto casuale in memoria (le sessioni decadono al riavvio) così il login resta
+// funzionante; process.env non viene toccato, quindi la cifratura dei dati nel DB non cambia.
+const envSecret = process.env.JWT_SECRET;
+const JWT_SECRET = (!envSecret || envSecret.startsWith('changeme'))
+  ? require('crypto').randomBytes(48).toString('hex')
+  : envSecret;
+if (JWT_SECRET !== envSecret) {
+  logger.error('[Auth] JWT_SECRET assente o di esempio: uso un segreto temporaneo (le sessioni decadono a ogni riavvio). Impostare JWT_SECRET nel .env (openssl rand -hex 64).');
+} else if (JWT_SECRET.length < 32) {
+  logger.warn('[Auth] JWT_SECRET is shorter than 32 characters: use a longer random value');
+}
 
 // In-memory map: userId → last-seen timestamp (ms). Cleared on restart.
 const _activeUsers = new Map();
@@ -63,29 +75,32 @@ function verifyToken(token) {
 
 /** Crea o aggiorna il superadmin dalle variabili d'ambiente */
 function seedSuperAdmin() {
-  const username = (process.env.SUPERADMIN_USERNAME || 'sysadmin').trim();
-  const password = (process.env.SUPERADMIN_PASSWORD || 'Password!').trim();
   const db = getDb();
-
-  logger.info(`[Auth] seedSuperAdmin: username="${username}" password.length=${password.length}`);
-
   const existing = db.prepare('SELECT id FROM users WHERE role = ?').get('superadmin');
   const allPerms = Object.fromEntries(PERMISSION_KEYS.map(k => [k, true]));
-  const hash = hashPassword(password);
+  const username = process.env.SUPERADMIN_USERNAME?.trim();
+  const password = process.env.SUPERADMIN_PASSWORD?.trim();
 
   if (existing) {
-    db.prepare(`
-      UPDATE users SET username=?, password_hash=?, permissions=?, updated_at=datetime('now')
-      WHERE role='superadmin'
-    `).run(username, hash, JSON.stringify(allPerms));
-    logger.info(`[Auth] Superadmin aggiornato: ${username}`);
-  } else {
-    db.prepare(`
-      INSERT INTO users (id, username, password_hash, role, permissions)
-      VALUES (?, ?, ?, 'superadmin', ?)
-    `).run(uuidv4(), username, hash, JSON.stringify(allPerms));
-    logger.info(`[Auth] Superadmin creato: ${username}`);
+    // Come prima: i valori del .env, se presenti, sono la fonte di verità a ogni avvio.
+    // Se non sono impostati, l'account esistente resta invariato (nessun default pubblico).
+    const sets = ['permissions=?', "updated_at=datetime('now')"];
+    const params = [JSON.stringify(allPerms)];
+    if (username) { sets.push('username=?'); params.push(username); }
+    if (password) { sets.push('password_hash=?'); params.push(hashPassword(password)); }
+    db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE role='superadmin'`).run(...params);
+    logger.info(`[Auth] Superadmin aggiornato${username ? `: ${username}` : ''}`);
+    return;
   }
+
+  if (!username || !password) {
+    throw new Error('SUPERADMIN_USERNAME and SUPERADMIN_PASSWORD are required when creating the first superadmin');
+  }
+  db.prepare(`
+    INSERT INTO users (id, username, password_hash, role, permissions)
+    VALUES (?, ?, ?, 'superadmin', ?)
+  `).run(uuidv4(), username, hashPassword(password), JSON.stringify(allPerms));
+  logger.info(`[Auth] Superadmin creato: ${username}`);
 }
 
 async function login(username, password) {

@@ -55,7 +55,7 @@ export default function Inbox() {
         placeholder="Search by sender or message text..."
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        className="w-full max-w-sm border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full max-w-sm border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       />
 
       <MessageTable messages={messages} loading={loading} onDoubleClick={handleDoubleClick}

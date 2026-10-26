@@ -148,7 +148,7 @@ export default function Dashboard() {
             <select
               value={statsMonth}
               onChange={e => setStatsMonth(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-200"
             >
               {Array.from({ length: 6 }, (_, i) => {
                 const d = new Date(); d.setMonth(d.getMonth() - i)

@@ -152,7 +152,7 @@ function UserModal({ user, onClose, onSaved }) {
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Username</label>
               <input value={username} onChange={e => setUsername(e.target.value)} required minLength={3}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             </div>
           )}
 
@@ -162,7 +162,7 @@ function UserModal({ user, onClose, onSaved }) {
             </label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               required={isNew} minLength={isNew ? 8 : 0}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400"
               placeholder="••••••••" />
             {(isNew || password.length > 0) && (() => {
               const rules = [
@@ -187,7 +187,7 @@ function UserModal({ user, onClose, onSaved }) {
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Role</label>
             <select value={role} onChange={e => setRole(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400">
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
@@ -310,7 +310,7 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Group DN (full path)</label>
             <input value={groupDn} onChange={e => setGroupDn(e.target.value)} required
               placeholder="CN=SMS_Admins,OU=Groups,DC=example,DC=com"
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             <p className="mt-1 text-xs text-gray-400">Full Distinguished Name of the AD group. Nested groups (groups of groups) are supported.</p>
           </div>
           <div>
@@ -602,7 +602,7 @@ function LocalUsersTab() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search users…"
-            className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div className="flex-1" />
@@ -800,7 +800,7 @@ function LdapUsersTab() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search LDAP users…"
-            className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-400"
           />
         </div>
       </div>
@@ -1089,7 +1089,7 @@ function LdapSettingsTab() {
             <label className="block text-xs font-medium text-gray-500 mb-1">LDAP Server</label>
             <input value={form.ldap_server} onChange={e => setField('ldap_server', e.target.value)}
               placeholder="ldaps://dc.company.local  or  ldap://192.168.1.10"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             <p className="mt-1 text-xs text-gray-400">Use <code>ldaps://</code> for LDAP over TLS (port 636), <code>ldap://</code> for unencrypted connection (port 389).</p>
           </div>
 
@@ -1097,7 +1097,7 @@ function LdapSettingsTab() {
             <label className="block text-xs font-medium text-gray-500 mb-1">Active Directory Domain</label>
             <input value={form.ldap_domain} onChange={e => setField('ldap_domain', e.target.value)}
               placeholder="company.local"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             <p className="mt-1 text-xs text-gray-400">Used for binding the service account in the format <code>username@domain</code>.</p>
           </div>
 
@@ -1114,7 +1114,7 @@ function LdapSettingsTab() {
             </div>
             <input value={form.ldap_base_dn} onChange={e => setField('ldap_base_dn', e.target.value)}
               placeholder="DC=company,DC=local"
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
@@ -1136,13 +1136,13 @@ function LdapSettingsTab() {
               <label className="block text-xs font-medium text-gray-500 mb-1">Username</label>
               <input value={form.ldap_service_username} onChange={e => setField('ldap_service_username', e.target.value)}
                 placeholder="ServiceSMS"
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Password</label>
               <input type="password" value={form.ldap_service_password} onChange={e => setField('ldap_service_password', e.target.value)}
                 placeholder={passwordIsSaved ? '••••••••  (leave blank to keep current)' : 'Service account password'}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             </div>
           </div>
         </div>
@@ -1156,7 +1156,7 @@ function LdapSettingsTab() {
             <label className="block text-xs font-medium text-gray-500 mb-1">User filter</label>
             <input value={form.user_filter} onChange={e => setField('user_filter', e.target.value)}
               placeholder="(sAMAccountName={{username}})"
-              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
             <p className="mt-1 text-xs text-gray-400">{'Usa {{username}} come segnaposto per lo username inserito al login.'}</p>
           </div>
           <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
@@ -1330,12 +1330,12 @@ function GroupModal({ group, allUsers, onClose, onSaved }) {
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Group name</label>
             <input value={name} onChange={e => setName(e.target.value)} required
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description (optional)</label>
             <input value={description} onChange={e => setDescription(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Role assigned to members</label>
@@ -1481,7 +1481,7 @@ function GroupMembersModal({ group, allUsers, onClose, onSaved }) {
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add user</p>
             <input
-              className="w-full border rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border rounded-lg px-3 py-2 text-sm mb-2 focus:outline-hidden focus:ring-2 focus:ring-blue-400"
               placeholder="Search user..."
               value={search}
               onChange={e => setSearch(e.target.value)}

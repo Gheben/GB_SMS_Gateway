@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { Router } = require('express');
 const { body, validationResult } = require('express-validator');
 const { login, safeUser, signToken: _st } = require('../services/authService');
@@ -38,11 +39,19 @@ router.post('/login', [
  * Endpoint per SSO via proxy (Authentik, NetScaler ADC, Nginx auth_request ecc.)
  * Il proxy autentica l'utente e passa il suo username nell'header configurato (default: X-Remote-User).
  * Se SSO_ENABLED=true nel .env, questo endpoint restituisce un JWT senza richiedere password.
- * SICUREZZA: abilitare solo se il proxy gestisce l'autenticazione e non è raggiungibile direttamente.
+ * SICUREZZA: oltre all'identità, il proxy deve fornire il segreto condiviso configurato
+ * in SSO_SHARED_SECRET. Senza questa verifica l'endpoint resta disabilitato.
  */
 router.get('/sso', async (req, res) => {
   if (process.env.SSO_ENABLED !== 'true') {
     return res.status(404).json({ error: 'SSO non abilitato' });
+  }
+  const sharedSecret = process.env.SSO_SHARED_SECRET;
+  const providedSecret = req.get('X-SSO-Proxy-Secret') || '';
+  const a = crypto.createHash('sha256').update(providedSecret).digest();
+  const b = crypto.createHash('sha256').update(sharedSecret || '').digest();
+  if (!sharedSecret || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: 'Proxy SSO non autorizzato' });
   }
 
   const headerName = (process.env.SSO_HEADER || 'X-Remote-User').toLowerCase();

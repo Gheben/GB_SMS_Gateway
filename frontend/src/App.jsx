@@ -83,7 +83,7 @@ function AppShell() {
     const token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token') || ''
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 max-w-lg w-full">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-8 max-w-lg w-full">
           <h1 className="text-xl font-bold text-gray-800 mb-1">Accesso API</h1>
           <p className="text-sm text-gray-500 mb-6">Il tuo account è configurato solo per l&apos;accesso via API.</p>
           <div className="mb-4">

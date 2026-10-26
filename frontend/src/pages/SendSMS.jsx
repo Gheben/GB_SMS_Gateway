@@ -170,7 +170,7 @@ export default function SendSMS() {
               <button
                 type="button"
                 onClick={() => setBalancedMode(m => !m)}
-                className="flex-shrink-0 focus:outline-none"
+                className="flex-shrink-0 focus:outline-hidden"
                 aria-label="Toggle balanced mode"
               >
                 {balancedMode
