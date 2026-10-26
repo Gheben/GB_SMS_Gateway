@@ -162,7 +162,7 @@ class YeastarConnector extends EventEmitter {
       this.connected = false;
       logger.warn('Connection closed. Reconnecting in 5s...');
       this.emit('disconnected');
-      this._scheduleReconnect();
+      if (!this.intentional) this._scheduleReconnect();
     });
 
     this.socket.connect(this.port, this.host);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { settingsApi, messagesApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import { Save, Send, CheckCircle, AlertCircle, Eye, EyeOff, RotateCcw, Mail, FileCode, Loader2, Shield, ExternalLink, Globe, Clock, RefreshCw, Settings2 } from 'lucide-react'
@@ -267,7 +267,7 @@ export default function Settings() {
       const sign = r.offset_ms >= 0 ? '+' : ''
       setSyncResult({
         success: true,
-        message: `NTP OK — server time: ${new Date(r.ntp_time).toLocaleString()} — offset: ${sign}${offsetSec}s`,
+        message: `NTP OK — server time: ${new Date(r.ntp_time).toLocaleString('en-GB')} — offset: ${sign}${offsetSec}s`,
       })
     } catch (err) {
       setSyncResult({ success: false, message: err.response?.data?.error || 'NTP query failed.' })
@@ -486,7 +486,7 @@ export default function Settings() {
                   .replace(/{{received_at}}/g, new Date().toISOString())
                   .replace(/{{rule}}/g, 'OTP Forward')
                   .replace(/{{email}}/g, 'recipient@company.com')
-                  .replace(/{{timestamp}}/g, new Date().toLocaleString('en-US'))
+                  .replace(/{{timestamp}}/g, new Date().toLocaleString('en-GB'))
                 }}
               />
             ) : (

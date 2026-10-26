@@ -88,6 +88,7 @@ export const portsApi = {
 
 export const devicesApi = {
   getAll:   () => api.get('/devices').then(r => r.data),
+  getOutages: (days = 7) => api.get('/devices/outages', { params: { days } }).then(r => r.data),
   getOne:   (id) => api.get(`/devices/${id}`).then(r => r.data),
   create:   (data) => api.post('/devices', data).then(r => r.data),
   update:   (id, data) => api.put(`/devices/${id}`, data).then(r => r.data),

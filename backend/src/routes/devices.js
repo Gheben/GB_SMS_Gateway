@@ -3,6 +3,7 @@ const { body, param, validationResult } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const deviceManager = require('../services/deviceManager');
+const outageService = require('../services/outageService');
 const { encrypt, isEncrypted } = require('../utils/encryption');
 const auditService = require('../services/auditService');
 
@@ -17,6 +18,12 @@ const sanitize = (req, res) => {
 // GET /api/devices — lista tutti i dispositivi con stato connessione
 router.get('/', (req, res) => {
   res.json(deviceManager.statusAll());
+});
+
+// GET /api/devices/outages?days=7 — periodi offline (SMS in ingresso potenzialmente persi)
+router.get('/outages', (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 90);
+  res.json(outageService.list(days));
 });
 
 // GET /api/devices/:id

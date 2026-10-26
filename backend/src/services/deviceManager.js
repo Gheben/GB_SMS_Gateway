@@ -5,6 +5,7 @@ const routingEngine = require('./routingEngine');
 const { broadcast } = require('./wsService');
 const logger = require('../utils/logger');
 const { decrypt } = require('../utils/encryption');
+const outageService = require('./outageService');
 
 /**
  * DeviceManager
@@ -20,6 +21,10 @@ class DeviceManager {
   async init() {
     const db = getDb();
     const devices = db.prepare(`SELECT * FROM devices WHERE enabled = 1`).all();
+
+    // Must run before the heartbeat restarts, to detect a period in which the gateway was down
+    outageService.recordGatewayDowntime(devices);
+    outageService.startHeartbeat();
 
     if (devices.length === 0) {
       logger.warn('No enabled devices found in DB. Add devices via API or UI.');
@@ -49,16 +54,20 @@ class DeviceManager {
   disconnect(deviceId) {
     const conn = this.connectors.get(deviceId);
     if (conn) {
+      conn.intentional = true; // reload/disable/delete: not an outage
       conn.disconnect();
       this.connectors.delete(deviceId);
+      outageService.close(deviceId);
       logger.info(`Device ${deviceId} disconnected and removed.`);
     }
   }
 
-  /** Disconnect all */
+  /** Disconnect all (gateway shutdown: the window until restart is recorded as an outage) */
   disconnectAll() {
-    for (const [id] of this.connectors) {
-      this.disconnect(id);
+    for (const [, conn] of this.connectors) conn.intentional = false;
+    for (const [id, conn] of this.connectors) {
+      conn.disconnect();
+      this.connectors.delete(id);
     }
   }
 
@@ -89,6 +98,10 @@ class DeviceManager {
 
     conn.on('connected', () => {
       logger.info(`[${device.name}] Connected to ${device.host}`);
+      const outage = outageService.close(device.id);
+      if (outage) {
+        logger.warn(`[${device.name}] Back online after outage ${outage.started_at} → ${outage.ended_at}: inbound SMS received in this window may be missing`);
+      }
       broadcast('device:connected', { deviceId: device.id, name: device.name });
       conn.requestPortStatus();
       // Query each port individually for detailed status
@@ -97,6 +110,7 @@ class DeviceManager {
 
     conn.on('disconnected', () => {
       logger.warn(`[${device.name}] Disconnected from ${device.host}`);
+      if (!conn.intentional) outageService.open(device.id, device.name);
       broadcast('device:disconnected', { deviceId: device.id, name: device.name });
     });
 

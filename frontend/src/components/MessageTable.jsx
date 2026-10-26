@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+﻿import { format } from 'date-fns'
 import { enUS } from 'date-fns/locale'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -134,7 +134,7 @@ export default function MessageTable({ messages, loading, onDoubleClick, canDele
                   <span className={`badge-${msg.status}`}>{msg.status}</span>
                 </td>
                 <td className="hidden sm:table-cell px-4 py-3 text-gray-500 whitespace-nowrap">
-                  {format(new Date(msg.created_at + (msg.created_at.endsWith('Z') ? '' : 'Z')), 'MM/dd/yyyy HH:mm', { locale: enUS })}
+                  {format(new Date(msg.created_at + (msg.created_at.endsWith('Z') ? '' : 'Z')), 'dd/MM/yyyy HH:mm', { locale: enUS })}
                 </td>
               </tr>
             ))}

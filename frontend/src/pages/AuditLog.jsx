@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { auditApi } from '../api'
 import { ClipboardList, Search, X, Trash2, RefreshCw, Loader2 } from 'lucide-react'
 
@@ -45,7 +45,7 @@ function actionBadge(action) {
 function formatDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'))
-  return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' })
+  return d.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' })
 }
 
 export default function AuditLog() {

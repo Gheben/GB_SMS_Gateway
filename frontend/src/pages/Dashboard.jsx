@@ -1,11 +1,20 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+﻿import { useEffect, useRef, useState, useCallback } from 'react'
 import { messagesApi, devicesApi, portsApi } from '../api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAuth } from '../contexts/AuthContext'
 import StatCard from '../components/StatCard'
 import MessageTable from '../components/MessageTable'
 import MessageDetailModal from '../components/MessageDetailModal'
-import { MessageSquare, Send, AlertCircle, TrendingUp, Server, Smartphone, LayoutDashboard } from 'lucide-react'
+import { MessageSquare, Send, AlertCircle, TrendingUp, Server, Smartphone, LayoutDashboard, AlertTriangle } from 'lucide-react'
+
+const parseUtc = (s) => new Date(s.endsWith('Z') ? s : s + 'Z')
+const fmtDate = (s) => parseUtc(s).toLocaleString('en-GB')
+function fmtDuration(from, to) {
+  const m = Math.max(0, Math.round((parseUtc(to) - parseUtc(from)) / 60000))
+  if (m < 60) return `${m} min`
+  const h = Math.floor(m / 60)
+  return h < 24 ? `${h} h ${m % 60} min` : `${Math.floor(h / 24)} d ${h % 24} h`
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -17,7 +26,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [portStats, setPortStats] = useState(null)
-
+  const [outages, setOutages] = useState([])
   async function handleMessageClick(msg) {
     try {
       const full = await messagesApi.getById(msg.id)
@@ -43,6 +52,7 @@ export default function Dashboard() {
       setRecentTotal(m.total)
       setDevices(d)
     } catch {}
+    devicesApi.getOutages(7).then(setOutages).catch(() => {})
     setLoading(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -118,6 +128,26 @@ export default function Dashboard() {
               <p className="text-sm text-gray-400 col-span-3">No devices configured.</p>
             )}
           </div>
+          {outages.length > 0 && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                <AlertTriangle size={16} /> Device downtime (last 7 days)
+              </p>
+              <p className="text-xs text-amber-700 mt-1 mb-3">
+                Inbound SMS received by a device while it was not connected to the gateway cannot be recovered
+                automatically. Check the SMS history on the device web interface for these periods.
+              </p>
+              <ul className="space-y-1 text-xs text-amber-900">
+                {outages.slice(0, 10).map(o => (
+                  <li key={o.id}>
+                    <span className="font-medium">{o.device_name}</span>
+                    {o.reason === 'gateway' ? ' (gateway stopped)' : ''}
+                    {': '}{fmtDate(o.started_at)} → {o.ended_at ? `${fmtDate(o.ended_at)} (${fmtDuration(o.started_at, o.ended_at)})` : 'still offline'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

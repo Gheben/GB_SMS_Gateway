@@ -231,6 +231,19 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS idx_pms_month ON port_monthly_stats(year_month);
   `);
+
+  // Periodi in cui un dispositivo non era collegato al gateway (SMS in ingresso potenzialmente persi)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS device_outages (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id   TEXT NOT NULL,
+      device_name TEXT,
+      started_at  TEXT NOT NULL,
+      ended_at    TEXT,
+      reason      TEXT NOT NULL DEFAULT 'connection'
+    );
+    CREATE INDEX IF NOT EXISTS idx_outages_device ON device_outages(device_id, ended_at);
+  `);
 }
 
 /** Legge una singola impostazione dal DB, con fallback a process.env o default */

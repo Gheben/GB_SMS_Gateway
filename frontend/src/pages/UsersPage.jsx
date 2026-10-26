@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { usersApi, ldapApi, localGroupsApi, portsApi } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -390,7 +390,7 @@ function GroupMappingModal({ mapping, onClose, onSaved }) {
 function UserDetailModal({ user: u, onClose, onEdit, mappedGroupDns = [] }) {
   function formatDate(ts) {
     if (!ts) return '—'
-    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
+    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-GB', {
       month: '2-digit', day: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     })
@@ -581,7 +581,7 @@ function LocalUsersTab() {
 
   function formatLastLogin(ts) {
     if (!ts) return '—'
-    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
+    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-GB', {
       month: '2-digit', day: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     })
@@ -779,7 +779,7 @@ function LdapUsersTab() {
 
   function formatLastLogin(ts) {
     if (!ts) return '—'
-    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-US', {
+    return new Date(ts + (ts.endsWith('Z') ? '' : 'Z')).toLocaleString('en-GB', {
       month: '2-digit', day: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     })
